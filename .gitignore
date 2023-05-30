@@ -1,0 +1,56 @@
+#==============================================================================#
+# File extensions to be ignored anywhere in the tree.
+#==============================================================================#
+# Temp files created by most text editors.
+*~
+# Merge files created by git.
+*.orig
+# Reject files created by patch.
+*.rej
+# Byte compiled python modules.
+*.pyc
+# vim swap files
+.*.sw?
+.sw?
+#OS X specific files.
+.DS_store
+
+# CMake related files
+# Ignore the user specified CMake presets in subproject directories.
+/*/CMakeUserPresets.json
+# Visual Studio built-in CMake configuration
+/CMakeSettings.json
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+build.ninja
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+#==============================================================================#
+# Directories to ignore (do not add trailing '/'s, they skip symlinks).
+#==============================================================================#
+# VS2017 and VSCode config files.
+.vscode
+.vs
+
+# pythonenv for github Codespaces
+pythonenv*
+
+# clangd index. (".clangd" is a config file now, thus trailing slash)
+.clangd/
+.cache
+
+# Build caches
+/build*
+/cmake-build*
+
+# CLion project configuration
+/.idea
+

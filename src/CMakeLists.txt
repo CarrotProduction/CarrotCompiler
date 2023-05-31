@@ -9,6 +9,7 @@ add_subdirectory(riscv)
 set(SOURCE_FILES main.cpp)
 
 add_executable(carrotcompiler ${SOURCE_FILES})
+set_target_properties(carrotcompiler PROPERTIES OUTPUT_NAME "compiler")
 
 target_include_directories(carrotcompiler PRIVATE utils parser ir opt riscv)
 

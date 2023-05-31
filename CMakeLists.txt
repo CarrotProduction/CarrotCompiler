@@ -16,4 +16,8 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_subdirectory(src)
 
 # Unit tests
-add_subdirectory(test)
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(test)
+endif()
+

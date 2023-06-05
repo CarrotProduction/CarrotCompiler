@@ -18,6 +18,7 @@ add_subdirectory(src)
 # Unit tests
 include(CTest)
 if(BUILD_TESTING)
+    add_subdirectory(runtime)
     add_subdirectory(test)
 endif()
 

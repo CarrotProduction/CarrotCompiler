@@ -44,7 +44,7 @@ execute_process(
 )
 
 if(TEST_RET)
-  message(FATAL_ERROR "SysY Compiler Error in ${TEST_SRC}: ${TEST_ERR}")
+  message(FATAL_ERROR "Failed: SysY Compiler Error in ${TEST_SRC}: ${TEST_ERR}")
   return(-1)
 endif(TEST_RET)
 
@@ -59,7 +59,7 @@ execute_process(
 )
 
 if(TEST_RET)
-  message(FATAL_ERROR "Error: ${TEST_ERR}")
+  message(FATAL_ERROR "Failed: LLVM Link Error in ${TEST_SRC}: ${TEST_ERR}")
 endif(TEST_RET)
 
 # Run BitCode with lli

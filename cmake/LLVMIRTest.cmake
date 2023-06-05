@@ -24,14 +24,14 @@ else(EXISTS "${TEST_DIR}/${TEST_NAME}.in")
   set(TEST_INS "/dev/null")
 endif(EXISTS "${TEST_DIR}/${TEST_NAME}.in")
 
-set(TEST_REF "${TEST_DIR}/${TEST_NAME}.out")
-
 set(RUNTIME_ASM "${RUNTIME}/sysy.ll")
 
 # Generated
 set(TEST_ASM "${TEST_NAME}.ll")
 set(TEST_BTC "${TEST_NAME}.bc")
 set(TEST_OUT "${TEST_NAME}.out")
+configure_file("${TEST_DIR}/${TEST_NAME}.out" "${TEST_NAME}.ref" NEWLINE_STYLE LF)
+set(TEST_REF "${TEST_NAME}.ref")
 
 # SysY to LLVM IR
 execute_process(

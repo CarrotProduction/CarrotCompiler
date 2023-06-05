@@ -11,6 +11,7 @@ set(FINAL_PERFORMANCE_TESTS_DIR
 # Define test function
 function(add_test_dir testdir)
   file(GLOB files "${testdir}/*.sy")
+
   foreach(file ${files})
     get_filename_component(testfile "${file}" NAME_WE)
     get_filename_component(testcate "${testdir}" NAME)

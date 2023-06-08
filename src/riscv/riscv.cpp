@@ -9,7 +9,7 @@ std::map<Instruction::OpID, std::string> instr_id2riscv = {
     {Instruction::Mul, "mul"},
     {Instruction::SDiv, "sdiv"},
     {Instruction::SRem, "srem"},
-    {Instruction::UDiv, "udiv"},
+    {Instruction::UDiv, "idiv"},
     {Instruction::URem, "urem"},
     {Instruction::FAdd, "fadd"},
     {Instruction::FSub, "fsub"},
@@ -22,8 +22,8 @@ std::map<Instruction::OpID, std::string> instr_id2riscv = {
     {Instruction::Or, "or"},
     {Instruction::Xor, "xor"},
     {Instruction::Alloca, "alloca"},
-    {Instruction::Load, "load"},
-    {Instruction::Store, "store"},
+    {Instruction::Load, "lw"},
+    {Instruction::Store, "sw"},
     {Instruction::GetElementPtr, "getelementptr"},
     {Instruction::ZExt, "zext"},
     {Instruction::FPtoSI, "fptosi"},
@@ -76,6 +76,36 @@ std::string UnaryRiscvInst::print() {
   riscv_instr += this->name_;
   riscv_instr += ", ";
   riscv_instr += this->operands_[0]->name_;
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string CallRiscvInst::print() {
+  std::string riscv_instr = "\t";
+  // 若干条push
+  return riscv_instr;
+}
+
+std::string StoreRiscvInst::print() {
+  std::string riscv_instr = "\t";
+  riscv_instr += "sw\t";
+  riscv_instr += this->operands_[0]->name_;
+  riscv_instr += ", ";
+  if (this->shift_)
+    riscv_instr += std::to_string(this->shift_);
+  riscv_instr += "(" + this->operands_[1]->name_ + ")";
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string LoadRiscvInst::print() {
+  std::string riscv_instr = "\t";
+  riscv_instr += "lw\t";
+  riscv_instr += this->operands_[0]->name_;
+  riscv_instr += ", ";
+  if (this->shift_)
+    riscv_instr += std::to_string(this->shift_);
+  riscv_instr += "(" + this->operands_[1]->name_ + ")";
   riscv_instr += "\n";
   return riscv_instr;
 }

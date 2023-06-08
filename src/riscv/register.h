@@ -16,7 +16,7 @@ public:
   Register(Type *ty, RegType RegTy, const std::string &name = "") : Value(ty, name), regtype(RegTy) {}
   ~Register() = default;
   // value 本身的name用作寄存器名称
-  std::string print() { return ""; }
+  std::string print() override;
 };
 const int REG_NUMBER = 32;
 std::vector<Register> Int, Float; // 寄存器堆

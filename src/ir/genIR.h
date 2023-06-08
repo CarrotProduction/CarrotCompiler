@@ -127,7 +127,7 @@ public:
     auto put_float_array = new Function(output_type, "putfarray", module.get());
 
     output_params.clear();
-    output_params.push_back(TyInt32);
+    // output_params.push_back(TyInt32);
     auto time_type = new FunctionType(TyVoid, output_params);
     auto sysy_start_time =
         new Function(time_type, "_sysy_starttime", module.get());

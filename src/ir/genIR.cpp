@@ -1,4 +1,5 @@
 #include "genIR.h"
+#include "ir.h"
 
 #define CONST_INT(num) new ConstantInt(module->int32_ty_, num)
 #define CONST_FLOAT(num) new ConstantFloat(module->float32_ty_, num)
@@ -462,22 +463,21 @@ void GenIR::visit(StmtAST &ast) {
     ast.lVal->accept(*this);
     // Get lVal
     auto lVal = recentVal;
-    auto lValType = curType;
+    auto lValType = static_cast<PointerType *>(lVal->type_)->contained_;
     // Visit expression
     ast.exp->accept(*this);
+    auto rVal = recentVal;
     // if lVal.type != rVal.type
     // Forge a cast
-    if (lValType == INT32_T) {
-      if (curType == FLOAT_T) {
-        recentVal = builder->create_fptosi(recentVal, INT32_T);
-      }
-    } else {
-      if (curType == INT32_T) {
-        recentVal = builder->create_sitofp(recentVal, FLOAT_T);
+    if (lValType != recentVal->type_) {
+      if (lValType == FLOAT_T) {
+        rVal = builder->create_sitofp(recentVal, FLOAT_T);
+      } else {
+        rVal = builder->create_fptosi(recentVal, INT32_T);
       }
     }
     // Create a store primitive
-    builder->create_store(recentVal, lVal);
+    builder->create_store(rVal, lVal);
     break;
   }
   case EXP:

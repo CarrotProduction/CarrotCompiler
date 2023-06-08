@@ -57,3 +57,50 @@ public:
     this->parent_ = bb;
   }
 };
+
+class CallRiscvInst : public RiscvInstr {
+public:
+  CallRiscvInst(Function *func, std::vector<Value *> args, BasicBlock *bb)
+      : RiscvInstr(static_cast<FunctionType *>(func->type_)->result_, Instruction::Call, args.size() + 1, bb) {
+    int num_ops = args.size() + 1;
+    for (int i = 0; i < num_ops - 1; i++)
+      set_operand(i, args[i]);
+    set_operand(num_ops - 1, func);
+  }
+  virtual std::string print() override;
+};
+
+// Store 指令格式：sw source_value(reg), shift(base reg)
+// 目的：source_value->M[base reg + shift]
+// 传入源寄存器，目的寄存器和偏移地址（默认为0）
+// 如果是直接寻址，则base填x0号寄存器
+class StoreRiscvInst : public RiscvInstr {
+
+public:
+  int shift_; // 地址偏移量
+  StoreRiscvInst(Type *ty, Register *source, Register *target, int shift = 0,
+                 BasicBlock *bb)
+      : RiscvInstr(ty, Instruction::Store, 2, bb), shift_(shift) {
+    Value *val = static_cast<Value *>(source), *tar = static_cast<Value *>(target);
+    set_operand(0, val);
+    set_operand(1, tar);
+    this->parent_ = bb;
+  }
+  virtual std::string print() override;
+};
+
+// 指令传入格式同store
+// 先dest 后base reg
+// 目的：M[base reg + shift]->dest reg
+class LoadRiscvInst : public RiscvInstr {
+  int shift_; // 地址偏移量
+  LoadRiscvInst(Type *ty, Register *dest, Register *target, int shift = 0,
+                 BasicBlock *bb)
+      : RiscvInstr(ty, Instruction::Load, 2, bb), shift_(shift) {
+    Value *val = static_cast<Value *>(dest), *tar = static_cast<Value *>(target);
+    set_operand(0, val);
+    set_operand(1, tar);
+    this->parent_ = bb;
+  }
+  virtual std::string print() override;
+};

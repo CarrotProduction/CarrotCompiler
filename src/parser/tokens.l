@@ -37,7 +37,7 @@ FLOAT_LIT ({DEC_FLOAT_LIT}|{HEX_FLOAT_LIT})
 /* EXP ([Ee][-+]?[0-9]+) */
 /* FLOAT (([0-9]*\.[0-9]+|[0-9]+\.){EXP}?[fF]?)|[0-9]+{EXP}[fF]? */
 
-SingleLineComment "//".*$
+SingleLineComment "//".*
 MultilineComment "/*"([^\*]|(\*)*[^\*/])*(\*)*"*/"
 
 /* Invalid ([0-9]+[A-Za-z]+[0-9]*|0[0-9]*[8-9]+[0-9]*) */

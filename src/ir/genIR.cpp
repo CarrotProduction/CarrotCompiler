@@ -142,6 +142,7 @@ void GenIR::visit(DefAST &ast) {
     return;
   }
 
+  // TODO: 修复在循环中多次分配同名变量的Bug
   // 局部变量或常量
   if (ast.arrays.empty()) {       // 不是数组，即普通局部量
     if (ast.initVal == nullptr) { // 无初始化

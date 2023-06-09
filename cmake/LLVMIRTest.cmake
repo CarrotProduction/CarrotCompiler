@@ -71,6 +71,7 @@ execute_process(
   OUTPUT_VARIABLE TEST_OUT_CONTENT
   ERROR_VARIABLE TEST_ERR
   RESULT_VARIABLE TEST_RET
+  TIMEOUT 10
 )
 
 # Append EOF LR, if not presented

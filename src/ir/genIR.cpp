@@ -22,6 +22,7 @@ bool isNewFunc = false; // 判断是否为新函数，用来处理函数作用�
 bool requireLVal = false; // 告诉LVal节点不需要发射load指令
 Function *currentFunction = nullptr; // 当前函数
 Value *recentVal = nullptr;          // 最近的表达式的value
+BasicBlock *functionBB = nullptr;    // To Fix the bug: current function's basic block
 BasicBlock *whileCondBB = nullptr;   // while语句cond分支
 BasicBlock *trueBB = nullptr; // 通用true分支，即while和if为真时所跳转的基本块
 BasicBlock *falseBB = nullptr; // 通用false分支，即while和if为假时所跳转的基本块
@@ -149,8 +150,11 @@ void GenIR::visit(DefAST &ast) {
       if (isConst)
         cout << "no initVal when define const!" << endl; // 无初始化局部常量报错
       else {                                             // 无初始化变量
+        auto _backupBB = builder->get_insert_block();
+        builder->set_insert_point(functionBB);    // 将局部变量移动至当前函数头部的 Basic block
         AllocaInst *varAlloca;
         varAlloca = builder->create_alloca(curType);
+        builder->set_insert_point(_backupBB);   // 还原插入点
         scope.push(varName, varAlloca);
       }
     } else { // 有初始化
@@ -159,8 +163,11 @@ void GenIR::visit(DefAST &ast) {
       if (isConst) {
         scope.push(varName, recentVal); // 单个常量定义不用create_alloca
       } else {
+        auto _backupBB = builder->get_insert_block();
+        builder->set_insert_point(functionBB); 
         AllocaInst *varAlloca;
         varAlloca = builder->create_alloca(curType);
+        builder->set_insert_point(_backupBB);
         scope.push(varName, varAlloca);
         builder->create_store(recentVal, varAlloca);
       }
@@ -377,6 +384,7 @@ void GenIR::visit(FuncDefAST &ast) {
 
   auto bb = new BasicBlock(module.get(), "label_entry", func);
   builder->BB_ = bb;
+  functionBB = bb;
   for (int i = 0; i < (int)(paramNames.size()); i++) {
     auto alloc = builder->create_alloca(params[i]); // 分配形参空间
     builder->create_store(args[i], alloc);          // store 形参

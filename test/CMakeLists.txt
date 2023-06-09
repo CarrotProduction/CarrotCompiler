@@ -32,8 +32,10 @@ add_test_dir("${FUNCTIONAL_TESTS_DIR}")
 # Hidden functional tests
 add_test_dir("${HIDDEN_FUNCTIONAL_TESTS_DIR}")
 
-# Performance tests
-add_test_dir("${PERFORMANCE_TESTS_DIR}")
+if(BUILD_PERFORMANCE_TESTS)
+  # Performance tests
+  add_test_dir("${PERFORMANCE_TESTS_DIR}")
 
-# Final performance tests
-add_test_dir("${FINAL_PERFORMANCE_TESTS_DIR}")
+  # Final performance tests
+  add_test_dir("${FINAL_PERFORMANCE_TESTS_DIR}")
+endif(BUILD_PERFORMANCE_TESTS)

@@ -79,10 +79,23 @@ std::string UnaryRiscvInst::print() {
   return riscv_instr;
 }
 
-// unfinished
 std::string CallRiscvInst::print() {
-  std::string riscv_instr = "\t";
-  // 若干条push
+  std::string riscv_instr = "\tcall\t";
+  riscv_instr += this->operands_[0]->name_;
+  return riscv_instr;
+}
+
+std::string ReturnRiscvInst::print() { return "\tret\n"; }
+
+std::string PushRiscvInst::print() {
+  std::string riscv_instr = "\tpush\t";
+  riscv_instr += this->operands_[0]->name_;
+  return riscv_instr;
+}
+
+std::string PopRiscvInst::print() {
+  std::string riscv_instr = "\tpop\t";
+  riscv_instr += this->operands_[0]->name_;
   return riscv_instr;
 }
 
@@ -110,6 +123,7 @@ std::string FCmpRiscvInstr::print() {
     this->fcmp_op_ = static_cast<FCmpInst::FCmpOp>((int)this->fcmp_op_ ^ 2);
   }
   riscv_instr += FCmpOpName.at(this->fcmp_op_);
+  std::string riscv_instr = "\t";
   riscv_instr += this->operands_[0]->name_;
   riscv_instr += ", ";
   riscv_instr += this->operands_[1]->name_;

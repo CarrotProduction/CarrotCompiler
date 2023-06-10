@@ -127,7 +127,7 @@ public:
     auto put_float_array = new Function(output_type, "putfarray", module.get());
 
     output_params.clear();
-    output_params.push_back(TyInt32);
+    // output_params.push_back(TyInt32);
     auto time_type = new FunctionType(TyVoid, output_params);
     auto sysy_start_time =
         new Function(time_type, "_sysy_starttime", module.get());
@@ -172,8 +172,8 @@ public:
     scope.push("putch", put_char);
     scope.push("putarray", put_int_array);
     scope.push("putfarray", put_float_array);
-    scope.push("_sysy_starttime", sysy_start_time);
-    scope.push("_sysy_stoptime", sysy_stop_time);
+    scope.push("starttime", sysy_start_time);
+    scope.push("stoptime", sysy_stop_time);
     scope.push("memcpy", memcpy);
     scope.push("memclr", memclr);
     scope.push("memset", memset);

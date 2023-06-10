@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <list>
 #include <map>
@@ -402,13 +403,17 @@ public:
     Call,
   };
   // 创建指令并插入基本块（ty是指令返回值类型）
-  Instruction(Type *ty, OpID id, unsigned num_ops, BasicBlock *parent)
+  // If before set to true, then use add_instruction_front() instead of add_instruction()
+  Instruction(Type *ty, OpID id, unsigned num_ops, BasicBlock *parent, bool before = false)
       : Value(ty, ""), op_id_(id), num_ops_(num_ops), parent_(parent) {
     operands_.resize(
         num_ops_,
         nullptr); // 此句不能删去！否则operands_为空时无法用set_operand设置操作数，而只能用push_back设置操作数！
     use_pos_.resize(num_ops_);
-    parent_->add_instruction(this);
+    if(!before)
+      parent_->add_instruction(this);
+    else
+      parent_->add_instruction_front(this);
   }
   // 仅创建指令，不插入基本块（ty是指令返回值类型）
   Instruction(Type *ty, OpID id, unsigned num_ops)
@@ -738,7 +743,7 @@ class AllocaInst : public Instruction {
 public:
   AllocaInst(Type *ty, BasicBlock *bb)
       : Instruction(bb->parent_->parent_->get_pointer_type(ty),
-                    Instruction::Alloca, 0, bb),
+                    Instruction::Alloca, 0, bb, true),
         alloca_ty_(ty) {}
 
   // 创建指令，不插入到最后，但是会设定parent

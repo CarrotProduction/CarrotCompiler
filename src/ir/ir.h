@@ -428,7 +428,8 @@ public:
     use_pos_.emplace_back(v->add_use(this, num_ops_));
     num_ops_++;
   }
-  void remove_use_of_ops() { // 删除此指令所有操作数的uselist中，与此指令相关的use
+  void
+  remove_use_of_ops() { // 删除此指令所有操作数的uselist中，与此指令相关的use
     for (int i = 0; i < operands_.size(); i++) {
       operands_[i]->remove_use(use_pos_[i]);
     }

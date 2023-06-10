@@ -1,5 +1,6 @@
 #include "riscv.h"
 
+// 需要调整到RISCV
 std::map<Instruction::OpID, std::string> instr_id2riscv = {
     {Instruction::Ret, "ret"},
     {Instruction::Br, "br"},
@@ -9,7 +10,7 @@ std::map<Instruction::OpID, std::string> instr_id2riscv = {
     {Instruction::Mul, "mul"},
     {Instruction::SDiv, "sdiv"},
     {Instruction::SRem, "srem"},
-    {Instruction::UDiv, "udiv"},
+    {Instruction::UDiv, "idiv"},
     {Instruction::URem, "urem"},
     {Instruction::FAdd, "fadd"},
     {Instruction::FSub, "fsub"},
@@ -22,8 +23,8 @@ std::map<Instruction::OpID, std::string> instr_id2riscv = {
     {Instruction::Or, "or"},
     {Instruction::Xor, "xor"},
     {Instruction::Alloca, "alloca"},
-    {Instruction::Load, "load"},
-    {Instruction::Store, "store"},
+    {Instruction::Load, "lw"},
+    {Instruction::Store, "sw"},
     {Instruction::GetElementPtr, "getelementptr"},
     {Instruction::ZExt, "zext"},
     {Instruction::FPtoSI, "fptosi"},
@@ -32,14 +33,12 @@ std::map<Instruction::OpID, std::string> instr_id2riscv = {
     {Instruction::ICmp, "icmp"},
     {Instruction::FCmp, "fcmp"},
     {Instruction::PHI, "phi"},
-    {Instruction::Call, "call"}
-}; // Instruction from opid to string
+    {Instruction::Call, "call"}}; // Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpInst::ICmpOpName = {
-    {ICmpInst::ICmpOp::ICMP_EQ, "eq"},  {ICmpInst::ICmpOp::ICMP_NE, "ne"},
-    {ICmpInst::ICmpOp::ICMP_UGT, "hi"}, {ICmpInst::ICmpOp::ICMP_UGE, "cs"},
-    {ICmpInst::ICmpOp::ICMP_ULT, "cc"}, {ICmpInst::ICmpOp::ICMP_ULE, "ls"},
-    {ICmpInst::ICmpOp::ICMP_SGT, "gt"}, {ICmpInst::ICmpOp::ICMP_SGE, "ge"},
-    {ICmpInst::ICmpOp::ICMP_SLT, "lt"}, {ICmpInst::ICmpOp::ICMP_SLE, "le"}};
+    {ICmpInst::ICmpOp::ICMP_EQ, "beq"},   {ICmpInst::ICmpOp::ICMP_NE, "bne"},
+    {ICmpInst::ICmpOp::ICMP_UGE, "bgeu"}, {ICmpInst::ICmpOp::ICMP_ULT, "bltu"},
+    {ICmpInst::ICmpOp::ICMP_SGE, "bge"},  {ICmpInst::ICmpOp::ICMP_SLT, "blt"}};
+// 需要调整到RISCV
 const std::map<FCmpInst::FCmpOp, std::string> FCmpInst::FCmpOpName = {
     {FCmpInst::FCmpOp::FCMP_FALSE, "nv"}, {FCmpInst::FCmpOp::FCMP_OEQ, "eq"},
     {FCmpInst::FCmpOp::FCMP_OGT, "gt"},   {FCmpInst::FCmpOp::FCMP_OGE, "ge"},
@@ -76,6 +75,77 @@ std::string UnaryRiscvInst::print() {
   riscv_instr += this->name_;
   riscv_instr += ", ";
   riscv_instr += this->operands_[0]->name_;
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+// unfinished
+std::string CallRiscvInst::print() {
+  std::string riscv_instr = "\t";
+  // 若干条push
+  return riscv_instr;
+}
+
+std::string ICmpRiscvInstr::print() {
+  std::string riscv_instr = "\t";
+  // 注意：由于RISCV不支持全部的比较运算，因而需要根据比较条件对式子进行等价变换
+  if (ICmpOpName.count(this->icmp_op_) == 0) {
+    swap(this->operands_[0]->name_, this->operands_[1]->name_);
+    this->icmp_op_ = static_cast<ICmpInst::ICmpOp>((int)this->icmp_op_ ^ 2);
+  }
+  riscv_instr += ICmpOpName.at(this->icmp_op_);
+  riscv_instr += this->operands_[0]->name_;
+  riscv_instr += ", ";
+  riscv_instr += this->operands_[1]->name_;
+  riscv_instr += ", ";
+  riscv_instr += this->TrueLink_->name_;
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string FCmpRiscvInstr::print() {
+  std::string riscv_instr = "\t";
+  if (FCmpOpName.count(this->fcmp_op_) == 0) {
+    swap(this->operands_[0]->name_, this->operands_[1]->name_);
+    this->fcmp_op_ = static_cast<FCmpInst::FCmpOp>((int)this->fcmp_op_ ^ 2);
+  }
+  riscv_instr += FCmpOpName.at(this->fcmp_op_);
+  std::string riscv_instr = "\t";
+  riscv_instr += this->operands_[0]->name_;
+  riscv_instr += ", ";
+  riscv_instr += this->operands_[1]->name_;
+  riscv_instr += ", ";
+  riscv_instr += this->TrueLink_->name_;
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string StoreRiscvInst::print() {
+  std::string riscv_instr = "\t";
+  if (this->type.tid_ == Type::FloatTyID)
+    riscv_instr += "fsw\t";
+  else
+    riscv_instr += "sw\t";
+  riscv_instr += this->operands_[0]->name_;
+  riscv_instr += ", ";
+  if (this->shift_)
+    riscv_instr += std::to_string(this->shift_);
+  riscv_instr += "(" + this->operands_[1]->name_ + ")";
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string LoadRiscvInst::print() {
+  std::string riscv_instr = "\t";
+  if (this->type.tid_ == Type::FloatTyID)
+    riscv_instr += "flw\t";
+  else
+    riscv_instr += "lw\t";
+  riscv_instr += this->operands_[0]->name_;
+  riscv_instr += ", ";
+  if (this->shift_)
+    riscv_instr += std::to_string(this->shift_);
+  riscv_instr += "(" + this->operands_[1]->name_ + ")";
   riscv_instr += "\n";
   return riscv_instr;
 }

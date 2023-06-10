@@ -123,7 +123,6 @@ std::string FCmpRiscvInstr::print() {
     this->fcmp_op_ = static_cast<FCmpInst::FCmpOp>((int)this->fcmp_op_ ^ 2);
   }
   riscv_instr += FCmpOpName.at(this->fcmp_op_);
-  std::string riscv_instr = "\t";
   riscv_instr += this->operands_[0]->name_;
   riscv_instr += ", ";
   riscv_instr += this->operands_[1]->name_;

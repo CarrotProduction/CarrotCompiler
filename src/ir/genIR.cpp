@@ -22,7 +22,7 @@ bool isNewFunc = false; // 判断是否为新函数，用来处理函数作用�
 bool requireLVal = false; // 告诉LVal节点不需要发射load指令
 Function *currentFunction = nullptr; // 当前函数
 Value *recentVal = nullptr;          // 最近的表达式的value
-BasicBlock *functionBB = nullptr;    // To Fix the bug: current function's basic block
+BasicBlock *functionBB = nullptr;    // 当前函数头的基本块
 BasicBlock *whileCondBB = nullptr;   // while语句cond分支
 BasicBlock *trueBB = nullptr; // 通用true分支，即while和if为真时所跳转的基本块
 BasicBlock *falseBB = nullptr; // 通用false分支，即while和if为假时所跳转的基本块
@@ -143,7 +143,8 @@ void GenIR::visit(DefAST &ast) {
     return;
   }
 
-  // TODO: 修复在循环中多次分配同名变量的Bug
+  // DONE: 修复在循环中多次分配同名变量的Bug
+  // Fix at 67f297d4d72a516bcf669480f6854deafc0d0aea
   // 局部变量或常量
   if (ast.arrays.empty()) {       // 不是数组，即普通局部量
     if (ast.initVal == nullptr) { // 无初始化

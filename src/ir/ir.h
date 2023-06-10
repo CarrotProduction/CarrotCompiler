@@ -403,14 +403,16 @@ public:
     Call,
   };
   // 创建指令并插入基本块（ty是指令返回值类型）
-  // If before set to true, then use add_instruction_front() instead of add_instruction()
-  Instruction(Type *ty, OpID id, unsigned num_ops, BasicBlock *parent, bool before = false)
+  // 若 `front` 为 true，则调用 `add_instruction_front()`
+  // 将指令插入到基本块的头部，以避免被已经添加的跳转指令跳过
+  Instruction(Type *ty, OpID id, unsigned num_ops, BasicBlock *parent,
+              bool front = false)
       : Value(ty, ""), op_id_(id), num_ops_(num_ops), parent_(parent) {
     operands_.resize(
         num_ops_,
         nullptr); // 此句不能删去！否则operands_为空时无法用set_operand设置操作数，而只能用push_back设置操作数！
     use_pos_.resize(num_ops_);
-    if(!before)
+    if (!front)
       parent_->add_instruction(this);
     else
       parent_->add_instruction_front(this);

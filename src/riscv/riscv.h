@@ -1,6 +1,21 @@
 #include "ir.h"
 #include "register.h"
 
+// 基本语句块，用于存储语句序列，并确定标号
+// 所有的跳转地址全部使用标号而不用偏移地址
+// 所有的riscv语句挂靠到riscvBasicBlock下
+// 参数和basic block相同，仅重新标号而已
+// 用法同basic block
+class RiscvBasicBlock : public BasicBlock {
+
+public:
+  RiscvBasicBlock() = default;
+  explicit RiscvBasicBlock(Module *m, const std::string &name, Function *parent)
+      : BasicBlock(m, name, parent) {
+    parent_->add_basic_block(this);
+  }
+};
+
 // 传入寄存器编号以生成一条语句，该语句不负责实现lw和sw。该功能建议由寄存器分配+basic
 // block拼装完成。
 // 同时为生成该指令的汇编，你只需要传入register类型即可，内部自行转换到通用value类型。
@@ -13,20 +28,6 @@ public:
       : Instruction(ty, id, num_ops) {}
   RiscvInstr(Type *ty, OpID id, unsigned num_ops, RiscvBasicBlock *bb)
       : Instruction(ty, id, num_ops, bb) {}
-};
-
-// 基本语句块，用于存储语句序列，并确定标号
-// 所有的跳转地址全部使用标号而不用偏移地址
-// 所有的riscv语句挂靠到riscvBasicBlock下
-// 参数和basic block相同，仅重新标号而已
-// 用法同basic block
-class RiscvBasicBlock : public BasicBlock {
-
-public:
-  explicit RiscvBasicBlock(Module *m, const std::string &name, Function *parent)
-      : BasicBlock(m, name, parent) {
-    parent_->add_basic_block(this);
-  }
 };
 
 // 实例化的时候必须显式给出目标地址寄存器
@@ -78,16 +79,42 @@ public:
   }
 };
 
+class PushRiscvInst : public RiscvInstr {
+
+public:
+  PushRiscvInst(Register *val, RiscvBasicBlock *bb)
+      : RiscvInstr(bb->parent_->parent_->void_ty_, Instruction::Store, 1, bb) {
+    set_operand(0, val);
+  }
+  virtual std::string print() override;
+};
+
+class PopRiscvInst : public RiscvInstr {
+
+public:
+  PopRiscvInst(Register *val, RiscvBasicBlock *bb)
+      : RiscvInstr(bb->parent_->parent_->void_ty_, Instruction::Load, 1, bb) {
+    set_operand(0, val);
+  }
+  virtual std::string print() override;
+};
+
+// 仅调用语句
 class CallRiscvInst : public RiscvInstr {
 public:
-  CallRiscvInst(Function *func, std::vector<Value *> args, RiscvBasicBlock *bb)
+  CallRiscvInst(Function *func, RiscvBasicBlock *bb)
       : RiscvInstr(static_cast<FunctionType *>(func->type_)->result_,
-                   Instruction::Call, args.size() + 1, bb) {
-    int num_ops = args.size() + 1;
-    for (int i = 0; i < num_ops - 1; i++)
-      set_operand(i, args[i]);
-    set_operand(num_ops - 1, func);
+                   Instruction::Call, 1, bb) {
+    set_operand(0, func);
   }
+  virtual std::string print() override;
+};
+
+// 仅返回语句
+class ReturnRiscvInst : public RiscvInstr {
+public:
+  ReturnRiscvInst(RiscvBasicBlock *bb)
+      : RiscvInstr(bb->parent_->parent_->void_ty_, Instruction::Ret, 0, bb) {}
   virtual std::string print() override;
 };
 
@@ -100,8 +127,7 @@ class StoreRiscvInst : public RiscvInstr {
 public:
   int shift_; // 地址偏移量
   Type type; // 到底是浮点还是整型
-  StoreRiscvInst(Type *ty, Register *source, Register *target,
-                 RiscvBasicBlock *bb, int shift = 0)
+  StoreRiscvInst(Type *ty, Register *source, Register *target, RiscvBasicBlock *bb, int shift = 0)
       : RiscvInstr(ty, Instruction::Store, 2, bb), shift_(shift),
         type(ty->tid_) {
     Value *val = static_cast<Value *>(source),
@@ -120,8 +146,7 @@ public:
 class LoadRiscvInst : public RiscvInstr {
   int shift_; // 地址偏移量
   Type type; // 到底是浮点还是整型
-  LoadRiscvInst(Type *ty, Register *dest, Register *target, 
-                RiscvBasicBlock *bb, int shift = 0)
+  LoadRiscvInst(Type *ty, Register *dest, Register *target, RiscvBasicBlock *bb, int shift = 0)
       : RiscvInstr(bb->parent_->parent_->void_ty_, Instruction::Load, 2, bb),
         shift_(shift), type(ty->tid_) {
     Value *val = static_cast<Value *>(dest),

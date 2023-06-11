@@ -5,6 +5,5 @@ void OptimizeBlock() {
 }
 
 extern int LableCount;
-void TransferBasicBlock() {
-
+void TransferBasicBlock(Module *par, BasicBlock* bb) {
 }

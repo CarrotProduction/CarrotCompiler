@@ -1,4 +1,5 @@
 #include "genIR.h"
+#include "ir.h"
 
 #define CONST_INT(num) new ConstantInt(module->int32_ty_, num)
 #define CONST_FLOAT(num) new ConstantFloat(module->float32_ty_, num)
@@ -21,6 +22,7 @@ bool isNewFunc = false; // 判断是否为新函数，用来处理函数作用�
 bool requireLVal = false; // 告诉LVal节点不需要发射load指令
 Function *currentFunction = nullptr; // 当前函数
 Value *recentVal = nullptr;          // 最近的表达式的value
+BasicBlock *functionBB = nullptr;    // To Fix the bug: current function's basic block
 BasicBlock *whileCondBB = nullptr;   // while语句cond分支
 BasicBlock *trueBB = nullptr; // 通用true分支，即while和if为真时所跳转的基本块
 BasicBlock *falseBB = nullptr; // 通用false分支，即while和if为假时所跳转的基本块
@@ -141,14 +143,18 @@ void GenIR::visit(DefAST &ast) {
     return;
   }
 
+  // TODO: 修复在循环中多次分配同名变量的Bug
   // 局部变量或常量
   if (ast.arrays.empty()) {       // 不是数组，即普通局部量
     if (ast.initVal == nullptr) { // 无初始化
       if (isConst)
         cout << "no initVal when define const!" << endl; // 无初始化局部常量报错
       else {                                             // 无初始化变量
+        auto _backupBB = builder->get_insert_block();
+        builder->set_insert_point(functionBB);    // 将局部变量移动至当前函数头部的 Basic block
         AllocaInst *varAlloca;
         varAlloca = builder->create_alloca(curType);
+        builder->set_insert_point(_backupBB);   // 还原插入点
         scope.push(varName, varAlloca);
       }
     } else { // 有初始化
@@ -157,8 +163,11 @@ void GenIR::visit(DefAST &ast) {
       if (isConst) {
         scope.push(varName, recentVal); // 单个常量定义不用create_alloca
       } else {
+        auto _backupBB = builder->get_insert_block();
+        builder->set_insert_point(functionBB); 
         AllocaInst *varAlloca;
         varAlloca = builder->create_alloca(curType);
+        builder->set_insert_point(_backupBB);
         scope.push(varName, varAlloca);
         builder->create_store(recentVal, varAlloca);
       }
@@ -375,6 +384,7 @@ void GenIR::visit(FuncDefAST &ast) {
 
   auto bb = new BasicBlock(module.get(), "label_entry", func);
   builder->BB_ = bb;
+  functionBB = bb;
   for (int i = 0; i < (int)(paramNames.size()); i++) {
     auto alloc = builder->create_alloca(params[i]); // 分配形参空间
     builder->create_store(args[i], alloc);          // store 形参
@@ -462,22 +472,21 @@ void GenIR::visit(StmtAST &ast) {
     ast.lVal->accept(*this);
     // Get lVal
     auto lVal = recentVal;
-    auto lValType = curType;
+    auto lValType = static_cast<PointerType *>(lVal->type_)->contained_;
     // Visit expression
     ast.exp->accept(*this);
+    auto rVal = recentVal;
     // if lVal.type != rVal.type
     // Forge a cast
-    if (lValType == INT32_T) {
-      if (curType == FLOAT_T) {
-        recentVal = builder->create_fptosi(recentVal, INT32_T);
-      }
-    } else {
-      if (curType == INT32_T) {
-        recentVal = builder->create_sitofp(recentVal, FLOAT_T);
+    if (lValType != recentVal->type_) {
+      if (lValType == FLOAT_T) {
+        rVal = builder->create_sitofp(recentVal, FLOAT_T);
+      } else {
+        rVal = builder->create_fptosi(recentVal, INT32_T);
       }
     }
     // Create a store primitive
-    builder->create_store(recentVal, lVal);
+    builder->create_store(rVal, lVal);
     break;
   }
   case EXP:

@@ -1,5 +1,6 @@
 #include "riscv.h"
 #include "ir.h"
+#include "instruction.h"
 
 // 输出函数对应的全部riscv语句序列
 // 由于一个函数可能有若干个出口，因而恢复现场的语句根据basic block
@@ -31,17 +32,19 @@ std::string RiscvFunction::storeRegisterInstr() {
   return riscvInstr;
 }
 
+
+
 // 出栈顺序和入栈相反
 // 建议不使用pop语句，直接从栈中取值，最后直接修改sp的值即可
 extern int BlockInd;
-extern const std::map<std::string, Register *> findReg;
 void RiscvFunction::addRestoredBlock() {
   RiscvBasicBlock *bb = new RiscvBasicBlock("FUNC_" + this->name_ + ":RET", this, BlockInd++);
   // 先恢复sp的值
-  RiscvInstr *restoreSP = static_cast<RiscvInstr *>(
-      new MoveRiscvInst(findReg.at("sp"), this->callerSP_, bb, 1));
+  RiscvInstr *restoreSP = new MoveRiscvInst(findReg.at("sp"), this->callerSP_, bb, 1);
+  bb->addInstrBack(restoreSP);
   // 插入各种pop指令，按照顺序
   for (auto reg : storedEnvironment) {
     // 分浮点+整型
   }
+  this->addBlock(bb);
 }

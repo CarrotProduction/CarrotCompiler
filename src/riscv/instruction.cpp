@@ -153,3 +153,21 @@ std::string LoadRiscvInst::print() {
   riscv_instr += "\n";
   return riscv_instr;
 }
+
+std::string MoveRiscvInst::print() {
+  std::string riscv_instr = "\t\t";
+  // li 指令
+  if (this->operand_[1]->tid_ == RiscvOperand::IntReg)
+    riscv_instr += "li\t";
+  // 寄存器传寄存器
+  else if (this->operand_[1]->tid_ == RiscvOperand::IntReg)
+    riscv_instr += "mv\t";
+  // 浮点数
+  else
+    riscv_instr += "fmv\t";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "\n";
+  return riscv_instr;
+}

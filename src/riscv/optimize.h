@@ -9,4 +9,4 @@ void OptimizeBlock();
 // 将IR basic block转化为继承类的riscv basic block并对每个块进行标号
 // 必做
 int LableCount = 0;
-void TransferBasicBlock();
+RiscvBasicBlock* TransferBasicBlock(BasicBlock* bb);

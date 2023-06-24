@@ -1,13 +1,12 @@
-#include "riscv.h"
 #include "instruction.h"
 #include "ir.h"
 #include "regalloc.h"
+#include "riscv.h"
 
-template<typename T> class DSU {
+template <typename T> class DSU {
 
   std::map<T, T> father;
-  T getfather(T x)
-  {
+  T getfather(T x) {
     return father[x] == x ? x : father[x] = getfather(father[x]);
   }
 
@@ -28,9 +27,12 @@ public:
   }
 };
 
-
 // 建立IR到RISCV指令集的映射
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
+
+std::map<BasicBlock *, int> rbbLabel;
+// 下面的函数仅为一个basic block产生一个标号，指令集为空，需要使用总控程序中具体遍历该bb才会产生内部指令
+RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb);
 
 // 总控程序
 class RiscvBuilder {
@@ -49,9 +51,14 @@ public:
   // 例如，对于if (A) y1=do something else y2=do another thing. Phi y3 y1, y2
   // 考虑将y1、y2全部合并到y3上
   DSU<std::string> DSU_for_Variable;
-  void solvePhiInstr(PhiInst* instr);
+  void solvePhiInstr(PhiInst *instr);
 
   // 下面的语句是需要生成对应riscv语句的
-  BinaryRiscvInst *createBinaryInstr(BinaryInst* binaryInstr);
-  UnaryRiscvInst *createUnaryInstr(UnaryInst* unaryInstr);
+  BinaryRiscvInst *createBinaryInstr(BinaryInst *binaryInstr);
+  UnaryRiscvInst *createUnaryInstr(UnaryInst *unaryInstr);
+  StoreRiscvInst *createStoreInstr(StoreInst *storeInstr);
+  LoadRiscvInst *createLoadInstr(LoadInst *loadInstr);
+  ICmpRiscvInstr *creatreICMPInstr(ICmpInst *icmpInstr, BranchInst *brInstr);
+  FCmpRiscvInstr *createFCMPInstr(FCmpInst *fcmpInstr, BranchInst *brInstr);
+  CallRiscvInst *createCallInstr(CallInst *callInstr);
 };

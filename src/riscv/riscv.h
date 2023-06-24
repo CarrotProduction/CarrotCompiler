@@ -268,8 +268,14 @@ public:
   std::vector<RiscvInstr *> instruction;
   int blockInd_; // 表示了各个block之间的顺序
   RiscvBasicBlock(std::string name, RiscvFunction *func, int blockInd)
-      : RiscvLabel(Block, "FUNC_" + func->name_ + "." + name), func_(func),
+      : RiscvLabel(Block, name), func_(func),
         blockInd_(blockInd) {
+    func->addBlock(this);
+  }
+  RiscvBasicBlock(std::string name, int blockInd)
+      : RiscvLabel(Block, name), func_(nullptr),
+        blockInd_(blockInd) {}
+  void addFunction(RiscvFunction *func) {
     func->addBlock(this);
   }
   std::string print() { return name_; }

@@ -36,7 +36,8 @@ public:
     SW,
     LW, 
     LI, 
-    MOV
+    MOV, 
+    FMV
   };
   const std::map<InstrType, std::string> RiscvName;
   const std::map<ICmpInst::ICmpOp, std::string> ICMPOPName;
@@ -78,7 +79,7 @@ public:
 // 二元指令
 class BinaryRiscvInst : public RiscvInstr {
 public:
-  virtual std::string print() override;
+  std::string print() override;
   BinaryRiscvInst() = default;
   // target = v1 op v2，后面接一个flag参数表示要不要加入到对应的basic block中
   BinaryRiscvInst(InstrType op, RiscvOperand *v1, RiscvOperand *v2,
@@ -96,7 +97,7 @@ public:
 // 一元指令
 class UnaryRiscvInst : public RiscvInstr {
 public:
-  virtual std::string print() override;
+  std::string print() override;
   UnaryRiscvInst() = default;
   // target = op v1，后面接一个flag参数表示要不要加入到对应的basic block中
   UnaryRiscvInst(InstrType op, RiscvOperand *v1, RiscvOperand *target,
@@ -113,7 +114,7 @@ public:
 // 加入一个整型mov指令(LI)
 class MoveRiscvInst : public RiscvInstr {
 public:
-  virtual std::string print() override;
+  std::string print() override;
   MoveRiscvInst() = default;
   MoveRiscvInst(RiscvOperand *v1, int Imm,
                  RiscvBasicBlock *bb, bool flag = 0)
@@ -146,7 +147,7 @@ public:
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
   }
-  virtual std::string print() override;
+  std::string print() override;
 };
 
 // 注意出栈顺序问题！打印的时候严格按照lists内顺序
@@ -159,7 +160,7 @@ public:
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
   }
-  virtual std::string print() override;
+  std::string print() override;
 };
 
 // 仅call调用语句
@@ -176,7 +177,7 @@ public:
 class ReturnRiscvInst : public RiscvInstr {
 public:
   ReturnRiscvInst(RiscvBasicBlock *bb) : RiscvInstr(InstrType::RET, 0, bb) {}
-  virtual std::string print() override;
+  std::string print() override;
 };
 
 // Store 指令格式：sw source_value(reg), shift(base reg)
@@ -195,7 +196,7 @@ public:
     setOperand(1, target);
     this->parent_ = bb;
   }
-  virtual std::string print() override;
+  std::string print() override;
 };
 
 // 指令传入格式同store
@@ -203,6 +204,7 @@ public:
 // 目的：M[base reg + shift]->dest reg
 // 需指明是浮点还是整型
 class LoadRiscvInst : public RiscvInstr {
+public:
   int shift_; // 地址偏移量
   Type type;  // 到底是浮点还是整型
   LoadRiscvInst(Type *ty, RiscvOperand *dest, RiscvOperand *target,
@@ -212,7 +214,7 @@ class LoadRiscvInst : public RiscvInstr {
     setOperand(1, target);
     this->parent_ = bb;
   }
-  virtual std::string print() override;
+  std::string print() override;
 };
 
 // 整型比较
@@ -240,7 +242,7 @@ public:
     setOperand(3, nullptr);
   }
   ICmpInst::ICmpOp icmp_op_;
-  virtual std::string print() override;
+  std::string print() override;
 };
 
 // 浮点比较
@@ -249,7 +251,7 @@ public:
 // block，则不会发射jmp false_link指令
 class FCmpRiscvInstr : RiscvInstr {
 public:
-  static const std::map<FCmpInst::FCmpOp, std::string> FCmpInst::FCmpOpName;
+  static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpName;
   FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
                  RiscvBasicBlock *trueLink, RiscvBasicBlock *falseLink,
                  RiscvBasicBlock *bb)
@@ -268,5 +270,5 @@ public:
     setOperand(3, nullptr);
   }
   FCmpInst::FCmpOp fcmp_op_;
-  virtual std::string print() override;
+  std::string print() override;
 };

@@ -1,3 +1,6 @@
+#ifndef INSTRUCTIONH
+#define INSTRUCTIONH
+
 #include "ir.h"
 #include "riscv.h"
 
@@ -163,12 +166,16 @@ public:
   std::string print() override;
 };
 
-// 仅call调用语句
+// call调用语句+压栈语句
+// 0作为函数名，1-n是函数各参数
 class CallRiscvInst : public RiscvInstr {
 public:
-  CallRiscvInst(RiscvFunction *func, RiscvBasicBlock *bb)
-      : RiscvInstr(InstrType::CALL, 1, bb) {
+  CallRiscvInst(RiscvFunction *func, RiscvBasicBlock *bb, std::vector<RiscvOperand*> args)
+      : RiscvInstr(InstrType::CALL, 1 + args.size(), bb) {
     setOperand(0, func);
+    for (int i = 0; i < args.size(); i++)
+      setOperand(i + 1, args[i]);
+    // 还需要增补函数内栈约定
   }
   virtual std::string print() override;
 };
@@ -272,3 +279,4 @@ public:
   FCmpInst::FCmpOp fcmp_op_;
   std::string print() override;
 };
+#endif // !INSTRUCTIONH

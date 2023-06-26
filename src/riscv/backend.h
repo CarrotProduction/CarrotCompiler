@@ -1,7 +1,11 @@
+#ifndef BACKENDH
+#define BACKENDH
+
 #include "instruction.h"
 #include "ir.h"
 #include "regalloc.h"
 #include "riscv.h"
+#include <cassert>
 
 template <typename T> class DSU {
 
@@ -30,9 +34,14 @@ public:
 // 建立IR到RISCV指令集的映射
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
 
-std::map<BasicBlock *, int> rbbLabel;
-// 下面的函数仅为一个basic block产生一个标号，指令集为空，需要使用总控程序中具体遍历该bb才会产生内部指令
-RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb);
+int LableCount = 0;
+std::map<BasicBlock *, RiscvBasicBlock *> rbbLabel;
+std::map<Function *, RiscvFunction *> functionLabel;
+// 下面的函数仅为一个basic
+// block产生一个标号，指令集为空，需要使用总控程序中具体遍历该bb才会产生内部指令
+RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb = nullptr);
+RiscvFunction *createRiscvFunction(Function *foo = nullptr);
+std::string toLable(int ind) { return ".L" + std::to_string(ind); }
 
 // 总控程序
 class RiscvBuilder {
@@ -62,3 +71,4 @@ public:
   FCmpRiscvInstr *createFCMPInstr(FCmpInst *fcmpInstr, BranchInst *brInstr);
   CallRiscvInst *createCallInstr(CallInst *callInstr);
 };
+#endif // !BACKENDH

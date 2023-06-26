@@ -66,6 +66,7 @@ std::string UnaryRiscvInst::print() {
 }
 
 std::string CallRiscvInst::print() {
+  // 增补push指令
   std::string riscv_instr = "\t\tcall\t";
   riscv_instr += this->operand_[0]->print();
   return riscv_instr;

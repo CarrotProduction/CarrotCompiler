@@ -1,5 +1,40 @@
 #include "backend.h"
 
+RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb = nullptr) {
+  if (bb == nullptr) {
+    LableCount++;
+    return new RiscvBasicBlock(toLable(LableCount), LableCount);
+  }
+  if (rbbLabel.count(bb))
+    return rbbLabel[bb];
+  LableCount++;
+  auto cur = new RiscvBasicBlock(toLable(LableCount), LableCount);
+  return rbbLabel[bb] = cur;
+}
+
+RiscvFunction *createRiscvFunction(Function *foo) {
+  assert(foo != nullptr);
+  if (functionLabel.count(foo) == 0) {
+    auto ty = RiscvOperand::Void;
+    switch (foo->type_->tid_)
+    {
+    case Type::VoidTyID:
+      ty = RiscvOperand::Void;
+      break;
+    case Type::IntegerTyID:
+      ty = RiscvOperand::IntReg;
+      break;
+    case Type::FloatTyID:
+      ty = RiscvOperand::FloatReg;
+      break;
+    }
+    RiscvFunction *cur =
+        new RiscvFunction(foo->name_, foo->arguments_.size(), ty);
+    return functionLabel[foo] = cur;
+  }
+  return functionLabel[foo];
+}
+
 // 全部合流
 void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
   int n = instr->operands_.size();
@@ -59,4 +94,13 @@ FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(FCmpInst *fcmpInstr,
   return instr;
 }
 
-CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr) {}
+CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr) {
+  std::vector<RiscvOperand *> args;
+  for (int i = 1; i < callInstr->operands_.size(); i++)
+    args.push_back(regAlloca->find(callInstr->operands_[i]));
+  // 涉及从Function 到RISCV function转换问题（第一个参数）
+  CallRiscvInst *instr = new CallRiscvInst(
+      createRiscvFunction(static_cast<Function *>(callInstr->operands_[0])),
+      this->rbb, args);
+  return instr;
+}

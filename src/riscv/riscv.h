@@ -1,3 +1,5 @@
+#ifndef RISCVH
+#define RISCVH
 #include "ir.h"
 
 class RiscvOperand;
@@ -190,13 +192,12 @@ class RiscvFunction : public RiscvLabel {
 public:
   RiscvModule *par_;
   int num_args_;
-  int callerSP_; // 父函数中SP的值，便于恢复。但是需要正常保存
+  // int callerSP_; // 父函数中SP的值，便于恢复。但是需要正常保存
   OpTy resType_;
   std::vector<RiscvOperand *> args;
-  RiscvFunction(std::string name, RiscvModule *par, int num_args, OpTy Ty,
-                int callerSP) // 返回值，无返回使用void类型
+  RiscvFunction(std::string name, RiscvModule *par, int num_args, OpTy Ty) // 返回值，无返回使用void类型
       : RiscvLabel(Function, name), par_(par), num_args_(num_args),
-        resType_(Ty), base_(0), callerSP_(callerSP) {
+        resType_(Ty), base_(0) {
     par->addFunction(this);
   }
   void setArgs(int ind, RiscvOperand *op) {
@@ -207,10 +208,9 @@ public:
     assert(ind >= 0 && ind < args.size());
     args[ind] = nullptr;
   }
-  RiscvFunction(std::string name, int num_args, OpTy Ty,
-                int callerSP) // 返回值，无返回使用void类型
+  RiscvFunction(std::string name, int num_args, OpTy Ty) // 返回值，无返回使用void类型
       : RiscvLabel(Function, name), par_(nullptr), num_args_(num_args),
-        resType_(Ty), base_(0), callerSP_(callerSP) {}
+        resType_(Ty), base_(0) {}
   ~RiscvFunction() = default;
   std::string print() { return name_; }
   std::vector<RiscvBasicBlock *> blk;
@@ -247,7 +247,7 @@ public:
   void addBlock(RiscvBasicBlock *bb) { blk.push_back(bb); }
   std::string print()
       override; // 函数语句，需先push保护现场，然后pop出需要的参数，再接入各block
-  std::string storeRegisterInstr();   // 输出保护现场的语句
+  std::string storeRegisterInstr(); // 输出保护现场的语句
   void addRestoredBlock();
   // 建议函数返回直接使用一个跳转语句跳转到返回语句块
   /*
@@ -268,16 +268,12 @@ public:
   std::vector<RiscvInstr *> instruction;
   int blockInd_; // 表示了各个block之间的顺序
   RiscvBasicBlock(std::string name, RiscvFunction *func, int blockInd)
-      : RiscvLabel(Block, name), func_(func),
-        blockInd_(blockInd) {
+      : RiscvLabel(Block, name), func_(func), blockInd_(blockInd) {
     func->addBlock(this);
   }
   RiscvBasicBlock(std::string name, int blockInd)
-      : RiscvLabel(Block, name), func_(nullptr),
-        blockInd_(blockInd) {}
-  void addFunction(RiscvFunction *func) {
-    func->addBlock(this);
-  }
+      : RiscvLabel(Block, name), func_(nullptr), blockInd_(blockInd) {}
+  void addFunction(RiscvFunction *func) { func->addBlock(this); }
   std::string print() { return name_; }
   void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
   void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
@@ -329,3 +325,4 @@ public:
     globalVariable_.push_back(g);
   }
 };
+#endif // !RISCVH

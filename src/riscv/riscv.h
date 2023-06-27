@@ -1,12 +1,10 @@
 #ifndef RISCVH
 #define RISCVH
 #include "ir.h"
+#include "riscv.h"
 
-class RiscvOperand;
-class RiscvConst;
+class RiscvBasicBlock;
 class RiscvModule;
-class RiscvFunction;
-class RiscvGlobalVariable;
 class RiscvInstr;
 
 class RiscvOperand {
@@ -170,13 +168,6 @@ public:
       ans = std::to_string(shift_) + ans;
     return ans;
   }
-  // 使用一个变量
-  std::string print() {
-    std::string ans = "(" + this->name_ + ")";
-    if (shift_)
-      ans = std::to_string(shift_) + ans;
-    return ans;
-  }
   // 全局变量声明，需传入数组大小
   std::string definition(int size) {
     std::string ans = this->name_ + "\n";
@@ -187,19 +178,17 @@ public:
 
 // 用标号标识函数
 // 函数挂靠在module下，接入若干条instruction
-// 需配合alloca、znext语句对栈进行分析
+// 需配合alloca语句对栈进行分析
+// 以及function不设置module指针
 class RiscvFunction : public RiscvLabel {
 public:
-  RiscvModule *par_;
   int num_args_;
   // int callerSP_; // 父函数中SP的值，便于恢复。但是需要正常保存
   OpTy resType_;
   std::vector<RiscvOperand *> args;
-  RiscvFunction(std::string name, RiscvModule *par, int num_args, OpTy Ty) // 返回值，无返回使用void类型
-      : RiscvLabel(Function, name), par_(par), num_args_(num_args),
-        resType_(Ty), base_(0) {
-    par->addFunction(this);
-  }
+  RiscvFunction(std::string name, int num_args, OpTy Ty) // 返回值，无返回使用void类型
+      : RiscvLabel(Function, name), num_args_(num_args),
+        resType_(Ty), base_(0) {}
   void setArgs(int ind, RiscvOperand *op) {
     assert(ind >= 0 && ind < args.size());
     args[ind] = op;
@@ -208,11 +197,8 @@ public:
     assert(ind >= 0 && ind < args.size());
     args[ind] = nullptr;
   }
-  RiscvFunction(std::string name, int num_args, OpTy Ty) // 返回值，无返回使用void类型
-      : RiscvLabel(Function, name), par_(nullptr), num_args_(num_args),
-        resType_(Ty), base_(0) {}
   ~RiscvFunction() = default;
-  std::string print() { return name_; }
+  std::string printname() { return name_; }
   std::vector<RiscvBasicBlock *> blk;
   bool is_libfunc() {
     if (name_ == "putint" || name_ == "putch" || name_ == "putarray" ||
@@ -245,13 +231,12 @@ public:
     return argsOffset[val];
   }
   void addBlock(RiscvBasicBlock *bb) { blk.push_back(bb); }
-  std::string print()
-      override; // 函数语句，需先push保护现场，然后pop出需要的参数，再接入各block
+  std::string print(); // 函数语句，需先push保护现场，然后pop出需要的参数，再接入各block
   std::string storeRegisterInstr(); // 输出保护现场的语句
   void addRestoredBlock();
   // 建议函数返回直接使用一个跳转语句跳转到返回语句块
   /*
-  预留的栈参数接口，对接alloca、znext等语句
+  预留的栈参数接口，对接alloca等语句
   */
 private:
   int base_;
@@ -274,7 +259,7 @@ public:
   RiscvBasicBlock(std::string name, int blockInd)
       : RiscvLabel(Block, name), func_(nullptr), blockInd_(blockInd) {}
   void addFunction(RiscvFunction *func) { func->addBlock(this); }
-  std::string print() { return name_; }
+  std::string printname() { return name_; }
   void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
   void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
   void deleteInstr(RiscvInstr *instr) {
@@ -291,12 +276,12 @@ public:
   void addInstrFront(RiscvInstr *instr) {
     instruction.insert(instruction.begin(), instr);
   }
-  bool addInstrBefore(RiscvInstr *instr) {
+  void addInstrBefore(RiscvInstr *instr) {
     auto it = std::find(instruction.begin(), instruction.end(), instr);
     if (it != instruction.end())
       instruction.insert(it, instr);
   }
-  bool addInstrAfter(RiscvInstr *instr, RiscvInstr *dst) {
+  void addInstrAfter(RiscvInstr *instr, RiscvInstr *dst) {
     auto it = std::find(instruction.begin(), instruction.end(), instr);
     if (it != instruction.end()) {
       if (next(it) == instruction.end())
@@ -314,9 +299,7 @@ public:
   std::vector<RiscvBasicBlock *> inB;  // 入边
 };
 
-// 总指针
 class RiscvModule {
-
 public:
   std::vector<RiscvFunction *> func_;
   std::vector<RiscvGlobalVariable *> globalVariable_;

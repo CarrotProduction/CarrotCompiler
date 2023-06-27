@@ -47,28 +47,29 @@ std::string toLable(int ind) { return ".L" + std::to_string(ind); }
 class RiscvBuilder {
 
 public:
-  Module *m;
-  RiscvBasicBlock *rbb;
   RiscvModule *rm;
   RegAlloca *regAlloca;
-
-  // znext 删掉
-  void solveZnext();
-  // alloca 删掉，在寄存器分配完成。
-  void solveAlloca();
+  // alloca 删掉，在函数中处理
+  void solveAlloca(AllocaInst* instr, RiscvFunction* foo, RiscvBasicBlock *rbb);
   // phi语句的合流：此处建立一个并查集DSU_for_Variable维护相同的变量。
   // 例如，对于if (A) y1=do something else y2=do another thing. Phi y3 y1, y2
   // 考虑将y1、y2全部合并到y3上
   DSU<std::string> DSU_for_Variable;
   void solvePhiInstr(PhiInst *instr);
+  void buildRISCV(Module *m);
 
-  // 下面的语句是需要生成对应riscv语句的
-  BinaryRiscvInst *createBinaryInstr(BinaryInst *binaryInstr);
-  UnaryRiscvInst *createUnaryInstr(UnaryInst *unaryInstr);
-  StoreRiscvInst *createStoreInstr(StoreInst *storeInstr);
-  LoadRiscvInst *createLoadInstr(LoadInst *loadInstr);
-  ICmpRiscvInstr *creatreICMPInstr(ICmpInst *icmpInstr, BranchInst *brInstr);
-  FCmpRiscvInstr *createFCMPInstr(FCmpInst *fcmpInstr, BranchInst *brInstr);
-  CallRiscvInst *createCallInstr(CallInst *callInstr);
+  // 下面的语句是需要生成对应riscv语句
+  // Zext语句零扩展，因而没有必要
+  // ZExtRiscvInstr createZextInstr(ZextInst *instr);
+  BinaryRiscvInst *createBinaryInstr(BinaryInst *binaryInstr,
+                                     RiscvBasicBlock *rbb);
+  UnaryRiscvInst *createUnaryInstr(UnaryInst *unaryInstr, RiscvBasicBlock *rbb);
+  StoreRiscvInst *createStoreInstr(StoreInst *storeInstr, RiscvBasicBlock *rbb);
+  LoadRiscvInst *createLoadInstr(LoadInst *loadInstr, RiscvBasicBlock *rbb);
+  ICmpRiscvInstr *createICMPInstr(ICmpInst *icmpInstr, BranchInst *brInstr,
+                                  RiscvBasicBlock *rbb);
+  FCmpRiscvInstr *createFCMPInstr(FCmpInst *fcmpInstr, BranchInst *brInstr,
+                                  RiscvBasicBlock *rbb);
+  CallRiscvInst *createCallInstr(CallInst *callInstr, RiscvBasicBlock *rbb);
 };
 #endif // !BACKENDH

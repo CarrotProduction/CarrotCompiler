@@ -1,6 +1,6 @@
 #include "backend.h"
 
-RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb = nullptr) {
+RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb) {
   if (bb == nullptr) {
     LableCount++;
     return new RiscvBasicBlock(toLable(LableCount), LableCount);
@@ -16,8 +16,7 @@ RiscvFunction *createRiscvFunction(Function *foo) {
   assert(foo != nullptr);
   if (functionLabel.count(foo) == 0) {
     auto ty = RiscvOperand::Void;
-    switch (foo->type_->tid_)
-    {
+    switch (foo->type_->tid_) {
     case Type::VoidTyID:
       ty = RiscvOperand::Void;
       break;
@@ -43,64 +42,83 @@ void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
                            instr->operands_[0]->name_);
 }
 
-BinaryRiscvInst *RiscvBuilder::createBinaryInstr(BinaryInst *binaryInstr) {
+BinaryRiscvInst *RiscvBuilder::createBinaryInstr(BinaryInst *binaryInstr,
+                                                 RiscvBasicBlock *rbb) {
   BinaryRiscvInst *instr =
       new BinaryRiscvInst(toRiscvOp.at(binaryInstr->op_id_),
-                          regAlloca->find(binaryInstr->operands_[0]),
-                          regAlloca->find(binaryInstr->operands_[1]),
-                          regAlloca->find(binaryInstr), this->rbb);
+                          regAlloca->find(binaryInstr->operands_[0], rbb),
+                          regAlloca->find(binaryInstr->operands_[1], rbb),
+                          regAlloca->find(binaryInstr, rbb), rbb);
   return instr;
 }
 
-UnaryRiscvInst *RiscvBuilder::createUnaryInstr(UnaryInst *unaryInstr) {
+void RiscvBuilder::solveAlloca(AllocaInst* instr, RiscvFunction* foo, RiscvBasicBlock *rbb) {
+  foo->addArgs(regAlloca->findNonuse(rbb));
+}
+
+UnaryRiscvInst *RiscvBuilder::createUnaryInstr(UnaryInst *unaryInstr,
+                                               RiscvBasicBlock *rbb) {
   UnaryRiscvInst *instr =
       new UnaryRiscvInst(toRiscvOp.at(unaryInstr->op_id_),
-                         regAlloca->find(unaryInstr->operands_[0]),
-                         regAlloca->find(unaryInstr), this->rbb);
+                         regAlloca->find(unaryInstr->operands_[0], rbb),
+                         regAlloca->find(unaryInstr, rbb), rbb);
   return instr;
 }
 
-StoreRiscvInst *RiscvBuilder::createStoreInstr(StoreInst *storeInstr) {
+StoreRiscvInst *RiscvBuilder::createStoreInstr(StoreInst *storeInstr,
+                                               RiscvBasicBlock *rbb) {
   StoreRiscvInst *instr = new StoreRiscvInst(
-      storeInstr->type_, regAlloca->find(storeInstr->operands_[0]),
-      regAlloca->find(storeInstr->operands_[1]), this->rbb);
+      storeInstr->type_, regAlloca->find(storeInstr->operands_[0], rbb),
+      regAlloca->find(storeInstr->operands_[1], rbb), rbb);
+  return instr;
 }
 
-LoadRiscvInst *RiscvBuilder::createLoadInstr(LoadInst *loadInstr) {
+LoadRiscvInst *RiscvBuilder::createLoadInstr(LoadInst *loadInstr,
+                                             RiscvBasicBlock *rbb) {
   LoadRiscvInst *instr = new LoadRiscvInst(
-      loadInstr->type_, regAlloca->find(loadInstr->operands_[0]),
-      regAlloca->find(loadInstr->operands_[1]), this->rbb);
+      loadInstr->type_, regAlloca->find(loadInstr->operands_[0], rbb),
+      regAlloca->find(loadInstr->operands_[1], rbb), rbb);
+  return instr;
 }
 
-ICmpRiscvInstr *RiscvBuilder::creatreICMPInstr(ICmpInst *icmpInstr,
-                                               BranchInst *brInstr) {
+ICmpRiscvInstr *RiscvBuilder::createICMPInstr(ICmpInst *icmpInstr,
+                                              BranchInst *brInstr,
+                                              RiscvBasicBlock *rbb) {
   ICmpRiscvInstr *instr = new ICmpRiscvInstr(
-      icmpInstr->icmp_op_, regAlloca->find(icmpInstr->operands_[0]),
-      regAlloca->find(icmpInstr->operands_[1]),
+      icmpInstr->icmp_op_, regAlloca->find(icmpInstr->operands_[0], rbb),
+      regAlloca->find(icmpInstr->operands_[1], rbb),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[1])),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[2])),
-      this->rbb);
+      rbb);
   return instr;
 }
 
+// FCMP处理上和ICMP类似，但是在最后生成语句的时候是输出两句
 FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(FCmpInst *fcmpInstr,
-                                              BranchInst *brInstr) {
+                                              BranchInst *brInstr,
+                                              RiscvBasicBlock *rbb) {
   FCmpRiscvInstr *instr = new FCmpRiscvInstr(
-      fcmpInstr->fcmp_op_, regAlloca->find(fcmpInstr->operands_[0]),
-      regAlloca->find(fcmpInstr->operands_[1]),
+      fcmpInstr->fcmp_op_, regAlloca->find(fcmpInstr->operands_[0], rbb),
+      regAlloca->find(fcmpInstr->operands_[1], rbb), regAlloca->findNonuse(rbb),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[1])),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[2])),
-      this->rbb);
+      rbb);
   return instr;
 }
 
-CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr) {
+CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr,
+                                             RiscvBasicBlock *rbb) {
   std::vector<RiscvOperand *> args;
   for (int i = 1; i < callInstr->operands_.size(); i++)
-    args.push_back(regAlloca->find(callInstr->operands_[i]));
+    args.push_back(regAlloca->find(callInstr->operands_[i], rbb));
   // 涉及从Function 到RISCV function转换问题（第一个参数）
   CallRiscvInst *instr = new CallRiscvInst(
       createRiscvFunction(static_cast<Function *>(callInstr->operands_[0])),
-      this->rbb, args);
+      rbb, args);
   return instr;
+}
+
+// 总控程序
+void RiscvBuilder::buildRISCV(Module *m) {
+  
 }

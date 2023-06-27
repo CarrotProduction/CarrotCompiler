@@ -1,4 +1,4 @@
-set(SOURCE_FILES "riscv.cpp")
+set(SOURCE_FILES "riscv.cpp" instruction.cpp optimize.cpp backend.cpp)
 
 add_library(riscv STATIC ${SOURCE_FILES})
 

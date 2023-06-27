@@ -33,14 +33,12 @@ std::string RiscvFunction::storeRegisterInstr() {
   return riscvInstr;
 }
 
-
-
 // 出栈顺序和入栈相反
 // 建议不使用pop语句，直接从栈中取值，最后直接修改sp的值即可
 // 使用一个单独的return block以防止多出口return
 extern int LableCount;
 void RiscvFunction::addRestoredBlock() {
-  RiscvBasicBlock *bb = createRiscvBasicBlock();
+  RiscvBasicBlock *bb = createRiscvBasicBlock(nullptr);
   // 先恢复sp的值
   // 下面这几个语句有点问题！MoveRiscvInst提示说“不允许使用抽象类类型”。
   // RiscvInstr *restoreSP = new MoveRiscvInst(findReg.at("sp"), this->callerSP_, bb, 1);

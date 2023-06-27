@@ -109,8 +109,10 @@ std::string ICmpRiscvInstr::print() {
   return riscv_instr;
 }
 
+// 重新修改
 std::string FCmpRiscvInstr::print() {
   std::string riscv_instr = "\t\t";
+  // 第一条指令
   if (FCmpOpName.count(this->fcmp_op_) == 0) {
     std::swap(this->operand_[0], this->operand_[1]);
     this->fcmp_op_ = static_cast<FCmpInst::FCmpOp>((int)this->fcmp_op_ ^ 2);
@@ -121,7 +123,9 @@ std::string FCmpRiscvInstr::print() {
   riscv_instr += this->operand_[1]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[2]->print();
-  riscv_instr += "\n";
+  riscv_instr += "\n\t\t";
+  // 第二条指令
+
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
   // 不连续则假链也要跳转
   if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)

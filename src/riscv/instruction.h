@@ -26,8 +26,6 @@ public:
     ANDI,
     OR,
     ORI,
-    ANDI,
-    ORI,
     SW,
     LW,
     ICMP,
@@ -36,11 +34,11 @@ public:
     POP,
     CALL,
     RET,
-    SW,
-    LW, 
-    LI, 
-    MOV, 
-    FMV
+    LI,
+    MOV,
+    FMV,
+    FPTOSI,
+    SITOFP
   };
   const std::map<InstrType, std::string> RiscvName;
   const std::map<ICmpInst::ICmpOp, std::string> ICMPOPName;
@@ -76,7 +74,6 @@ public:
     return ans;
   }
   RiscvOperand *getOperand(int i) const { return operand_[i]; }
-  virtual std::string print() = 0;
 };
 
 // 二元指令
@@ -119,8 +116,7 @@ class MoveRiscvInst : public RiscvInstr {
 public:
   std::string print() override;
   MoveRiscvInst() = default;
-  MoveRiscvInst(RiscvOperand *v1, int Imm,
-                 RiscvBasicBlock *bb, bool flag = 0)
+  MoveRiscvInst(RiscvOperand *v1, int Imm, RiscvBasicBlock *bb, bool flag = 0)
       : RiscvInstr(InstrType::LI, 1, bb) {
     RiscvOperand *Const = new RiscvConst(Imm);
     setOperand(0, Const);
@@ -130,8 +126,8 @@ public:
       this->parent_->addInstrBack(this);
   }
   // v2->v1
-  MoveRiscvInst(RiscvOperand *v1, RiscvOperand *v2,
-                 RiscvBasicBlock *bb, bool flag = 0)
+  MoveRiscvInst(RiscvOperand *v1, RiscvOperand *v2, RiscvBasicBlock *bb,
+                bool flag = 0)
       : RiscvInstr(InstrType::MOV, 1, bb) {
     setOperand(0, v2);
     setResult(v1);
@@ -170,7 +166,8 @@ public:
 // 0作为函数名，1-n是函数各参数
 class CallRiscvInst : public RiscvInstr {
 public:
-  CallRiscvInst(RiscvFunction *func, RiscvBasicBlock *bb, std::vector<RiscvOperand*> args)
+  CallRiscvInst(RiscvFunction *func, RiscvBasicBlock *bb,
+                std::vector<RiscvOperand *> args)
       : RiscvInstr(InstrType::CALL, 1 + args.size(), bb) {
     setOperand(0, func);
     for (int i = 0; i < args.size(); i++)
@@ -256,27 +253,43 @@ public:
 // 类型：cmpop val1, val2, true_link, false_link
 // 假定basic block是顺序排布的，那么如果false_link恰好为下一个basic
 // block，则不会发射jmp false_link指令
-class FCmpRiscvInstr : RiscvInstr {
+class FCmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpName;
-  FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
+  FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2, RiscvOperand *v3, 
                  RiscvBasicBlock *trueLink, RiscvBasicBlock *falseLink,
                  RiscvBasicBlock *bb)
-      : RiscvInstr(ICMP, 4, bb), fcmp_op_(op) {
+      : RiscvInstr(FCMP, 5, bb), fcmp_op_(op) {
     setOperand(0, v1);
     setOperand(1, v2);
-    setOperand(2, trueLink);
-    setOperand(3, falseLink);
-  }
-  FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
-                 RiscvBasicBlock *trueLink, RiscvBasicBlock *bb)
-      : RiscvInstr(ICMP, 4, bb), fcmp_op_(op) {
-    setOperand(0, v1);
-    setOperand(1, v2);
-    setOperand(2, trueLink);
-    setOperand(3, nullptr);
+    setOperand(2, v3);
+    setOperand(3, trueLink);
+    setOperand(4, falseLink);
   }
   FCmpInst::FCmpOp fcmp_op_;
   std::string print() override;
 };
+
+class ZExtRiscvInstr : public RiscvInstr {
+public:
+};
+
+class FpToSiRiscvInstr : public RiscvInstr {
+public:
+  FpToSiRiscvInstr(RiscvOperand *val, RiscvBasicBlock *bb)
+      : RiscvInstr(FPTOSI, 2, bb) {
+    setOperand(0, val);
+  }
+  virtual std::string print() override;
+};
+
+class SiToFpRiscvInstr : public RiscvInstr {
+public:
+  SiToFpRiscvInstr(RiscvOperand *val, RiscvBasicBlock *bb)
+      : RiscvInstr(FPTOSI, 2, bb) {
+    setOperand(0, val);
+  }
+  virtual std::string print() override;
+};
+
 #endif // !INSTRUCTIONH

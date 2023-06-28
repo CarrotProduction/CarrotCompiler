@@ -15,6 +15,13 @@ std::string RiscvFunction::print() {
   return riscvInstr;
 }
 
+std::string RiscvBasicBlock::print() {
+  std::string riscvInstr = this->name_ + ":\n";
+  for (auto x : this->instruction)
+    riscvInstr += x->print();
+  return riscvInstr;
+}
+
 // 对各寄存器进行保存。此处需要查询当前使用寄存器情况。考虑维护一个全局寄存器状态以及数值R
 extern std::map<Register*, int> regUsed;
 std::string RiscvFunction::storeRegisterInstr() {

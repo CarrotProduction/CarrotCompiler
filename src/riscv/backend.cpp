@@ -52,7 +52,8 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(BinaryInst *binaryInstr,
   return instr;
 }
 
-void RiscvBuilder::solveAlloca(AllocaInst* instr, RiscvFunction* foo, RiscvBasicBlock *rbb) {
+void RiscvBuilder::solveAlloca(AllocaInst *instr, RiscvFunction *foo,
+                               RiscvBasicBlock *rbb) {
   foo->addArgs(regAlloca->findNonuse(rbb));
 }
 
@@ -118,7 +119,137 @@ CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr,
   return instr;
 }
 
+ReturnRiscvInst *RiscvBuilder::createRetInstr(ReturnInst *returnInstr,
+                                              RiscvBasicBlock *rbb) {
+  // 无返回值
+  if (returnInstr->operands_.empty())
+    return new ReturnRiscvInst(rbb);
+  else
+    // 有返回值
+    return new ReturnRiscvInst(regAlloca->find(returnInstr->operands_[0], rbb),
+                               rbb);
+}
+
+SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(SiToFpInst *sitofpInstr,
+                                                  RiscvBasicBlock *rbb) {
+  return new SiToFpRiscvInstr(regAlloca->find(sitofpInstr->operands_[0], rbb),
+                              rbb);
+}
+FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(FpToSiInst *fptosiInstr,
+                                                  RiscvBasicBlock *rbb) {
+  return new FpToSiRiscvInstr(regAlloca->find(fptosiInstr->operands_[0], rbb),
+                              rbb);
+}
+
+RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
+                                                       RiscvFunction *foo) {
+  RiscvBasicBlock *rbb = createRiscvBasicBlock(bb);
+  Instruction *forward = nullptr; // 前置指令，用于icmp、fcmp和branch指令合并
+  for (Instruction *instr : bb->instr_list_) {
+    switch (instr->op_id_) {
+    case Instruction::Ret:
+      rbb->addInstrBack(
+          this->createRetInstr(static_cast<ReturnInst *>(instr), rbb));
+      break;
+    // 分支指令
+    case Instruction::Br:
+      if (forward->op_id_ == Instruction::FCmp)
+        rbb->addInstrBack(
+            this->createFCMPInstr(static_cast<FCmpInst *>(forward),
+                                  static_cast<BranchInst *>(instr), rbb));
+      else
+        rbb->addInstrBack(
+            this->createICMPInstr(static_cast<ICmpInst *>(forward),
+                                  static_cast<BranchInst *>(instr), rbb));
+      forward = nullptr;
+      break;
+    case Instruction::Add:
+    case Instruction::Sub:
+    case Instruction::Mul:
+    case Instruction::SDiv:
+    case Instruction::SRem:
+    case Instruction::UDiv:
+    case Instruction::URem:
+    case Instruction::FAdd:
+    case Instruction::FSub:
+    case Instruction::FMul:
+    case Instruction::FDiv:
+    case Instruction::Shl:
+    case Instruction::LShr:
+    case Instruction::AShr:
+    case Instruction::And:
+    case Instruction::Or:
+    case Instruction::Xor:
+      rbb->addInstrBack(
+          this->createBinaryInstr(static_cast<BinaryInst *>(instr), rbb));
+      break;
+    case Instruction::FNeg:
+      rbb->addInstrBack(
+          this->createUnaryInstr(static_cast<UnaryInst *>(instr), rbb));
+      break;
+    case Instruction::PHI:
+      this->solvePhiInstr(static_cast<PhiInst *>(instr));
+      break;
+    // 直接删除的指令
+    case Instruction::BitCast:
+    case Instruction::ZExt:
+      break;
+    // 找偏移量，待完成
+    case Instruction::GetElementPtr:
+      break;
+    case Instruction::Alloca:
+      this->solveAlloca(static_cast<AllocaInst *>(instr), foo, rbb);
+      break;
+    case Instruction::FPtoSI:
+      rbb->addInstrBack(
+          this->createFptoSiInstr(static_cast<FpToSiInst *>(instr), rbb));
+      break;
+    case Instruction::SItoFP:
+      rbb->addInstrBack(
+          this->createSiToFpInstr(static_cast<SiToFpInst *>(instr), rbb));
+      break;
+    case Instruction::Load:
+      rbb->addInstrBack(
+          this->createLoadInstr(static_cast<LoadInst *>(instr), rbb));
+      break;
+    case Instruction::Store:
+      rbb->addInstrBack(
+          this->createStoreInstr(static_cast<StoreInst *>(instr), rbb));
+      break;
+    case Instruction::ICmp:
+    case Instruction::FCmp:
+      forward = instr;
+      break;
+    case Instruction::Call:
+      rbb->addInstrBack(
+          this->createCallInstr(static_cast<CallInst *>(instr), rbb));
+      break;
+    }
+  }
+  return rbb;
+}
+
+// 系统函数，需提前约定其栈调用问题
+void RiscvBuilder::resolveLibfunc(RiscvFunction *foo) {
+  // 对不同函数进行分类讨论
+}
+
 // 总控程序
-void RiscvBuilder::buildRISCV(Module *m) {
-  
+std::string RiscvBuilder::buildRISCV(Module *m) {
+  this->rm = new RiscvModule();
+  std::string code = "";
+  // 全局变量
+  for (GlobalVariable *gb : m->global_list_) {
+  }
+  // 函数体
+  for (Function *foo : m->function_list_) {
+    auto rfoo = createRiscvFunction(foo);
+    rm->addFunction(rfoo);
+    if (rfoo->is_libfunc())
+      continue;
+    for (BasicBlock *bb : foo->basic_blocks_)
+      rfoo->addBlock(this->transferRiscvBasicBlock(bb, rfoo));
+    code += rfoo->print();
+  }
+  return code;
 }

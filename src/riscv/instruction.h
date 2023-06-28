@@ -15,11 +15,14 @@ public:
     ADDI,
     SUB,
     SUBI,
-    FAND,
+    FADD,
     FSUB,
     MUL,
+    MULU,
     DIV,
+    DIVU,
     REM,
+    REMU,
     XOR,
     XORI,
     AND,
@@ -37,6 +40,8 @@ public:
     LI,
     MOV,
     FMV,
+    FLW,
+    FSW,
     FPTOSI,
     SITOFP
   };
@@ -180,6 +185,12 @@ public:
 // 仅返回语句，返回参数由上层的block对应的function构造push语句
 class ReturnRiscvInst : public RiscvInstr {
 public:
+  // 有返回值
+  ReturnRiscvInst(RiscvOperand *retVal, RiscvBasicBlock *bb)
+      : RiscvInstr(InstrType::RET, 1, bb) {
+    setOperand(1, retVal);
+  }
+  // 无返回值
   ReturnRiscvInst(RiscvBasicBlock *bb) : RiscvInstr(InstrType::RET, 0, bb) {}
   std::string print() override;
 };
@@ -225,7 +236,7 @@ public:
 // 类型：cmpop val1, val2, true_link
 // 传入参数：val1, val2, true_link, false_link（basic block指针形式）
 // false_link如果为为下一条语句则不会发射jmp false_link指令
-class ICmpRiscvInstr : RiscvInstr {
+class ICmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<ICmpInst::ICmpOp, std::string> ICmpOpName;
   ICmpRiscvInstr(ICmpInst::ICmpOp op, RiscvOperand *v1, RiscvOperand *v2,
@@ -256,9 +267,9 @@ public:
 class FCmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpName;
-  FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2, RiscvOperand *v3, 
-                 RiscvBasicBlock *trueLink, RiscvBasicBlock *falseLink,
-                 RiscvBasicBlock *bb)
+  FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
+                 RiscvOperand *v3, RiscvBasicBlock *trueLink,
+                 RiscvBasicBlock *falseLink, RiscvBasicBlock *bb)
       : RiscvInstr(FCMP, 5, bb), fcmp_op_(op) {
     setOperand(0, v1);
     setOperand(1, v2);
@@ -286,7 +297,7 @@ public:
 class SiToFpRiscvInstr : public RiscvInstr {
 public:
   SiToFpRiscvInstr(RiscvOperand *val, RiscvBasicBlock *bb)
-      : RiscvInstr(FPTOSI, 2, bb) {
+      : RiscvInstr(SITOFP, 2, bb) {
     setOperand(0, val);
   }
   virtual std::string print() override;

@@ -3,9 +3,10 @@
 
 #include "instruction.h"
 #include "ir.h"
+#include "optimize.h"
 #include "regalloc.h"
 #include "riscv.h"
-#include <cassert>
+#include <memory.h>
 
 template <typename T> class DSU {
 
@@ -47,6 +48,10 @@ std::string toLable(int ind) { return ".L" + std::to_string(ind); }
 class RiscvBuilder {
 
 public:
+  RiscvBuilder() {
+    rm = new RiscvModule();
+    regAlloca = new RegAlloca();
+  }
   RiscvModule *rm;
   RegAlloca *regAlloca;
   // alloca 删掉，在函数中处理
@@ -56,11 +61,12 @@ public:
   // 考虑将y1、y2全部合并到y3上
   DSU<std::string> DSU_for_Variable;
   void solvePhiInstr(PhiInst *instr);
-  void buildRISCV(Module *m);
+  std::string buildRISCV(Module *m);
 
   // 下面的语句是需要生成对应riscv语句
   // Zext语句零扩展，因而没有必要
   // ZExtRiscvInstr createZextInstr(ZextInst *instr);
+  void RiscvBuilder::resolveLibfunc(RiscvFunction *foo);
   BinaryRiscvInst *createBinaryInstr(BinaryInst *binaryInstr,
                                      RiscvBasicBlock *rbb);
   UnaryRiscvInst *createUnaryInstr(UnaryInst *unaryInstr, RiscvBasicBlock *rbb);
@@ -70,6 +76,13 @@ public:
                                   RiscvBasicBlock *rbb);
   FCmpRiscvInstr *createFCMPInstr(FCmpInst *fcmpInstr, BranchInst *brInstr,
                                   RiscvBasicBlock *rbb);
+  SiToFpRiscvInstr *createSiToFpInstr(SiToFpInst *sitofpInstr,
+                                      RiscvBasicBlock *rbb);
+  FpToSiRiscvInstr *createFptoSiInstr(FpToSiInst *fptosiInstr,
+                                      RiscvBasicBlock *rbb);
   CallRiscvInst *createCallInstr(CallInst *callInstr, RiscvBasicBlock *rbb);
+  RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
+  ReturnRiscvInst *RiscvBuilder::createRetInstr(ReturnInst *returnInstr,
+                                                RiscvBasicBlock *rbb);
 };
 #endif // !BACKENDH

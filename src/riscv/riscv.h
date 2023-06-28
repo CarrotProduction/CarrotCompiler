@@ -1,10 +1,9 @@
 #ifndef RISCVH
 #define RISCVH
 #include "ir.h"
-#include "riscv.h"
+#include "instruction.h"
 
 class RiscvBasicBlock;
-class RiscvModule;
 class RiscvInstr;
 
 class RiscvOperand {
@@ -290,7 +289,7 @@ public:
         instruction.insert(next(it), instr);
     }
   }
-  std::string print() override;
+  std::string print();
   /*
     此处加入所需数据流分析的参数和函数
     下面为示例

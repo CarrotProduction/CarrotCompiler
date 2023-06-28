@@ -1,24 +1,24 @@
 #include "instruction.h"
 #include "riscv.h"
-
 // 需要调整到RISCV
 std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
-    {RiscvInstr::ADD, "add"},
-    {RiscvInstr::SUB, "sub"},
-    {RiscvInstr::MUL, "mul"},
-    {RiscvInstr::DIV, "div"},
-    {RiscvInstr::REM, "rem"},
-    {RiscvInstr::AND, "and"},
-    {RiscvInstr::OR, "or"},
-    {RiscvInstr::ANDI, "andi"},
-    {RiscvInstr::ORI, "ori"},
-    {RiscvInstr::XOR, "xor"},
-    {RiscvInstr::XORI, "xori"},
-    {RiscvInstr::RET, "ret"},
-    {RiscvInstr::ADDI, "addi"},
-    {RiscvInstr::SUBI, "subi"},
-    {RiscvInstr::RET, "ret"},
-    {RiscvInstr::CALL, "call"}}; // Instruction from opid to string
+    {RiscvInstr::ADD, "ADD"},         {RiscvInstr::ADDI, "ADDI"},
+    {RiscvInstr::SUB, "SUB"},         {RiscvInstr::SUBI, "SUBI"},
+    {RiscvInstr::FADD, "FADD.S"},     {RiscvInstr::FSUB, "FSUB.S"},
+    {RiscvInstr::MUL, "MUL"},         {RiscvInstr::MULU, "MULU"},
+    {RiscvInstr::DIVU, "DIVU"},       {RiscvInstr::DIV, "DIV"},
+    {RiscvInstr::REMU, "REMU"},       {RiscvInstr::REM, "REM"},
+    {RiscvInstr::AND, "AND"},         {RiscvInstr::OR, "OR"},
+    {RiscvInstr::ANDI, "ANDI"},       {RiscvInstr::ORI, "ORI"},
+    {RiscvInstr::XOR, "XOR"},         {RiscvInstr::XORI, "XORI"},
+    {RiscvInstr::RET, "ret"},         {RiscvInstr::FPTOSI, "FCVT.W.S"},
+    {RiscvInstr::SITOFP, "FCVT.S.W"}, {RiscvInstr::FMV, "FMV.S"},
+    {RiscvInstr::CALL, "CALL"},       {RiscvInstr::LI, "LI"},
+    {RiscvInstr::MOV, "MV"},          {RiscvInstr::PUSH, "PUSH"},
+    {RiscvInstr::POP, "POP"},         {RiscvInstr::SW, "SW"},
+    {RiscvInstr::LW, "LW"},           {RiscvInstr::FSW, "FSW"},
+    {RiscvInstr::FLW, "FLW"}};
+// Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpInst::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_EQ, "beq"},   {ICmpInst::ICmpOp::ICMP_NE, "bne"},
     {ICmpInst::ICmpOp::ICMP_UGE, "bgeu"}, {ICmpInst::ICmpOp::ICMP_ULT, "bltu"},
@@ -42,7 +42,7 @@ std::string BinaryRiscvInst::print() {
   // 这里需要将每个参数根据当前需要进行upcasting
   assert(this->operand_.size() == 2);
   std::string riscv_instr = "\t\t";
-  riscv_instr += instrTy2Riscv[this->type_];
+  riscv_instr += instrTy2Riscv.at(this->type_);
   riscv_instr += "\t";
   riscv_instr += this->result_->print();
   riscv_instr += ", ";

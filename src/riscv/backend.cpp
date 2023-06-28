@@ -1,14 +1,20 @@
 #include "backend.h"
 
+const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
+int LabelCount = 0;
+std::map<BasicBlock *, RiscvBasicBlock *> rbbLabel;
+std::map<Function *, RiscvFunction *> functionLabel;
+std::string toLabel(int ind) { return ".L" + std::to_string(ind); }
+
 RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb) {
   if (bb == nullptr) {
-    LableCount++;
-    return new RiscvBasicBlock(toLable(LableCount), LableCount);
+    LabelCount++;
+    return new RiscvBasicBlock(toLabel(LabelCount), LabelCount);
   }
   if (rbbLabel.count(bb))
     return rbbLabel[bb];
-  LableCount++;
-  auto cur = new RiscvBasicBlock(toLable(LableCount), LableCount);
+  LabelCount++;
+  auto cur = new RiscvBasicBlock(toLabel(LabelCount), LabelCount);
   return rbbLabel[bb] = cur;
 }
 

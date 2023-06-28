@@ -42,7 +42,7 @@ std::string RiscvFunction::storeRegisterInstr() {
 // 出栈顺序和入栈相反
 // 建议不使用pop语句，直接从栈中取值，最后直接修改sp的值即可
 // 使用一个单独的return block以防止多出口return
-extern int LableCount;
+extern int LabelCount;
 void RiscvFunction::addRestoredBlock() {
   RiscvBasicBlock *bb = createRiscvBasicBlock(nullptr);
   // 先恢复sp的值

@@ -1,6 +1,5 @@
 #ifndef BACKENDH
 #define BACKENDH
-#pragma once
 #include "instruction.h"
 #include "ir.h"
 #include "optimize.h"
@@ -33,16 +32,17 @@ public:
 };
 
 // 建立IR到RISCV指令集的映射
-const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
+const extern std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp;
 
-int LableCount = 0;
-std::map<BasicBlock *, RiscvBasicBlock *> rbbLabel;
-std::map<Function *, RiscvFunction *> functionLabel;
+extern int LabelCount;
+extern std::map<BasicBlock *, RiscvBasicBlock *> rbbLabel;
+extern std::map<Function *, RiscvFunction *> functionLabel;
+
 // 下面的函数仅为一个basic
 // block产生一个标号，指令集为空，需要使用总控程序中具体遍历该bb才会产生内部指令
 RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb = nullptr);
 RiscvFunction *createRiscvFunction(Function *foo = nullptr);
-std::string toLable(int ind) { return ".L" + std::to_string(ind); }
+std::string toLabel(int ind);
 
 // 总控程序
 class RiscvBuilder {

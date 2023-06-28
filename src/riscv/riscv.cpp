@@ -1,7 +1,6 @@
 #include "riscv.h"
-#include "ir.h"
-#include "instruction.h"
 #include "backend.h"
+#include "ir.h"
 
 // 输出函数对应的全部riscv语句序列
 // 由于一个函数可能有若干个出口，因而恢复现场的语句根据basic block
@@ -23,7 +22,7 @@ std::string RiscvBasicBlock::print() {
 }
 
 // 对各寄存器进行保存。此处需要查询当前使用寄存器情况。考虑维护一个全局寄存器状态以及数值R
-extern std::map<Register*, int> regUsed;
+extern std::map<Register *, int> regUsed;
 std::string RiscvFunction::storeRegisterInstr() {
   std::string riscvInstr = "";
   for (auto [reg, _] : regUsed) {
@@ -48,8 +47,8 @@ void RiscvFunction::addRestoredBlock() {
   RiscvBasicBlock *bb = createRiscvBasicBlock(nullptr);
   // 先恢复sp的值
   // 下面这几个语句有点问题！MoveRiscvInst提示说“不允许使用抽象类类型”。
-  // RiscvInstr *restoreSP = new MoveRiscvInst(findReg.at("sp"), this->callerSP_, bb, 1);
-  // bb->addInstrBack(restoreSP);
+  // RiscvInstr *restoreSP = new MoveRiscvInst(findReg.at("sp"),
+  // this->callerSP_, bb, 1); bb->addInstrBack(restoreSP);
   // 插入各种pop指令，按照顺序
   for (auto reg : storedEnvironment) {
     // 分浮点+整型

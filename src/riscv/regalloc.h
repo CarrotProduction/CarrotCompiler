@@ -14,19 +14,20 @@ public:
   RiscvOperand *find(Value *val, RiscvBasicBlock *bb) {
     if (val->type_->tid_ == Type::IntegerTyID) {
       ++IntRegID;
-      RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, ++IntRegID));
+      RiscvIntReg *cur =
+          new RiscvIntReg(new Register(Register::Int, ++IntRegID));
       return cur;
-    }
-    else {
+    } else {
       ++FloatRegID;
-      RiscvFloatReg *cur = new RiscvFloatReg(new Register(Register::Float, ++IntRegID));
+      RiscvFloatReg *cur =
+          new RiscvFloatReg(new Register(Register::Float, ++IntRegID));
       return cur;
     }
   }
   RiscvOperand *findNonuse(RiscvBasicBlock *bb) {
-      ++IntRegID;
-      RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, ++IntRegID));
-      return cur;
+    ++IntRegID;
+    RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, ++IntRegID));
+    return cur;
   }
 };
 #endif // !REGALLOCH

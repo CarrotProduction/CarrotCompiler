@@ -1,7 +1,6 @@
 #ifndef RISCVH
 #define RISCVH
 #include "ir.h"
-#include "instruction.h"
 
 class RiscvBasicBlock;
 class RiscvInstr;
@@ -185,9 +184,10 @@ public:
   // int callerSP_; // 父函数中SP的值，便于恢复。但是需要正常保存
   OpTy resType_;
   std::vector<RiscvOperand *> args;
-  RiscvFunction(std::string name, int num_args, OpTy Ty) // 返回值，无返回使用void类型
-      : RiscvLabel(Function, name), num_args_(num_args),
-        resType_(Ty), base_(0) {}
+  RiscvFunction(std::string name, int num_args,
+                OpTy Ty) // 返回值，无返回使用void类型
+      : RiscvLabel(Function, name), num_args_(num_args), resType_(Ty),
+        base_(0) {}
   void setArgs(int ind, RiscvOperand *op) {
     assert(ind >= 0 && ind < args.size());
     args[ind] = op;
@@ -230,7 +230,8 @@ public:
     return argsOffset[val];
   }
   void addBlock(RiscvBasicBlock *bb) { blk.push_back(bb); }
-  std::string print(); // 函数语句，需先push保护现场，然后pop出需要的参数，再接入各block
+  std::string
+  print(); // 函数语句，需先push保护现场，然后pop出需要的参数，再接入各block
   std::string storeRegisterInstr(); // 输出保护现场的语句
   void addRestoredBlock();
   // 建议函数返回直接使用一个跳转语句跳转到返回语句块
@@ -241,61 +242,6 @@ private:
   int base_;
   std::set<RiscvOperand *> storedEnvironment; // 栈中要保护的地址
   std::map<int, RiscvOperand *> stackOrder; // 记录栈中从高到低地址顺序
-};
-
-// 语句块，也使用标号标识
-// 必须挂靠在函数下，否则无法正常生成标号
-// 可以考虑转化到riscv basic block做数据流分析，预留接口
-class RiscvBasicBlock : public RiscvLabel {
-public:
-  RiscvFunction *func_;
-  std::vector<RiscvInstr *> instruction;
-  int blockInd_; // 表示了各个block之间的顺序
-  RiscvBasicBlock(std::string name, RiscvFunction *func, int blockInd)
-      : RiscvLabel(Block, name), func_(func), blockInd_(blockInd) {
-    func->addBlock(this);
-  }
-  RiscvBasicBlock(std::string name, int blockInd)
-      : RiscvLabel(Block, name), func_(nullptr), blockInd_(blockInd) {}
-  void addFunction(RiscvFunction *func) { func->addBlock(this); }
-  std::string printname() { return name_; }
-  void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
-  void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
-  void deleteInstr(RiscvInstr *instr) {
-    auto it = std::find(instruction.begin(), instruction.end(), instr);
-    if (it != instruction.end())
-      instruction.erase(
-          std::remove(instruction.begin(), instruction.end(), instr),
-          instruction.end());
-  }
-  void replaceInstr(RiscvInstr *oldinst, RiscvInstr *newinst) {}
-  // 在全部指令后面加入
-  void addInstrBack(RiscvInstr *instr) { instruction.push_back(instr); }
-  // 在全部指令之前加入
-  void addInstrFront(RiscvInstr *instr) {
-    instruction.insert(instruction.begin(), instr);
-  }
-  void addInstrBefore(RiscvInstr *instr) {
-    auto it = std::find(instruction.begin(), instruction.end(), instr);
-    if (it != instruction.end())
-      instruction.insert(it, instr);
-  }
-  void addInstrAfter(RiscvInstr *instr, RiscvInstr *dst) {
-    auto it = std::find(instruction.begin(), instruction.end(), instr);
-    if (it != instruction.end()) {
-      if (next(it) == instruction.end())
-        instruction.push_back(instr);
-      else
-        instruction.insert(next(it), instr);
-    }
-  }
-  std::string print();
-  /*
-    此处加入所需数据流分析的参数和函数
-    下面为示例
-  */
-  std::vector<RiscvBasicBlock *> outB; // 出边
-  std::vector<RiscvBasicBlock *> inB;  // 入边
 };
 
 class RiscvModule {

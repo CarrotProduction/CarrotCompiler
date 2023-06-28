@@ -4,6 +4,61 @@
 #include "ir.h"
 #include "riscv.h"
 
+// 语句块，也使用标号标识
+// 必须挂靠在函数下，否则无法正常生成标号
+// 可以考虑转化到riscv basic block做数据流分析，预留接口
+class RiscvBasicBlock : public RiscvLabel {
+public:
+  RiscvFunction *func_;
+  std::vector<RiscvInstr *> instruction;
+  int blockInd_; // 表示了各个block之间的顺序
+  RiscvBasicBlock(std::string name, RiscvFunction *func, int blockInd)
+      : RiscvLabel(Block, name), func_(func), blockInd_(blockInd) {
+    func->addBlock(this);
+  }
+  RiscvBasicBlock(std::string name, int blockInd)
+      : RiscvLabel(Block, name), func_(nullptr), blockInd_(blockInd) {}
+  void addFunction(RiscvFunction *func) { func->addBlock(this); }
+  std::string printname() { return name_; }
+  void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
+  void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
+  void deleteInstr(RiscvInstr *instr) {
+    auto it = std::find(instruction.begin(), instruction.end(), instr);
+    if (it != instruction.end())
+      instruction.erase(
+          std::remove(instruction.begin(), instruction.end(), instr),
+          instruction.end());
+  }
+  void replaceInstr(RiscvInstr *oldinst, RiscvInstr *newinst) {}
+  // 在全部指令后面加入
+  void addInstrBack(RiscvInstr *instr) { instruction.push_back(instr); }
+  // 在全部指令之前加入
+  void addInstrFront(RiscvInstr *instr) {
+    instruction.insert(instruction.begin(), instr);
+  }
+  void addInstrBefore(RiscvInstr *instr) {
+    auto it = std::find(instruction.begin(), instruction.end(), instr);
+    if (it != instruction.end())
+      instruction.insert(it, instr);
+  }
+  void addInstrAfter(RiscvInstr *instr, RiscvInstr *dst) {
+    auto it = std::find(instruction.begin(), instruction.end(), instr);
+    if (it != instruction.end()) {
+      if (next(it) == instruction.end())
+        instruction.push_back(instr);
+      else
+        instruction.insert(next(it), instr);
+    }
+  }
+  std::string print();
+  /*
+    此处加入所需数据流分析的参数和函数
+    下面为示例
+  */
+  std::vector<RiscvBasicBlock *> outB; // 出边
+  std::vector<RiscvBasicBlock *> inB;  // 入边
+};
+
 // 传入寄存器编号以生成一条语句，
 // 上层由basic block整合
 class RiscvInstr {
@@ -45,21 +100,20 @@ public:
     FPTOSI,
     SITOFP
   };
-  const std::map<InstrType, std::string> RiscvName;
-  const std::map<ICmpInst::ICmpOp, std::string> ICMPOPName;
-  const std::map<FCmpInst::FCmpOp, std::string> FCMPOPName;
+  const static std::map<InstrType, std::string> RiscvName;
+  const static std::map<ICmpInst::ICmpOp, std::string> ICMPOPName;
+  const static std::map<FCmpInst::FCmpOp, std::string> FCMPOPName;
+
   InstrType type_;
-  RiscvInstr(InstrType type, int op_nums) : type_(type), parent_(nullptr) {
-    operand_.resize(op_nums);
-  }
-  RiscvInstr(InstrType type, int op_nums, RiscvBasicBlock *bb)
-      : type_(type), parent_(bb) {
-    operand_.resize(op_nums);
-  }
-  ~RiscvInstr() = default;
   RiscvBasicBlock *parent_;
-  virtual std::string print() = 0;
   std::vector<RiscvOperand *> operand_;
+
+  RiscvInstr(InstrType type, int op_nums);
+  RiscvInstr(InstrType type, int op_nums, RiscvBasicBlock *bb);
+  ~RiscvInstr() = default;
+
+  virtual std::string print() = 0;
+
   RiscvOperand *result_;
   void setOperand(int ind, RiscvOperand *val) {
     assert(ind >= 0 && ind < operand_.size());
@@ -144,7 +198,6 @@ public:
 
 // 注意压栈顺序问题！打印的时候严格按照lists内顺序
 class PushRiscvInst : public RiscvInstr {
-
 public:
   PushRiscvInst(std::vector<RiscvBasicBlock *> &lists, RiscvBasicBlock *bb)
       : RiscvInstr(InstrType::PUSH, lists.size(), bb) {
@@ -156,7 +209,6 @@ public:
 
 // 注意出栈顺序问题！打印的时候严格按照lists内顺序
 class PopRiscvInst : public RiscvInstr {
-
 public:
   // 传入所有要pop的变量
   PopRiscvInst(std::vector<RiscvBasicBlock *> &lists, RiscvBasicBlock *bb)

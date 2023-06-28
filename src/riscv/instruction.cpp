@@ -37,6 +37,16 @@ std::string print_as_op(Value *v, bool print_ty);
 std::string print_cmp_type(ICmpInst::ICmpOp op);
 std::string print_fcmp_type(FCmpInst::FCmpOp op);
 
+RiscvInstr::RiscvInstr(InstrType type, int op_nums)
+    : type_(type), parent_(nullptr) {
+  operand_.resize(op_nums);
+}
+
+RiscvInstr::RiscvInstr(InstrType type, int op_nums, RiscvBasicBlock *bb)
+    : type_(type), parent_(bb) {
+  operand_.resize(op_nums);
+}
+
 // 格式：op  tar, v1, v2->tar=v1 op v2
 std::string BinaryRiscvInst::print() {
   // 这里需要将每个参数根据当前需要进行upcasting

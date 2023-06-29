@@ -20,19 +20,25 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::FLW, "FLW"}};
 // Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpInst::ICmpOpName = {
-    {ICmpInst::ICmpOp::ICMP_EQ, "beq"},   {ICmpInst::ICmpOp::ICMP_NE, "bne"},
-    {ICmpInst::ICmpOp::ICMP_UGE, "bgeu"}, {ICmpInst::ICmpOp::ICMP_ULT, "bltu"},
-    {ICmpInst::ICmpOp::ICMP_SGE, "bge"},  {ICmpInst::ICmpOp::ICMP_SLT, "blt"}};
-// 需要调整到RISCV
+    {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},
+    {ICmpInst::ICmpOp::ICMP_UGE, "BGEU"}, {ICmpInst::ICmpOp::ICMP_ULT, "BLTU"},
+    {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"}};
 const std::map<FCmpInst::FCmpOp, std::string> FCmpInst::FCmpOpName = {
-    {FCmpInst::FCmpOp::FCMP_FALSE, "nv"}, {FCmpInst::FCmpOp::FCMP_OEQ, "eq"},
-    {FCmpInst::FCmpOp::FCMP_OGT, "gt"},   {FCmpInst::FCmpOp::FCMP_OGE, "ge"},
-    {FCmpInst::FCmpOp::FCMP_OLT, "cc"},   {FCmpInst::FCmpOp::FCMP_OLE, "ls"},
-    {FCmpInst::FCmpOp::FCMP_ONE, "ne"},   {FCmpInst::FCmpOp::FCMP_ORD, "vc"},
-    {FCmpInst::FCmpOp::FCMP_UNO, "vs"},   {FCmpInst::FCmpOp::FCMP_UEQ, "eq"},
-    {FCmpInst::FCmpOp::FCMP_UGT, "hi"},   {FCmpInst::FCmpOp::FCMP_UGE, "cs"},
-    {FCmpInst::FCmpOp::FCMP_ULT, "lt"},   {FCmpInst::FCmpOp::FCMP_ULE, "le"},
-    {FCmpInst::FCmpOp::FCMP_UNE, "ne"},   {FCmpInst::FCmpOp::FCMP_TRUE, "al"}};
+    {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_OGE, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_UGE, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_ORD, "FCLASS.S"},
+    {FCmpInst::FCmpOp::FCMP_UNO, "FCLASS.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_OLE, "FLE.S"},
+    {FCmpInst::FCmpOp::FCMP_ULE, "FLE.S"},
+    {FCmpInst::FCmpOp::FCMP_OGT, "FLE.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_UGT, "FLE.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_OEQ, "FEQ.S"},
+    {FCmpInst::FCmpOp::FCMP_UEQ, "FEQ.S"},
+    {FCmpInst::FCmpOp::FCMP_ONE, "FEQ.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_UNE, "FEQ.S"}  // 取反
+};
 std::string print_as_op(Value *v, bool print_ty);
 std::string print_cmp_type(ICmpInst::ICmpOp op);
 std::string print_fcmp_type(FCmpInst::FCmpOp op);
@@ -87,14 +93,14 @@ std::string ReturnRiscvInst::print() { return "\t\tret\n"; }
 std::string PushRiscvInst::print() {
   std::string riscv_instr = "";
   for (auto x : this->operand_)
-    riscv_instr += "\t\tpush\t" + x->print() + "\n";
+    riscv_instr += "\t\tPUSH\t" + x->print() + "\n";
   return riscv_instr;
 }
 
 std::string PopRiscvInst::print() {
   std::string riscv_instr = "";
   for (auto x : this->operand_)
-    riscv_instr += "\t\tpop\t" + x->print() + "\n";
+    riscv_instr += "\t\tPOP\t" + x->print() + "\n";
   return riscv_instr;
 }
 
@@ -115,18 +121,17 @@ std::string ICmpRiscvInstr::print() {
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
   // 不连续则假链也要跳转
   if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
-    riscv_instr += "\t\tjmp\t" + falseLink->print() + "\n";
+    riscv_instr += "\t\tJMP\t" + falseLink->print() + "\n";
   return riscv_instr;
 }
 
-// 重新修改
 std::string FCmpRiscvInstr::print() {
-  std::string riscv_instr = "\t\t";
+  if (this->fcmp_op_ == FCmpInst::FCMP_FALSE)
+    return "\t\tJMP\t" + this->operand_[4]->print() + "\n";
+  else if (this->fcmp_op_ == FCmpInst::FCMP_TRUE)
+    return "\t\tJMP\t" + this->operand_[3]->print() + "\n";
   // 第一条指令
-  if (FCmpOpName.count(this->fcmp_op_) == 0) {
-    std::swap(this->operand_[0], this->operand_[1]);
-    this->fcmp_op_ = static_cast<FCmpInst::FCmpOp>((int)this->fcmp_op_ ^ 2);
-  }
+  std::string riscv_instr = "\t\t";
   riscv_instr += FCmpOpName.at(this->fcmp_op_);
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
@@ -135,11 +140,18 @@ std::string FCmpRiscvInstr::print() {
   riscv_instr += this->operand_[2]->print();
   riscv_instr += "\n\t\t";
   // 第二条指令
-
-  auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
+  // 取反指令
+  if (this->fcmp_op_ == FCmpInst::FCMP_UNO ||
+      this->fcmp_op_ == FCmpInst::FCMP_OGT ||
+      this->fcmp_op_ == FCmpInst::FCMP_UGT ||
+      this->fcmp_op_ == FCmpInst::FCMP_ONE ||
+      this->fcmp_op_ == FCmpInst::FCMP_UNE)
+    std::swap(this->operand_[3], this->operand_[4]);
+  riscv_instr += "BNE\t" + this->operand_[2]->print() + ", ZERO, " + this->operand_[3]->print() + "\n";
+  auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[4]);
   // 不连续则假链也要跳转
   if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
-    riscv_instr += "\t\tjmp\t" + falseLink->print() + "\n";
+    riscv_instr += "\t\tJMP\t" + falseLink->print() + "\n";
   return riscv_instr;
 }
 

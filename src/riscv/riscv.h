@@ -25,6 +25,7 @@ public:
 };
 
 // 寄存器堆
+// 约定：t0寄存器做第二栈变量BP（当前函数栈顶指针），禁止其他使用
 class Register {
 
 public:
@@ -175,13 +176,12 @@ public:
 };
 
 // 用标号标识函数
-// 函数挂靠在module下，接入若干条instruction
-// 需配合alloca语句对栈进行分析
-// 以及function不设置module指针
+// 函数挂靠在module下，接入若干条instruction，以及function不设置module指针
+// 默认不保护现场，如果当寄存器不够的时候再临时压栈
+// 父函数调用子函数的参数算在子函数的栈空间内，子函数结束后由子函数清除这部分栈空间
 class RiscvFunction : public RiscvLabel {
 public:
   int num_args_;
-  // int callerSP_; // 父函数中SP的值，便于恢复。但是需要正常保存
   OpTy resType_;
   std::vector<RiscvOperand *> args;
   RiscvFunction(std::string name, int num_args,
@@ -207,24 +207,33 @@ public:
         name_ == "getarray" || name_ == "getfloat" || name_ == "getfarray" ||
         name_ == "putfloat" || name_ == "putfarray") {
       return true;
-    } else {
+    } else
       return false;
-    }
   }
   std::map<RiscvOperand *, int>
       argsOffset; // 函数使用到的参数（含调用参数、局部变量和返回值）在栈中位置。需满足字对齐（4的倍数）
                   // 届时将根据该函数的参数情况决定sp下移距离
-  void addArgs(RiscvOperand *val) // 在栈上新增操作数映射
-  {
+  void addArgs(RiscvOperand *val) { // 在栈上新增操作数映射
     if (argsOffset.count(val) == 0) {
       argsOffset[val] = base_;
-      stackOrder[base_] = val;
       base_ -= 4;
     }
   }
+  int querySP() { return base_; }
+  void addTempVar(RiscvOperand *val) {
+    addArgs(val);
+    tempRange += 4;
+  }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
-  int findArgs(RiscvOperand *val) // 查询栈上位置
-  {
+  // 默认所有寄存器不保护
+  // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复
+  // 仅考虑函数内部SP相对关系而不要计算其绝对关系
+  void saveOperand(RiscvOperand *val) {
+    storedEnvironment[val] = base_;
+    argsOffset[val] = base_;
+    base_ -= 4;
+  }
+  int findArgs(RiscvOperand *val) { // 查询栈上位置
     if (argsOffset.count(val) == 0)
       addArgs(val);
     return argsOffset[val];
@@ -232,17 +241,29 @@ public:
   void addBlock(RiscvBasicBlock *bb) { blk.push_back(bb); }
   std::string
   print(); // 函数语句，需先push保护现场，然后pop出需要的参数，再接入各block
-  std::string storeRegisterInstr(); // 输出保护现场的语句
   void addRestoredBlock();
   // 建议函数返回直接使用一个跳转语句跳转到返回语句块
-  /*
-  预留的栈参数接口，对接alloca等语句
-  */
 private:
   int base_;
-  std::set<RiscvOperand *> storedEnvironment; // 栈中要保护的地址
-  std::map<int, RiscvOperand *> stackOrder; // 记录栈中从高到低地址顺序
+  int tempRange; // 局部变量的数量，需要根据这个数量进行栈帧下移操作
+  std::map<RiscvOperand *, int>
+      storedEnvironment; // 栈中要保护的地址。该部分需要在函数结束的时候全部恢复
 };
+
+/*
+函数栈帧结构
++-----------+
+|    args   |
++-----------+
+|     ra    | （旧返回地址）
++-----------+
+| oldBP(t0) |
++-----------+ <- cur BP
+|  tempVar  |
++-----------+
+
+注意：如果不需要用栈存ra，那么需要修改callInstr指令产生时对各个寄存器位置的定义（setPosition函数的参数）
+*/
 
 class RiscvModule {
 public:

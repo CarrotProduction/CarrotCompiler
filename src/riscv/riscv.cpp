@@ -7,7 +7,12 @@
 // 语句中的ret语句前面附带出现，因而不在此出现
 std::string RiscvFunction::print() {
   std::string riscvInstr = this->name_ + ":\n"; // 函数标号打印
-  riscvInstr += this->storeRegisterInstr();
+  riscvInstr += "\t\tPUSH\tra\n";
+  riscvInstr += "\t\tPUSH\tt0\n";
+  riscvInstr += "\t\tMV\tsp, t0\n";
+  // 为函数局部变量腾出空间
+  if (this->base_)
+    riscvInstr += "\t\tADD\tsp, " + std::to_string(this->base_) + "\n";
   // 对各个basic block进行拼接
   for (auto x : this->blk)
     riscvInstr += x->print();
@@ -18,24 +23,6 @@ std::string RiscvBasicBlock::print() {
   std::string riscvInstr = this->name_ + ":\n";
   for (auto x : this->instruction)
     riscvInstr += x->print();
-  return riscvInstr;
-}
-
-// 对各寄存器进行保存。此处需要查询当前使用寄存器情况。考虑维护一个全局寄存器状态以及数值R
-extern std::map<Register *, int> regUsed;
-std::string RiscvFunction::storeRegisterInstr() {
-  std::string riscvInstr = "";
-  for (auto [reg, _] : regUsed) {
-    RiscvOperand *cur;
-    if (reg->regtype_ == Register::Float)
-      cur = new RiscvFloatReg(reg);
-    else
-      cur = new RiscvIntReg(reg);
-    this->storedEnvironment.insert(cur);
-    std::string name = cur->print();
-    riscvInstr += "\t\tpush\t" + name;
-    this->addArgs(cur);
-  }
   return riscvInstr;
 }
 

@@ -83,12 +83,22 @@ std::string UnaryRiscvInst::print() {
 
 std::string CallRiscvInst::print() {
   // 增补push指令
-  std::string riscv_instr = "\t\tcall\t";
+  std::string riscv_instr = "\t\tCALL\t";
   riscv_instr += this->operand_[0]->print();
   return riscv_instr;
 }
 
-std::string ReturnRiscvInst::print() { return "\t\tret\n"; }
+
+// 注意：return 语句不会进行相应的寄存器约定检查
+std::string ReturnRiscvInst::print() {
+  std::string riscvInstr = "";
+  // 接入返回语句
+  riscvInstr += "\t\tMV\tx2, t0\n";
+  // 恢复函数返回地址
+  riscvInstr += "\t\tPOP\tra\n";
+  riscvInstr += "\t\tRET\n";
+  return riscvInstr;
+}
 
 std::string PushRiscvInst::print() {
   std::string riscv_instr = "";

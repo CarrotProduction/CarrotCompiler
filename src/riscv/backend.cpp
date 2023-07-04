@@ -50,25 +50,30 @@ void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
 
 BinaryRiscvInst *RiscvBuilder::createBinaryInstr(BinaryInst *binaryInstr,
                                                  RiscvBasicBlock *rbb) {
-  BinaryRiscvInst *instr =
-      new BinaryRiscvInst(toRiscvOp.at(binaryInstr->op_id_),
-                          regAlloca->find(binaryInstr->operands_[0], rbb),
-                          regAlloca->find(binaryInstr->operands_[1], rbb),
-                          regAlloca->find(binaryInstr, rbb), rbb);
+  BinaryRiscvInst *instr = new BinaryRiscvInst(
+      toRiscvOp.at(binaryInstr->op_id_),
+      regAlloca->find(binaryInstr->operands_[0], rbb, nullptr, 1),
+      regAlloca->find(binaryInstr->operands_[1], rbb, nullptr, 1),
+      regAlloca->find(binaryInstr, rbb, nullptr, 1), rbb);
   return instr;
 }
 
+// Alloca 语句实质是在栈上预留空间，因而为该变量建立合适的地址映射即可。
 void RiscvBuilder::solveAlloca(AllocaInst *instr, RiscvFunction *foo,
                                RiscvBasicBlock *rbb) {
-  foo->addArgs(regAlloca->findNonuse(rbb));
+  int curBP = foo->querySP();
+  RiscvOperand *stackPos =
+      static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg.at("t0"), curBP));
+  this->regAlloca->setPosition(static_cast<Value *>(instr), stackPos);
+  foo->addTempVar(stackPos);
 }
 
 UnaryRiscvInst *RiscvBuilder::createUnaryInstr(UnaryInst *unaryInstr,
                                                RiscvBasicBlock *rbb) {
-  UnaryRiscvInst *instr =
-      new UnaryRiscvInst(toRiscvOp.at(unaryInstr->op_id_),
-                         regAlloca->find(unaryInstr->operands_[0], rbb),
-                         regAlloca->find(unaryInstr, rbb), rbb);
+  UnaryRiscvInst *instr = new UnaryRiscvInst(
+      toRiscvOp.at(unaryInstr->op_id_),
+      regAlloca->find(unaryInstr->operands_[0], rbb, nullptr, 1),
+      regAlloca->find(unaryInstr, rbb, nullptr, 1), rbb);
   return instr;
 }
 
@@ -76,7 +81,7 @@ StoreRiscvInst *RiscvBuilder::createStoreInstr(StoreInst *storeInstr,
                                                RiscvBasicBlock *rbb) {
   StoreRiscvInst *instr = new StoreRiscvInst(
       storeInstr->type_, regAlloca->find(storeInstr->operands_[0], rbb),
-      regAlloca->find(storeInstr->operands_[1], rbb), rbb);
+      regAlloca->find(storeInstr->operands_[1], rbb, nullptr, 1), rbb);
   return instr;
 }
 
@@ -84,7 +89,7 @@ LoadRiscvInst *RiscvBuilder::createLoadInstr(LoadInst *loadInstr,
                                              RiscvBasicBlock *rbb) {
   LoadRiscvInst *instr = new LoadRiscvInst(
       loadInstr->type_, regAlloca->find(loadInstr->operands_[0], rbb),
-      regAlloca->find(loadInstr->operands_[1], rbb), rbb);
+      regAlloca->find(loadInstr->operands_[1], rbb, nullptr, 1), rbb);
   return instr;
 }
 
@@ -92,8 +97,9 @@ ICmpRiscvInstr *RiscvBuilder::createICMPInstr(ICmpInst *icmpInstr,
                                               BranchInst *brInstr,
                                               RiscvBasicBlock *rbb) {
   ICmpRiscvInstr *instr = new ICmpRiscvInstr(
-      icmpInstr->icmp_op_, regAlloca->find(icmpInstr->operands_[0], rbb),
-      regAlloca->find(icmpInstr->operands_[1], rbb),
+      icmpInstr->icmp_op_,
+      regAlloca->find(icmpInstr->operands_[0], rbb, nullptr, 1),
+      regAlloca->find(icmpInstr->operands_[1], rbb, nullptr, 1),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[1])),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[2])),
       rbb);
@@ -105,8 +111,10 @@ FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(FCmpInst *fcmpInstr,
                                               BranchInst *brInstr,
                                               RiscvBasicBlock *rbb) {
   FCmpRiscvInstr *instr = new FCmpRiscvInstr(
-      fcmpInstr->fcmp_op_, regAlloca->find(fcmpInstr->operands_[0], rbb),
-      regAlloca->find(fcmpInstr->operands_[1], rbb), regAlloca->findNonuse(rbb),
+      fcmpInstr->fcmp_op_,
+      regAlloca->find(fcmpInstr->operands_[0], rbb, nullptr, 1),
+      regAlloca->find(fcmpInstr->operands_[1], rbb, nullptr, 1),
+      regAlloca->findNonuse(rbb, nullptr),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[1])),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[2])),
       rbb);
@@ -116,8 +124,16 @@ FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(FCmpInst *fcmpInstr,
 CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr,
                                              RiscvBasicBlock *rbb) {
   std::vector<RiscvOperand *> args;
-  for (int i = 1; i < callInstr->operands_.size(); i++)
-    args.push_back(regAlloca->find(callInstr->operands_[i], rbb));
+  // push 指令需要寄存器
+  int argnum = callInstr->operands_.size() - 1;
+  for (int i = 1; i < callInstr->operands_.size(); i++) {
+    args.push_back(regAlloca->find(callInstr->operands_[i], rbb, nullptr, 1));
+    // 子函数栈帧
+    RiscvOperand *stackPos = static_cast<RiscvOperand *>(
+        new RiscvIntPhiReg(findReg.at("t0"), 4 * (argnum - i + 1)));
+    // 为 ra 和 BP 腾出两个空间出来
+    this->regAlloca->setPosition(callInstr->operands_[i], stackPos);
+  }
   // 涉及从Function 到RISCV function转换问题（第一个参数）
   CallRiscvInst *instr = new CallRiscvInst(
       createRiscvFunction(static_cast<Function *>(callInstr->operands_[0])),
@@ -132,19 +148,19 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(ReturnInst *returnInstr,
     return new ReturnRiscvInst(rbb);
   else
     // 有返回值
-    return new ReturnRiscvInst(regAlloca->find(returnInstr->operands_[0], rbb),
+    return new ReturnRiscvInst(regAlloca->storeRet(returnInstr->operands_[0]),
                                rbb);
 }
 
 SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(SiToFpInst *sitofpInstr,
                                                   RiscvBasicBlock *rbb) {
-  return new SiToFpRiscvInstr(regAlloca->find(sitofpInstr->operands_[0], rbb),
-                              rbb);
+  return new SiToFpRiscvInstr(
+      regAlloca->find(sitofpInstr->operands_[0], rbb, nullptr, 1), rbb);
 }
 FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(FpToSiInst *fptosiInstr,
                                                   RiscvBasicBlock *rbb) {
-  return new FpToSiRiscvInstr(regAlloca->find(fptosiInstr->operands_[0], rbb),
-                              rbb);
+  return new FpToSiRiscvInstr(
+      regAlloca->find(fptosiInstr->operands_[0], rbb, nullptr, 1), rbb);
 }
 
 RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,

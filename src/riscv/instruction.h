@@ -229,7 +229,7 @@ public:
     setOperand(0, func);
     for (int i = 0; i < args.size(); i++)
       setOperand(i + 1, args[i]);
-    // 还需要增补函数内栈约定
+    // 栈内顺序同args顺序，依次使用PUSH操作
   }
   virtual std::string print() override;
 };

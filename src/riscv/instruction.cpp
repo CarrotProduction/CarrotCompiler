@@ -95,7 +95,7 @@ std::string CallRiscvInst::print() {
 std::string ReturnRiscvInst::print() {
   std::string riscvInstr = "";
   // 接入返回语句
-  riscvInstr += "\t\tMV\tx2, t0\n";
+  riscvInstr += "\t\tMV\tx2, fp\n";
   // 恢复函数返回地址
   riscvInstr += "\t\tPOP\tra\n";
   riscvInstr += "\t\tRET\n";

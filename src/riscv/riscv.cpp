@@ -8,8 +8,8 @@
 std::string RiscvFunction::print() {
   std::string riscvInstr = this->name_ + ":\n"; // 函数标号打印
   riscvInstr += "\t\tPUSH\tra\n";
-  riscvInstr += "\t\tPUSH\tt0\n";
-  riscvInstr += "\t\tMV\tsp, t0\n";
+  riscvInstr += "\t\tPUSH\tfp\n";
+  riscvInstr += "\t\tMV\tsp, fp\n";
   // 为函数局部变量腾出空间
   if (this->base_)
     riscvInstr += "\t\tADD\tsp, " + std::to_string(this->base_) + "\n";

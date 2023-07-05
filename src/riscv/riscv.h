@@ -25,7 +25,7 @@ public:
 };
 
 // 寄存器堆
-// 约定：t0寄存器做第二栈变量BP（当前函数栈顶指针），禁止其他使用
+// 约定：fp(r8)寄存器做第二栈变量BP（当前函数栈顶指针），禁止其他使用
 class Register {
 
 public:
@@ -205,7 +205,7 @@ public:
         name_ == "__aeabi_memclr4" || name_ == "__aeabi_memset4" ||
         name_ == "__aeabi_memcpy4" || name_ == "getint" || name_ == "getch" ||
         name_ == "getarray" || name_ == "getfloat" || name_ == "getfarray" ||
-        name_ == "putfloat" || name_ == "putfarray") {
+        name_ == "putfloat" || name_ == "putfarray" || name_ == "llvm.memset.p0.i32") {
       return true;
     } else
       return false;
@@ -257,7 +257,7 @@ private:
 +-----------+
 |     ra    | （旧返回地址）
 +-----------+
-| oldBP(t0) |
+| oldBP(fp) |
 +-----------+ <- cur BP
 |  tempVar  |
 +-----------+

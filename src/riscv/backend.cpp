@@ -1,4 +1,5 @@
 #include "backend.h"
+#include <cassert>
 
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
 int LabelCount = 0;
@@ -157,6 +158,7 @@ SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(SiToFpInst *sitofpInstr,
   return new SiToFpRiscvInstr(
       regAlloca->find(sitofpInstr->operands_[0], rbb, nullptr, 1), rbb);
 }
+
 FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(FpToSiInst *fptosiInstr,
                                                   RiscvBasicBlock *rbb) {
   return new FpToSiRiscvInstr(
@@ -262,6 +264,8 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   std::string code = "";
   // 全局变量
   for (GlobalVariable *gb : m->global_list_) {
+    // TODO
+    assert(false);
   }
   // 函数体
   for (Function *foo : m->function_list_) {

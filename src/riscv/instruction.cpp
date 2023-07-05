@@ -1,5 +1,7 @@
 #include "instruction.h"
 #include "riscv.h"
+#include <cassert>
+#include <string>
 // 需要调整到RISCV
 std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::ADD, "ADD"},         {RiscvInstr::ADDI, "ADDI"},
@@ -19,11 +21,11 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::LW, "LW"},           {RiscvInstr::FSW, "FSW"},
     {RiscvInstr::FLW, "FLW"}};
 // Instruction from opid to string
-const std::map<ICmpInst::ICmpOp, std::string> ICmpInst::ICmpOpName = {
+const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},
     {ICmpInst::ICmpOp::ICMP_UGE, "BGEU"}, {ICmpInst::ICmpOp::ICMP_ULT, "BLTU"},
     {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"}};
-const std::map<FCmpInst::FCmpOp, std::string> FCmpInst::FCmpOpName = {
+const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpName = {
     {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
     {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
     {FCmpInst::FCmpOp::FCMP_OGE, "FLT.S"},
@@ -207,4 +209,16 @@ std::string MoveRiscvInst::print() {
   riscv_instr += this->operand_[1]->print();
   riscv_instr += "\n";
   return riscv_instr;
+}
+
+std::string SiToFpRiscvInstr::print() {
+  assert(false);
+  // TODO: Implement Signed to Float
+  return "";
+}
+
+std::string FpToSiRiscvInstr::print() {
+  assert(false);
+  // TODO: Implement Float to Signed
+  return "";
 }

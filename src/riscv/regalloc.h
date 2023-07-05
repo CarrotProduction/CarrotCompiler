@@ -4,8 +4,9 @@
 #include "instruction.h"
 #include "ir.h"
 #include "riscv.h"
+#include <cassert>
 
-int IntRegID = 0, FloatRegID = 0; // 测试阶段使用
+extern int IntRegID, FloatRegID; // 测试阶段使用
 // 寄存器分配（IR变量到汇编变量地址映射）
 // 所有的临时变量均分配在栈上（从当前函数开始的地方开始计算栈地址，相对栈偏移地址），所有的全局变量放置在内存中（首地址+偏移量形式）
 // 当存在需要寄存器保护的时候，直接找回原地址去进行
@@ -49,7 +50,9 @@ public:
   }
   // 根据返回值是浮点型还是整型决定使用什么寄存器
   RiscvOperand * storeRet(Value *val) {
-
+    assert(false);
+    // TODO 
+    return nullptr;
   }
 };
 #endif // !REGALLOCH

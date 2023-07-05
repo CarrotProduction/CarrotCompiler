@@ -101,8 +101,6 @@ public:
     SITOFP
   };
   const static std::map<InstrType, std::string> RiscvName;
-  const static std::map<ICmpInst::ICmpOp, std::string> ICMPOPName;
-  const static std::map<FCmpInst::FCmpOp, std::string> FCMPOPName;
 
   InstrType type_;
   RiscvBasicBlock *parent_;

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-set(SOURCE_FILES "riscv.cpp" instruction.cpp optimize.cpp backend.cpp)
+set(SOURCE_FILES "riscv.cpp" instruction.cpp optimize.cpp backend.cpp regalloc.cpp)
 
 add_library(riscv STATIC ${SOURCE_FILES})
 

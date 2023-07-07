@@ -1,5 +1,5 @@
-#include "instruction.h"
-#include "riscv.h"
+#include "instruction.hpp"
+#include "riscv.hpp"
 #include <cassert>
 #include <string>
 // 需要调整到RISCV

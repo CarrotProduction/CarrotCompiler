@@ -1,6 +1,6 @@
-#include "riscv.h"
-#include "backend.h"
-#include "ir.h"
+#include "riscv.hpp"
+#include "backend.hpp"
+#include "ir.hpp"
 
 // 输出函数对应的全部riscv语句序列
 // 由于一个函数可能有若干个出口，因而恢复现场的语句根据basic block

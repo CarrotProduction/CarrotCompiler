@@ -1,10 +1,8 @@
-#ifndef BACKENDH
-#define BACKENDH
-#include "instruction.h"
-#include "ir.h"
-#include "optimize.h"
-#include "regalloc.h"
-#include "riscv.h"
+#pragma once
+#include "instruction.hpp"
+#include "ir.hpp"
+#include "regalloc.hpp"
+#include "riscv.hpp"
 #include <memory.h>
 
 template <typename T> class DSU {
@@ -85,4 +83,3 @@ public:
   ReturnRiscvInst *createRetInstr(ReturnInst *returnInstr,
                                   RiscvBasicBlock *rbb);
 };
-#endif // !BACKENDH

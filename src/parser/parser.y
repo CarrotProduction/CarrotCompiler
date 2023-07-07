@@ -2,8 +2,8 @@
 %locations
 
 %{
-  #include "ast.h"
-  #include "define.h"
+  #include "ast.hpp"
+  #include "define.hpp"
   #include <memory>
   #include <cstring>
   #include <stdarg.h>

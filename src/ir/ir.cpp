@@ -1,4 +1,4 @@
-#include "ir.h"
+#include "ir.hpp"
 
 std::map<Instruction::OpID, std::string> instr_id2string_ = {
     {Instruction::Ret, "ret"},

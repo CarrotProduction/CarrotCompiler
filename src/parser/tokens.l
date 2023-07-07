@@ -2,7 +2,7 @@
 
 %{
   #include <string>
-  #include "ast.h"
+  #include "ast.hpp"
   #include "parser.hpp"
   //extern "C" int yywrap() {}
   int yycolumn=1;

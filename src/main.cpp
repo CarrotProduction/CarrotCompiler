@@ -1,9 +1,8 @@
-#include "ast.h"
-#include "define.h"
-#include "genIR.h"
+#include "ast.hpp"
+#include "backend.hpp"
+#include "genIR.hpp"
 #include <fstream>
 #include <iostream>
-#include "backend.h"
 
 extern unique_ptr<CompUnitAST> root;
 extern int yyparse();

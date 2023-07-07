@@ -1,4 +1,4 @@
-#include "ast.h"
+#include "ast.hpp"
 
 void CompUnitAST::accept(Visitor &visitor) { visitor.visit(*this); }
 

@@ -1,6 +1,5 @@
-#ifndef RISCVH
-#define RISCVH
-#include "ir.h"
+#pragma once
+#include "ir.hpp"
 
 class RiscvBasicBlock;
 class RiscvInstr;
@@ -274,4 +273,3 @@ public:
     globalVariable_.push_back(g);
   }
 };
-#endif // !RISCVH

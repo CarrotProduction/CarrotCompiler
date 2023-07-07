@@ -1,9 +1,7 @@
-#ifndef REGALLOCH
-#define REGALLOCH
-
-#include "instruction.h"
-#include "ir.h"
-#include "riscv.h"
+#pragma once
+#include "instruction.hpp"
+#include "ir.hpp"
+#include "riscv.hpp"
 #include <cassert>
 
 extern int IntRegID, FloatRegID; // 测试阶段使用
@@ -55,4 +53,3 @@ public:
     return nullptr;
   }
 };
-#endif // !REGALLOCH

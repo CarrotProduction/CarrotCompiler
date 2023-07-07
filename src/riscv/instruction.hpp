@@ -1,8 +1,6 @@
-#ifndef INSTRUCTIONH
-#define INSTRUCTIONH
-
-#include "ir.h"
-#include "riscv.h"
+#pragma once
+#include "ir.hpp"
+#include "riscv.hpp"
 
 // 语句块，也使用标号标识
 // 必须挂靠在函数下，否则无法正常生成标号
@@ -352,5 +350,3 @@ public:
   }
   virtual std::string print() override;
 };
-
-#endif // !INSTRUCTIONH

@@ -1,4 +1,4 @@
-#include "backend.h"
+#include "backend.hpp"
 #include <cassert>
 
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};

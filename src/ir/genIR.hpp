@@ -1,7 +1,6 @@
 #pragma once
-
-#include "ast.h"
-#include "ir.h"
+#include "ast.hpp"
+#include "ir.hpp"
 #include <map>
 
 class Scope {

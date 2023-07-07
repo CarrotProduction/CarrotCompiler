@@ -1,1 +1,3 @@
-// Currently a dummy file
+#include "opt.hpp"
+
+void OptimizeBlock() {}

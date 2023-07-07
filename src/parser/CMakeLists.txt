@@ -1,8 +1,8 @@
 set(PARSER_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 # Require Flex & Bison as generator
-find_package(FLEX 2.6 REQUIRED)
-find_package(BISON 3.6 REQUIRED)
+find_package(FLEX 2.5.4 REQUIRED)
+find_package(BISON 2.4.1 REQUIRED)
 
 set(LEXER_CPP "${PARSER_DIR}/tokens.cpp")
 set(LEXER_DEF "${PARSER_DIR}/tokens.hpp")

@@ -1,0 +1,224 @@
+#include "instruction.h"
+#include "riscv.h"
+#include <cassert>
+#include <string>
+// 需要调整到RISCV
+std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
+    {RiscvInstr::ADD, "ADD"},         {RiscvInstr::ADDI, "ADDI"},
+    {RiscvInstr::SUB, "SUB"},         {RiscvInstr::SUBI, "SUBI"},
+    {RiscvInstr::FADD, "FADD.S"},     {RiscvInstr::FSUB, "FSUB.S"},
+    {RiscvInstr::MUL, "MUL"},         {RiscvInstr::MULU, "MULU"},
+    {RiscvInstr::DIVU, "DIVU"},       {RiscvInstr::DIV, "DIV"},
+    {RiscvInstr::REMU, "REMU"},       {RiscvInstr::REM, "REM"},
+    {RiscvInstr::AND, "AND"},         {RiscvInstr::OR, "OR"},
+    {RiscvInstr::ANDI, "ANDI"},       {RiscvInstr::ORI, "ORI"},
+    {RiscvInstr::XOR, "XOR"},         {RiscvInstr::XORI, "XORI"},
+    {RiscvInstr::RET, "ret"},         {RiscvInstr::FPTOSI, "FCVT.W.S"},
+    {RiscvInstr::SITOFP, "FCVT.S.W"}, {RiscvInstr::FMV, "FMV.S"},
+    {RiscvInstr::CALL, "CALL"},       {RiscvInstr::LI, "LI"},
+    {RiscvInstr::MOV, "MV"},          {RiscvInstr::PUSH, "PUSH"},
+    {RiscvInstr::POP, "POP"},         {RiscvInstr::SW, "SW"},
+    {RiscvInstr::LW, "LW"},           {RiscvInstr::FSW, "FSW"},
+    {RiscvInstr::FLW, "FLW"}};
+// Instruction from opid to string
+const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
+    {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},
+    {ICmpInst::ICmpOp::ICMP_UGE, "BGEU"}, {ICmpInst::ICmpOp::ICMP_ULT, "BLTU"},
+    {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"}};
+const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpName = {
+    {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_OGE, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_UGE, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_ORD, "FCLASS.S"},
+    {FCmpInst::FCmpOp::FCMP_UNO, "FCLASS.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_OLE, "FLE.S"},
+    {FCmpInst::FCmpOp::FCMP_ULE, "FLE.S"},
+    {FCmpInst::FCmpOp::FCMP_OGT, "FLE.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_UGT, "FLE.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_OEQ, "FEQ.S"},
+    {FCmpInst::FCmpOp::FCMP_UEQ, "FEQ.S"},
+    {FCmpInst::FCmpOp::FCMP_ONE, "FEQ.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_UNE, "FEQ.S"}  // 取反
+};
+std::string print_as_op(Value *v, bool print_ty);
+std::string print_cmp_type(ICmpInst::ICmpOp op);
+std::string print_fcmp_type(FCmpInst::FCmpOp op);
+
+RiscvInstr::RiscvInstr(InstrType type, int op_nums)
+    : type_(type), parent_(nullptr) {
+  operand_.resize(op_nums);
+}
+
+RiscvInstr::RiscvInstr(InstrType type, int op_nums, RiscvBasicBlock *bb)
+    : type_(type), parent_(bb) {
+  operand_.resize(op_nums);
+}
+
+// 格式：op  tar, v1, v2->tar=v1 op v2
+std::string BinaryRiscvInst::print() {
+  // 这里需要将每个参数根据当前需要进行upcasting
+  assert(this->operand_.size() == 2);
+  std::string riscv_instr = "\t\t";
+  riscv_instr += instrTy2Riscv.at(this->type_);
+  riscv_instr += "\t";
+  riscv_instr += this->result_->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string UnaryRiscvInst::print() {
+  assert(this->operand_.size() == 1);
+  std::string riscv_instr = "\t\t";
+  riscv_instr += instrTy2Riscv[this->type_];
+  riscv_instr += "\t";
+  riscv_instr += this->result_->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  return riscv_instr;
+}
+
+std::string CallRiscvInst::print() {
+  // 增补push指令
+  std::string riscv_instr = "\t\tCALL\t";
+  riscv_instr += this->operand_[0]->print();
+  return riscv_instr;
+}
+
+
+// 注意：return 语句不会进行相应的寄存器约定检查
+std::string ReturnRiscvInst::print() {
+  std::string riscvInstr = "";
+  // 接入返回语句
+  riscvInstr += "\t\tMV\tx2, fp\n";
+  // 恢复函数返回地址
+  riscvInstr += "\t\tPOP\tra\n";
+  riscvInstr += "\t\tRET\n";
+  return riscvInstr;
+}
+
+std::string PushRiscvInst::print() {
+  std::string riscv_instr = "";
+  for (auto x : this->operand_)
+    riscv_instr += "\t\tPUSH\t" + x->print() + "\n";
+  return riscv_instr;
+}
+
+std::string PopRiscvInst::print() {
+  std::string riscv_instr = "";
+  for (auto x : this->operand_)
+    riscv_instr += "\t\tPOP\t" + x->print() + "\n";
+  return riscv_instr;
+}
+
+std::string ICmpRiscvInstr::print() {
+  std::string riscv_instr = "\t\t";
+  // 注意：由于RISCV不支持全部的比较运算，因而需要根据比较条件对式子进行等价变换
+  if (ICmpOpName.count(this->icmp_op_) == 0) {
+    std::swap(this->operand_[0], this->operand_[1]);
+    this->icmp_op_ = static_cast<ICmpInst::ICmpOp>((int)this->icmp_op_ ^ 2);
+  }
+  riscv_instr += ICmpOpName.at(this->icmp_op_);
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[2]->print();
+  riscv_instr += "\n";
+  auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
+  // 不连续则假链也要跳转
+  if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
+    riscv_instr += "\t\tJMP\t" + falseLink->print() + "\n";
+  return riscv_instr;
+}
+
+std::string FCmpRiscvInstr::print() {
+  if (this->fcmp_op_ == FCmpInst::FCMP_FALSE)
+    return "\t\tJMP\t" + this->operand_[4]->print() + "\n";
+  else if (this->fcmp_op_ == FCmpInst::FCMP_TRUE)
+    return "\t\tJMP\t" + this->operand_[3]->print() + "\n";
+  // 第一条指令
+  std::string riscv_instr = "\t\t";
+  riscv_instr += FCmpOpName.at(this->fcmp_op_);
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[2]->print();
+  riscv_instr += "\n\t\t";
+  // 第二条指令
+  // 取反指令
+  if (this->fcmp_op_ == FCmpInst::FCMP_UNO ||
+      this->fcmp_op_ == FCmpInst::FCMP_OGT ||
+      this->fcmp_op_ == FCmpInst::FCMP_UGT ||
+      this->fcmp_op_ == FCmpInst::FCMP_ONE ||
+      this->fcmp_op_ == FCmpInst::FCMP_UNE)
+    std::swap(this->operand_[3], this->operand_[4]);
+  riscv_instr += "BNE\t" + this->operand_[2]->print() + ", ZERO, " + this->operand_[3]->print() + "\n";
+  auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[4]);
+  // 不连续则假链也要跳转
+  if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
+    riscv_instr += "\t\tJMP\t" + falseLink->print() + "\n";
+  return riscv_instr;
+}
+
+std::string StoreRiscvInst::print() {
+  std::string riscv_instr = "\t\t";
+  if (this->type.tid_ == Type::FloatTyID)
+    riscv_instr += "fsw\t";
+  else
+    riscv_instr += "sw\t";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string LoadRiscvInst::print() {
+  std::string riscv_instr = "\t\t";
+  if (this->type.tid_ == Type::FloatTyID)
+    riscv_instr += "flw\t";
+  else
+    riscv_instr += "lw\t";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string MoveRiscvInst::print() {
+  std::string riscv_instr = "\t\t";
+  // li 指令
+  if (this->operand_[1]->tid_ == RiscvOperand::IntReg)
+    riscv_instr += "li\t";
+  // 寄存器传寄存器
+  else if (this->operand_[1]->tid_ == RiscvOperand::IntReg)
+    riscv_instr += "mv\t";
+  // 浮点数
+  else
+    riscv_instr += "fmv\t";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "\n";
+  return riscv_instr;
+}
+
+std::string SiToFpRiscvInstr::print() {
+  assert(false);
+  // TODO: Implement Signed to Float
+  return "";
+}
+
+std::string FpToSiRiscvInstr::print() {
+  assert(false);
+  // TODO: Implement Float to Signed
+  return "";
+}

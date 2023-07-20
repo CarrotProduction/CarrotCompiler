@@ -3,6 +3,7 @@
 #include "genIR.h"
 #include <fstream>
 #include <iostream>
+#include "backend.h"
 
 extern unique_ptr<CompUnitAST> root;
 extern int yyparse();
@@ -46,6 +47,8 @@ int main(int argc, char **argv) {
 
   // Generate object file
   // TODO
-
+  auto builder = new RiscvBuilder();
+  const std::string RiscvCode = builder->buildRISCV(m.get());
+  std::cout << RiscvCode << std::endl;
   return 0;
 }

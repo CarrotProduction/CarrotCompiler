@@ -39,7 +39,6 @@ _deps
 # VS2017 and VSCode config files.
 .vscode*
 .vs
-.git
 
 # pythonenv for github Codespaces
 pythonenv*

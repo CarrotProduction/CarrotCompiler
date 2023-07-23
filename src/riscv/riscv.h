@@ -73,7 +73,7 @@ public:
 };
 
 extern const int REG_NUMBER;
-extern const std::map<std::string, Register *> findReg;
+extern std::map<std::string, Register *> findReg;
 
 // 常数
 class RiscvConst : public RiscvOperand {

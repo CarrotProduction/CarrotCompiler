@@ -46,10 +46,19 @@ std::string toLabel(int ind);
 
 // 总控程序
 class RiscvBuilder {
+<<<<<<< HEAD
+=======
+private:
+  void initializeRegisterFile();
+>>>>>>> 5937c5eb1cc725bc2c1cf7083c75a89e18173d22
 
 public:
   RiscvBuilder() {
     rm = new RiscvModule();
+<<<<<<< HEAD
+=======
+    initializeRegisterFile();
+>>>>>>> 5937c5eb1cc725bc2c1cf7083c75a89e18173d22
     regAlloca = new RegAlloca();
   }
   RiscvModule *rm;

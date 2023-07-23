@@ -1,6 +1,11 @@
 #include "backend.h"
 #include <cassert>
 
+void RiscvBuilder::initializeRegisterFile() {
+  // todo：分配寄存器堆，初始化寄存器堆各项参数
+  assert(false);
+}
+
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
 int LabelCount = 0;
 std::map<BasicBlock *, RiscvBasicBlock *> rbbLabel;
@@ -256,6 +261,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
 // 系统函数，需提前约定其栈调用问题
 void RiscvBuilder::resolveLibfunc(RiscvFunction *foo) {
   // 对不同函数进行分类讨论
+  assert(false);
 }
 
 // 总控程序
@@ -263,10 +269,44 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   this->rm = new RiscvModule();
   std::string code = "";
   // 全局变量
-  for (GlobalVariable *gb : m->global_list_) {
-    // TODO
-    assert(false);
+  if (m->global_list_.size()) {
+    code += ".section .data\n";
+    for (GlobalVariable *gb : m->global_list_) {
+      RiscvGlobalVariable *curGB = nullptr;
+      ArrayType *containedType = nullptr;
+      switch (gb->type_->tid_) {
+      case Type::ArrayTyID:
+        containedType = static_cast<ArrayType *>(gb->type_);
+        if (containedType->tid_ == Type::IntegerTyID) {
+          curGB = new RiscvGlobalVariable(RiscvOperand::IntImm, gb->name_,
+                                               gb->is_const_, gb->init_val_,
+                                               containedType->num_elements_);
+          rm->addGlobalVariable(curGB);
+          code += curGB->print();
+        } else {
+          curGB = new RiscvGlobalVariable(
+              RiscvOperand::FloatImm, gb->name_, gb->is_const_,
+              gb->init_val_, containedType->num_elements_);
+          rm->addGlobalVariable(curGB);
+          code += curGB->print();
+        }
+        break;
+      case Type::TypeID::IntegerTyID:
+        curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_,
+                                             gb->is_const_, gb->init_val_);
+        rm->addGlobalVariable(curGB);
+        code += curGB->print();
+        break;
+      case Type::TypeID::FloatTyID:
+        curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::FloatImm, gb->name_,
+                                             gb->is_const_, gb->init_val_);
+        rm->addGlobalVariable(curGB);
+        code += curGB->print();
+        break;
+      }
+    }
   }
+  code += ".section .text\n.globl main\n";
   // 函数体
   for (Function *foo : m->function_list_) {
     auto rfoo = createRiscvFunction(foo);

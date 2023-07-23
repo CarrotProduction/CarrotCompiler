@@ -1,6 +1,9 @@
 #include "riscv.h"
 #include "backend.h"
-#include "ir.h"
+#include "../ir/ir.h"
+
+const int REG_NUMBER = 32;
+extern const std::map<std::string, Register *> findReg;
 
 // 输出函数对应的全部riscv语句序列
 // 由于一个函数可能有若干个出口，因而恢复现场的语句根据basic block
@@ -30,15 +33,3 @@ std::string RiscvBasicBlock::print() {
 // 建议不使用pop语句，直接从栈中取值，最后直接修改sp的值即可
 // 使用一个单独的return block以防止多出口return
 extern int LabelCount;
-void RiscvFunction::addRestoredBlock() {
-  RiscvBasicBlock *bb = createRiscvBasicBlock(nullptr);
-  // 先恢复sp的值
-  // 下面这几个语句有点问题！MoveRiscvInst提示说“不允许使用抽象类类型”。
-  // RiscvInstr *restoreSP = new MoveRiscvInst(findReg.at("sp"),
-  // this->callerSP_, bb, 1); bb->addInstrBack(restoreSP);
-  // 插入各种pop指令，按照顺序
-  for (auto reg : storedEnvironment) {
-    // 分浮点+整型
-  }
-  this->addBlock(bb);
-}

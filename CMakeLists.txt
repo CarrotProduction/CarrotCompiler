@@ -15,6 +15,9 @@ include_directories(${INCLUDE_DIRECTORIES})
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_subdirectory(src)
 
+# Add executable target
+add_executable(carrotcompiler src/main.cpp)
+
 # Unit tests
 include(CTest)
 if(BUILD_TESTING)

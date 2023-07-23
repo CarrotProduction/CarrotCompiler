@@ -72,8 +72,8 @@ public:
   }
 };
 
-const int REG_NUMBER = 32;
-const std::map<std::string, Register *> findReg;
+extern const int REG_NUMBER;
+extern const std::map<std::string, Register *> findReg;
 
 // 常数
 class RiscvConst : public RiscvOperand {
@@ -158,23 +158,51 @@ public:
 // 最后拼装
 class RiscvGlobalVariable : public RiscvLabel {
 public:
-  int shift_;
-  RiscvGlobalVariable(OpTy type, std::string name, int shift)
-      : RiscvLabel(type, name), shift_(shift) {}
+  bool isConst_;
+  bool isData; // 是否是给定初值的变量
+  int elementNum_;
+  Constant *initValue_;
+  // 对于一般单个全局变量的定义
+  RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
+                      Constant *initValue)
+      : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
+        elementNum_(1) {}
+  // 对于数组全局变量的定义
+  RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
+                      Constant *initValue, int elementNum)
+      : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
+        elementNum_(elementNum) {}
+  // 输出全局变量定义
+  // 根据ir中全局变量定义转化
+  // 问题在于全局变量如果是数组有初值如何处理
   std::string print() {
-    std::string ans = "(" + name_ + ")";
-    if (shift_)
-      ans = std::to_string(shift_) + ans;
-    return ans;
-  }
-  // 全局变量声明，需传入数组大小
-  std::string definition(int size) {
-    std::string ans = this->name_ + "\n";
-    ans += "\t\t.zero\t" + std::to_string(size * 4) + "\n";
-    return ans;
+    std::string code = this->name_ + ":\t";
+
+    // 整型
+    if (initValue_->type_->tid_ == Type::TypeID::IntegerTyID)
+      code += ".word ";
+    // 浮点
+    else
+      code += ".float ";
+    int zeroNumber = this->elementNum_;
+    if (initValue_ == nullptr) {
+      if (zeroNumber == 1)
+        code += "0";
+      else
+        code += "[" + std::to_string(zeroNumber) + "dup(0)]";
+    } else {
+      if (typeid(*initValue_) == typeid(ConstantArray)) {
+        zeroNumber -=
+            static_cast<ArrayType *>(initValue_->type_)->num_elements_;
+        // 补充冗余0
+        if (zeroNumber > 0)
+          code += "[" + std::to_string(zeroNumber) + "dup(0)]";
+      }
+    }
+    code += "\n";
+    return code;
   }
 };
-
 // 用标号标识函数
 // 函数挂靠在module下，接入若干条instruction，以及function不设置module指针
 // 默认不保护现场，如果当寄存器不够的时候再临时压栈
@@ -205,7 +233,8 @@ public:
         name_ == "__aeabi_memclr4" || name_ == "__aeabi_memset4" ||
         name_ == "__aeabi_memcpy4" || name_ == "getint" || name_ == "getch" ||
         name_ == "getarray" || name_ == "getfloat" || name_ == "getfarray" ||
-        name_ == "putfloat" || name_ == "putfarray" || name_ == "llvm.memset.p0.i32") {
+        name_ == "putfloat" || name_ == "putfarray" ||
+        name_ == "llvm.memset.p0.i32") {
       return true;
     } else
       return false;

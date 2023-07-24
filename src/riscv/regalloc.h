@@ -20,7 +20,7 @@ public:
                      RiscvInstr *instr = nullptr, int inReg = 0);
   RiscvOperand *findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
   // 建立IR中变量到实际变量（内存固定地址空间）的映射
-  void setPosition(Value *val, RiscvOperand *riscvVal) { pos[val] = riscvVal; }
+  void setPosition(Value *val, RiscvOperand *riscvVal);
   // 根据返回值是浮点型还是整型决定使用什么寄存器
   RiscvOperand *storeRet(Value *val);
 

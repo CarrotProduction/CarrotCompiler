@@ -3,7 +3,7 @@
 
 void RiscvBuilder::initializeRegisterFile() {
   // todo：分配寄存器堆，初始化寄存器堆各项参数
-  assert(false);
+  // assert(false);
 }
 
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
@@ -69,7 +69,7 @@ void RiscvBuilder::solveAlloca(AllocaInst *instr, RiscvFunction *foo,
                                RiscvBasicBlock *rbb) {
   int curBP = foo->querySP();
   RiscvOperand *stackPos =
-      static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg.at("fp"), curBP));
+      static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg("fp"), curBP));
   this->regAlloca->setPosition(static_cast<Value *>(instr), stackPos);
   foo->addTempVar(stackPos);
 }
@@ -136,7 +136,7 @@ CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr,
     args.push_back(regAlloca->find(callInstr->operands_[i], rbb, nullptr, 1));
     // 子函数栈帧
     RiscvOperand *stackPos = static_cast<RiscvOperand *>(
-        new RiscvIntPhiReg(findReg.at("fp"), 4 * (argnum - i + 1)));
+        new RiscvIntPhiReg(findReg("fp"), 4 * (argnum - i + 1)));
     // 为 ra 和 BP 腾出两个空间出来
     this->regAlloca->setPosition(callInstr->operands_[i], stackPos);
   }

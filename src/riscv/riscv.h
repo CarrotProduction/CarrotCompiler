@@ -1,6 +1,8 @@
 #ifndef RISCVH
 #define RISCVH
 #include "ir.h"
+#include "string.h"
+using std::string;
 
 class RiscvBasicBlock;
 class RiscvInstr;
@@ -73,7 +75,7 @@ public:
 };
 
 extern const int REG_NUMBER;
-extern std::map<std::string, Register *> findReg;
+extern Register * findReg(string reg);
 
 // 常数
 class RiscvConst : public RiscvOperand {

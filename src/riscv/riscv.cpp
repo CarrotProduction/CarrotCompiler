@@ -3,7 +3,6 @@
 #include "ir.h"
 
 const int REG_NUMBER = 32;
-extern std::map<std::string, Register *> findReg;
 
 // 输出函数对应的全部riscv语句序列
 // 由于一个函数可能有若干个出口，因而恢复现场的语句根据basic block

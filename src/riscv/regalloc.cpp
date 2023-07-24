@@ -12,7 +12,7 @@ Register *findReg(string reg) {
   } else if (reg == "fp") {
     return new Register(Register::RegType::Int, 10); // fp is x8
   } else {
-    assert(true);
+    assert(false);
   }
 }
 

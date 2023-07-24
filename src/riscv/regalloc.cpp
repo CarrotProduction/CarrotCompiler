@@ -17,7 +17,7 @@ Register *findReg(string reg) {
 }
 
 RiscvOperand *RegAlloca::find(Value *val, RiscvBasicBlock *bb,
-                              RiscvInstr *instr = nullptr, int inReg = 0) {
+                              RiscvInstr *instr, int inReg) {
   // 目前下面是一个没有考虑任何寄存器分配的工作，认为所有的变量都是寄存器存储，所有值可以直接使用的
   if (val->type_->tid_ == Type::IntegerTyID) {
     ++IntRegID;
@@ -37,8 +37,7 @@ RiscvOperand *RegAlloca::find(Value *val, RiscvBasicBlock *bb,
       }
   */
 }
-RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb,
-                                    RiscvInstr *instr = nullptr) {
+RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
   ++IntRegID;
   RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, ++IntRegID));
   return cur;

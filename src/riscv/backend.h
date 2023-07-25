@@ -1,7 +1,7 @@
 #ifndef BACKENDH
 #define BACKENDH
-#include "instruction.h"
 #include "ir.h"
+#include "instruction.h"
 #include "optimize.h"
 #include "regalloc.h"
 #include "riscv.h"
@@ -53,12 +53,8 @@ public:
   RiscvBuilder() {
     rm = new RiscvModule();
     initializeRegisterFile();
-    regAlloca = new RegAlloca();
   }
   RiscvModule *rm;
-  RegAlloca *regAlloca;
-  // alloca 删掉，在函数中处理
-  void solveAlloca(AllocaInst *instr, RiscvFunction *foo, RiscvBasicBlock *rbb);
   // phi语句的合流：此处建立一个并查集DSU_for_Variable维护相同的变量。
   // 例如，对于if (A) y1=do something else y2=do another thing. Phi y3 y1, y2
   // 考虑将y1、y2全部合并到y3上
@@ -69,23 +65,34 @@ public:
   // 下面的语句是需要生成对应riscv语句
   // Zext语句零扩展，因而没有必要
   // ZExtRiscvInstr createZextInstr(ZextInst *instr);
-  void resolveLibfunc(RiscvFunction *foo);
-  BinaryRiscvInst *createBinaryInstr(BinaryInst *binaryInstr,
+  // void resolveLibfunc(RiscvFunction *foo);
+  BinaryRiscvInst *createBinaryInstr(RegAlloca *regAlloca,
+                                     BinaryInst *binaryInstr,
                                      RiscvBasicBlock *rbb);
-  UnaryRiscvInst *createUnaryInstr(UnaryInst *unaryInstr, RiscvBasicBlock *rbb);
-  StoreRiscvInst *createStoreInstr(StoreInst *storeInstr, RiscvBasicBlock *rbb);
-  LoadRiscvInst *createLoadInstr(LoadInst *loadInstr, RiscvBasicBlock *rbb);
-  ICmpRiscvInstr *createICMPInstr(ICmpInst *icmpInstr, BranchInst *brInstr,
-                                  RiscvBasicBlock *rbb);
-  FCmpRiscvInstr *createFCMPInstr(FCmpInst *fcmpInstr, BranchInst *brInstr,
-                                  RiscvBasicBlock *rbb);
-  SiToFpRiscvInstr *createSiToFpInstr(SiToFpInst *sitofpInstr,
+  UnaryRiscvInst *createUnaryInstr(RegAlloca *regAlloca, UnaryInst *unaryInstr,
+                                   RiscvBasicBlock *rbb);
+  StoreRiscvInst *createStoreInstr(RegAlloca *regAlloca, StoreInst *storeInstr,
+                                   RiscvBasicBlock *rbb);
+  LoadRiscvInst *createLoadInstr(RegAlloca *regAlloca, LoadInst *loadInstr,
+                                 RiscvBasicBlock *rbb);
+  ICmpRiscvInstr *createICMPInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
+                                  BranchInst *brInstr, RiscvBasicBlock *rbb);
+  FCmpRiscvInstr *createFCMPInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,
+                                  BranchInst *brInstr, RiscvBasicBlock *rbb);
+  SiToFpRiscvInstr *createSiToFpInstr(RegAlloca *regAlloca,
+                                      SiToFpInst *sitofpInstr,
                                       RiscvBasicBlock *rbb);
-  FpToSiRiscvInstr *createFptoSiInstr(FpToSiInst *fptosiInstr,
+  FpToSiRiscvInstr *createFptoSiInstr(RegAlloca *regAlloca,
+                                      FpToSiInst *fptosiInstr,
                                       RiscvBasicBlock *rbb);
-  CallRiscvInst *createCallInstr(CallInst *callInstr, RiscvBasicBlock *rbb);
+  CallRiscvInst *createCallInstr(RegAlloca *regAlloca, CallInst *callInstr,
+                                 RiscvBasicBlock *rbb);
+  JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca,
+                                                BranchInst *brInstr,
+                                                RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
-  ReturnRiscvInst *createRetInstr(ReturnInst *returnInstr,
-                                  RiscvBasicBlock *rbb);
+  ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca,
+                                                ReturnInst *returnInstr,
+                                                RiscvBasicBlock *rbb);
 };
 #endif // !BACKENDH

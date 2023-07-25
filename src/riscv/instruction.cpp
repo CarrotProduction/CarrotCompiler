@@ -2,7 +2,7 @@
 #include "riscv.h"
 #include <cassert>
 #include <string>
-// 需要调整到RISCV
+// IR的指令转变到RISV的指令
 std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::ADD, "ADD"},         {RiscvInstr::ADDI, "ADDI"},
     {RiscvInstr::SUB, "SUB"},         {RiscvInstr::SUBI, "SUBI"},
@@ -165,6 +165,10 @@ std::string FCmpRiscvInstr::print() {
   if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
     riscv_instr += "\t\tJMP\t" + falseLink->print() + "\n";
   return riscv_instr;
+}
+
+std::string JumpRiscvInstr::print() {
+
 }
 
 std::string StoreRiscvInst::print() {

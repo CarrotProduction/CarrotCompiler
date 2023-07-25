@@ -36,8 +36,8 @@ public:
   void addInstrFront(RiscvInstr *instr) {
     instruction.insert(instruction.begin(), instr);
   }
-  void addInstrBefore(RiscvInstr *instr) {
-    auto it = std::find(instruction.begin(), instruction.end(), instr);
+  void addInstrBefore(RiscvInstr *instr, RiscvInstr *dst) {
+    auto it = std::find(instruction.begin(), instruction.end(), dst);
     if (it != instruction.end())
       instruction.insert(it, instr);
   }
@@ -98,7 +98,8 @@ public:
     FLW,
     FSW,
     FPTOSI,
-    SITOFP
+    SITOFP,
+    JMP
   };
   const static std::map<InstrType, std::string> RiscvName;
 
@@ -197,7 +198,7 @@ public:
 // 注意压栈顺序问题！打印的时候严格按照lists内顺序
 class PushRiscvInst : public RiscvInstr {
 public:
-  PushRiscvInst(std::vector<RiscvBasicBlock *> &lists, RiscvBasicBlock *bb)
+  PushRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb)
       : RiscvInstr(InstrType::PUSH, lists.size(), bb) {
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
@@ -209,7 +210,7 @@ public:
 class PopRiscvInst : public RiscvInstr {
 public:
   // 传入所有要pop的变量
-  PopRiscvInst(std::vector<RiscvBasicBlock *> &lists, RiscvBasicBlock *bb)
+  PopRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb)
       : RiscvInstr(InstrType::POP, lists.size(), bb) {
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
@@ -331,8 +332,13 @@ public:
   std::string print() override;
 };
 
-class ZExtRiscvInstr : public RiscvInstr {
+class JumpRiscvInstr : public RiscvInstr {
 public:
+  JumpRiscvInstr(RiscvBasicBlock *trueLink, RiscvBasicBlock *bb)
+      : RiscvInstr(JMP, 1) {
+    setOperand(0, trueLink);
+  }
+  std::string print() override;
 };
 
 class FpToSiRiscvInstr : public RiscvInstr {

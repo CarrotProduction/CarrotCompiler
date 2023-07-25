@@ -3,7 +3,7 @@
 
 void RiscvBuilder::initializeRegisterFile() {
   // todo：分配寄存器堆，初始化寄存器堆各项参数
-  // assert(false);
+  assert(false);
 }
 
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
@@ -54,7 +54,8 @@ void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
                            instr->operands_[0]->name_);
 }
 
-BinaryRiscvInst *RiscvBuilder::createBinaryInstr(BinaryInst *binaryInstr,
+BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
+                                                 BinaryInst *binaryInstr,
                                                  RiscvBasicBlock *rbb) {
   BinaryRiscvInst *instr = new BinaryRiscvInst(
       toRiscvOp.at(binaryInstr->op_id_),
@@ -64,17 +65,8 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(BinaryInst *binaryInstr,
   return instr;
 }
 
-// Alloca 语句实质是在栈上预留空间，因而为该变量建立合适的地址映射即可。
-void RiscvBuilder::solveAlloca(AllocaInst *instr, RiscvFunction *foo,
-                               RiscvBasicBlock *rbb) {
-  int curBP = foo->querySP();
-  RiscvOperand *stackPos =
-      static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg("fp"), curBP));
-  this->regAlloca->setPosition(static_cast<Value *>(instr), stackPos);
-  foo->addTempVar(stackPos);
-}
-
-UnaryRiscvInst *RiscvBuilder::createUnaryInstr(UnaryInst *unaryInstr,
+UnaryRiscvInst *RiscvBuilder::createUnaryInstr(RegAlloca *regAlloca,
+                                               UnaryInst *unaryInstr,
                                                RiscvBasicBlock *rbb) {
   UnaryRiscvInst *instr = new UnaryRiscvInst(
       toRiscvOp.at(unaryInstr->op_id_),
@@ -83,7 +75,8 @@ UnaryRiscvInst *RiscvBuilder::createUnaryInstr(UnaryInst *unaryInstr,
   return instr;
 }
 
-StoreRiscvInst *RiscvBuilder::createStoreInstr(StoreInst *storeInstr,
+StoreRiscvInst *RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
+                                               StoreInst *storeInstr,
                                                RiscvBasicBlock *rbb) {
   StoreRiscvInst *instr = new StoreRiscvInst(
       storeInstr->type_, regAlloca->find(storeInstr->operands_[0], rbb),
@@ -91,7 +84,8 @@ StoreRiscvInst *RiscvBuilder::createStoreInstr(StoreInst *storeInstr,
   return instr;
 }
 
-LoadRiscvInst *RiscvBuilder::createLoadInstr(LoadInst *loadInstr,
+LoadRiscvInst *RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
+                                             LoadInst *loadInstr,
                                              RiscvBasicBlock *rbb) {
   LoadRiscvInst *instr = new LoadRiscvInst(
       loadInstr->type_, regAlloca->find(loadInstr->operands_[0], rbb),
@@ -99,7 +93,8 @@ LoadRiscvInst *RiscvBuilder::createLoadInstr(LoadInst *loadInstr,
   return instr;
 }
 
-ICmpRiscvInstr *RiscvBuilder::createICMPInstr(ICmpInst *icmpInstr,
+ICmpRiscvInstr *RiscvBuilder::createICMPInstr(RegAlloca *regAlloca,
+                                              ICmpInst *icmpInstr,
                                               BranchInst *brInstr,
                                               RiscvBasicBlock *rbb) {
   ICmpRiscvInstr *instr = new ICmpRiscvInstr(
@@ -113,7 +108,8 @@ ICmpRiscvInstr *RiscvBuilder::createICMPInstr(ICmpInst *icmpInstr,
 }
 
 // FCMP处理上和ICMP类似，但是在最后生成语句的时候是输出两句
-FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(FCmpInst *fcmpInstr,
+FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(RegAlloca *regAlloca,
+                                              FCmpInst *fcmpInstr,
                                               BranchInst *brInstr,
                                               RiscvBasicBlock *rbb) {
   FCmpRiscvInstr *instr = new FCmpRiscvInstr(
@@ -127,7 +123,18 @@ FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(FCmpInst *fcmpInstr,
   return instr;
 }
 
-CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr,
+// 无条件跳转指令：JMP
+JumpRiscvInstr *RiscvBuilder::createJumpInstr(RegAlloca *regAlloca,
+                                              BranchInst *brInstr,
+                                              RiscvBasicBlock *rbb) {
+  JumpRiscvInstr *instr = new JumpRiscvInstr(
+      createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[0])),
+      rbb);
+  return instr;
+}
+
+CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
+                                             CallInst *callInstr,
                                              RiscvBasicBlock *rbb) {
   std::vector<RiscvOperand *> args;
   // push 指令需要寄存器
@@ -138,7 +145,7 @@ CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr,
     RiscvOperand *stackPos = static_cast<RiscvOperand *>(
         new RiscvIntPhiReg(findReg("fp"), 4 * (argnum - i + 1)));
     // 为 ra 和 BP 腾出两个空间出来
-    this->regAlloca->setPosition(callInstr->operands_[i], stackPos);
+    regAlloca->setPosition(callInstr->operands_[i], stackPos);
   }
   // 涉及从Function 到RISCV function转换问题（第一个参数）
   CallRiscvInst *instr = new CallRiscvInst(
@@ -147,8 +154,10 @@ CallRiscvInst *RiscvBuilder::createCallInstr(CallInst *callInstr,
   return instr;
 }
 
-ReturnRiscvInst *RiscvBuilder::createRetInstr(ReturnInst *returnInstr,
+ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
+                                              ReturnInst *returnInstr,
                                               RiscvBasicBlock *rbb) {
+  // return 仅用于return，在打印过程再进行恢复栈帧+push操作
   // 无返回值
   if (returnInstr->operands_.empty())
     return new ReturnRiscvInst(rbb);
@@ -158,13 +167,15 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(ReturnInst *returnInstr,
                                rbb);
 }
 
-SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(SiToFpInst *sitofpInstr,
+SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(RegAlloca *regAlloca,
+                                                  SiToFpInst *sitofpInstr,
                                                   RiscvBasicBlock *rbb) {
   return new SiToFpRiscvInstr(
       regAlloca->find(sitofpInstr->operands_[0], rbb, nullptr, 1), rbb);
 }
 
-FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(FpToSiInst *fptosiInstr,
+FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(RegAlloca *regAlloca,
+                                                  FpToSiInst *fptosiInstr,
                                                   RiscvBasicBlock *rbb) {
   return new FpToSiRiscvInstr(
       regAlloca->find(fptosiInstr->operands_[0], rbb, nullptr, 1), rbb);
@@ -177,19 +188,23 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
   for (Instruction *instr : bb->instr_list_) {
     switch (instr->op_id_) {
     case Instruction::Ret:
-      rbb->addInstrBack(
-          this->createRetInstr(static_cast<ReturnInst *>(instr), rbb));
+      // 先恢复
+      rbb->addInstrBack(this->createRetInstr(
+          foo->regAlloca, static_cast<ReturnInst *>(instr), rbb));
       break;
     // 分支指令
     case Instruction::Br:
       if (forward->op_id_ == Instruction::FCmp)
-        rbb->addInstrBack(
-            this->createFCMPInstr(static_cast<FCmpInst *>(forward),
-                                  static_cast<BranchInst *>(instr), rbb));
+        rbb->addInstrBack(this->createFCMPInstr(
+            foo->regAlloca, static_cast<FCmpInst *>(forward),
+            static_cast<BranchInst *>(instr), rbb));
+      else if (forward->op_id_ == Instruction::ICmp)
+        rbb->addInstrBack(this->createICMPInstr(
+            foo->regAlloca, static_cast<ICmpInst *>(forward),
+            static_cast<BranchInst *>(instr), rbb));
       else
-        rbb->addInstrBack(
-            this->createICMPInstr(static_cast<ICmpInst *>(forward),
-                                  static_cast<BranchInst *>(instr), rbb));
+        rbb->addInstrBack(this->createJumpInstr(
+            foo->regAlloca, static_cast<BranchInst *>(instr), rbb));
       forward = nullptr;
       break;
     case Instruction::Add:
@@ -209,12 +224,12 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     case Instruction::And:
     case Instruction::Or:
     case Instruction::Xor:
-      rbb->addInstrBack(
-          this->createBinaryInstr(static_cast<BinaryInst *>(instr), rbb));
+      rbb->addInstrBack(this->createBinaryInstr(
+          foo->regAlloca, static_cast<BinaryInst *>(instr), rbb));
       break;
     case Instruction::FNeg:
-      rbb->addInstrBack(
-          this->createUnaryInstr(static_cast<UnaryInst *>(instr), rbb));
+      rbb->addInstrBack(this->createUnaryInstr(
+          foo->regAlloca, static_cast<UnaryInst *>(instr), rbb));
       break;
     case Instruction::PHI:
       this->solvePhiInstr(static_cast<PhiInst *>(instr));
@@ -222,47 +237,85 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     // 直接删除的指令
     case Instruction::BitCast:
     case Instruction::ZExt:
+    case Instruction::Alloca:
       break;
     // 找偏移量，待完成
     case Instruction::GetElementPtr:
-      break;
-    case Instruction::Alloca:
-      this->solveAlloca(static_cast<AllocaInst *>(instr), foo, rbb);
+      // TODO
+      assert(false);
       break;
     case Instruction::FPtoSI:
-      rbb->addInstrBack(
-          this->createFptoSiInstr(static_cast<FpToSiInst *>(instr), rbb));
+      rbb->addInstrBack(this->createFptoSiInstr(
+          foo->regAlloca, static_cast<FpToSiInst *>(instr), rbb));
       break;
     case Instruction::SItoFP:
-      rbb->addInstrBack(
-          this->createSiToFpInstr(static_cast<SiToFpInst *>(instr), rbb));
+      rbb->addInstrBack(this->createSiToFpInstr(
+          foo->regAlloca, static_cast<SiToFpInst *>(instr), rbb));
       break;
     case Instruction::Load:
-      rbb->addInstrBack(
-          this->createLoadInstr(static_cast<LoadInst *>(instr), rbb));
+      rbb->addInstrBack(this->createLoadInstr(
+          foo->regAlloca, static_cast<LoadInst *>(instr), rbb));
       break;
     case Instruction::Store:
-      rbb->addInstrBack(
-          this->createStoreInstr(static_cast<StoreInst *>(instr), rbb));
+      rbb->addInstrBack(this->createStoreInstr(
+          foo->regAlloca, static_cast<StoreInst *>(instr), rbb));
       break;
     case Instruction::ICmp:
     case Instruction::FCmp:
       forward = instr;
       break;
-    case Instruction::Call:
-      rbb->addInstrBack(
-          this->createCallInstr(static_cast<CallInst *>(instr), rbb));
+    case Instruction::Call: {
+      // 注意：该部分并未单独考虑系统函数！
+      // 注意：区分float还是int调用是看寄存器分配部分实现
+      CallInst *curInstr = static_cast<CallInst *>(instr);
+      // 第一步：函数参数压栈，对于函数f(a0,a1,...,a7)，a7在高地址（0(sp)），a0在低地址（-4(sp)）
+      // 注意：该步中并未约定一定要求是函数寄存器a0-a7
+      int SPShift = 0;
+      std::vector<RiscvOperand *> parameters;
+      int intRegCount = 0, floatRegCount = 0;
+      for (int i = 0; i < curInstr->operands_.size() - 1; i++) {
+        std::string name = "";
+        if (curInstr->operands_[i]->type_->tid_ == Type::IntegerTyID) {
+          if (intRegCount < 8)
+            name = "a" + std::to_string(intRegCount);
+          intRegCount++;
+        } else {
+          if (floatRegCount < 8)
+            name = "fa" + std::to_string(floatRegCount);
+          floatRegCount++;
+        }
+        // 如果寄存器超过数额，放入栈中
+        if (name.empty())
+          parameters.push_back(
+              foo->regAlloca->find(curInstr->operands_[i], rbb, nullptr, 1));
+        // 否则放到指定寄存器a0-a7 fa0-fa7
+        else
+          parameters.push_back(foo->regAlloca->findSpecificReg(
+              curInstr->operands_[i], name, rbb));
+        SPShift += 4;
+      }
+      reverse(parameters.begin(), parameters.end());
+      rbb->addInstrBack(new PushRiscvInst(parameters, rbb));
+      // 第二步：进行函数调用
+      rbb->addInstrBack(this->createCallInstr(foo->regAlloca, curInstr, rbb));
+      // 第三步：caller恢复栈帧，清除所有的函数参数
+      rbb->addInstrBack(new BinaryRiscvInst(
+          RiscvInstr::ADDI,
+          static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg("fp"))),
+          static_cast<RiscvOperand *>(new RiscvConst(SPShift)),
+          static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg("fp"))), rbb));
       break;
+    }
     }
   }
   return rbb;
 }
 
-// 系统函数，需提前约定其栈调用问题
-void RiscvBuilder::resolveLibfunc(RiscvFunction *foo) {
-  // 对不同函数进行分类讨论
-  assert(false);
-}
+// // 系统函数，需提前约定其栈调用问题
+// void RiscvBuilder::resolveLibfunc(RiscvFunction *foo) {
+//   // 对不同函数进行分类讨论
+//   assert(false);
+// }
 
 // 总控程序
 std::string RiscvBuilder::buildRISCV(Module *m) {
@@ -279,42 +332,101 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         containedType = static_cast<ArrayType *>(gb->type_);
         if (containedType->tid_ == Type::IntegerTyID) {
           curGB = new RiscvGlobalVariable(RiscvOperand::IntImm, gb->name_,
-                                               gb->is_const_, gb->init_val_,
-                                               containedType->num_elements_);
+                                          gb->is_const_, gb->init_val_,
+                                          containedType->num_elements_);
           rm->addGlobalVariable(curGB);
           code += curGB->print();
         } else {
-          curGB = new RiscvGlobalVariable(
-              RiscvOperand::FloatImm, gb->name_, gb->is_const_,
-              gb->init_val_, containedType->num_elements_);
+          curGB = new RiscvGlobalVariable(RiscvOperand::FloatImm, gb->name_,
+                                          gb->is_const_, gb->init_val_,
+                                          containedType->num_elements_);
           rm->addGlobalVariable(curGB);
           code += curGB->print();
         }
         break;
       case Type::TypeID::IntegerTyID:
         curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_,
-                                             gb->is_const_, gb->init_val_);
+                                        gb->is_const_, gb->init_val_);
         rm->addGlobalVariable(curGB);
         code += curGB->print();
         break;
       case Type::TypeID::FloatTyID:
         curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::FloatImm, gb->name_,
-                                             gb->is_const_, gb->init_val_);
+                                        gb->is_const_, gb->init_val_);
         rm->addGlobalVariable(curGB);
         code += curGB->print();
         break;
       }
     }
   }
-  code += ".section .text\n.globl main\n";
+  code += ".section .text\n";
   // 函数体
   for (Function *foo : m->function_list_) {
     auto rfoo = createRiscvFunction(foo);
     rm->addFunction(rfoo);
     if (rfoo->is_libfunc())
       continue;
+    // 首先检查所有的alloca指令，加入一个基本块进行寄存器保护以及栈空间分配
+    RiscvBasicBlock *initBlock = createRiscvBasicBlock();
+    for (BasicBlock *bb : foo->basic_blocks_)
+      for (Instruction *instr : bb->instr_list_)
+        // 处理AllocaInstr
+        if (typeid(*instr) == typeid(AllocaInst)) {
+          int curSP = rfoo->querySP();
+          RiscvOperand *stackPos = static_cast<RiscvOperand *>(
+              new RiscvIntPhiReg(findReg("fp"), curSP));
+          rfoo->regAlloca->setPosition(static_cast<Value *>(instr), stackPos);
+          rfoo->addTempVar(stackPos);
+        }
+    rfoo->addBlock(initBlock);
     for (BasicBlock *bb : foo->basic_blocks_)
       rfoo->addBlock(this->transferRiscvBasicBlock(bb, rfoo));
+    // 分配完成寄存器后，考虑将需要保护的寄存器进行保护
+    std::vector<RiscvOperand *> savedRegister = rfoo->regAlloca->savedRegister;
+    // 对于每一个要保存的寄存器，可以类似于allocaInstr的处理方式
+    int curSP = rfoo->querySP();
+    for (RiscvOperand *op : savedRegister)
+      rfoo->addTempVar(op);
+    // 整个栈帧如下图所示：
+    /*
+    +-----------+
+    |  分配变量  |
+    +-----------+
+    | 保护寄存器 |
+    +-----------+
+    因而需要先下移腾出空间，再进行push操作
+    */
+    int diff = curSP - rfoo->querySP();
+    if (diff)
+      initBlock->addInstrBack(new BinaryRiscvInst(
+          RiscvInstr::SUBI,
+          static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg("fp"))),
+          static_cast<RiscvOperand *>(new RiscvConst(diff)),
+          static_cast<RiscvOperand *>(new RiscvIntPhiReg(findReg("fp"))),
+          initBlock));
+    // 然后再考虑把这些寄存器进行保护生成对应的代码
+    initBlock->addInstrBack(new PushRiscvInst(savedRegister, initBlock));
+    rfoo->ChangeBlock(initBlock, 0);
+    // 第二遍扫描，处理所有的return语句之前的恢复现场等操作
+    // 由于是倒过来压栈，因而现在要反序
+    reverse(savedRegister.begin(), savedRegister.end());
+    for (RiscvBasicBlock *rbb : rfoo->blk) {
+      for (RiscvInstr *instr : rbb->instruction)
+        // 对于return语句的返回操作进行处理
+        if (typeid(*instr) == typeid(RiscvInstr::RET)) {
+          rbb->addInstrBefore(new PopRiscvInst(savedRegister, rbb), instr);
+          rbb->addInstrBefore(
+              new BinaryRiscvInst(
+                  RiscvInstr::ADDI,
+                  static_cast<RiscvOperand *>(
+                      new RiscvIntPhiReg(findReg("fp"))),
+                  static_cast<RiscvOperand *>(new RiscvConst(diff)),
+                  static_cast<RiscvOperand *>(
+                      new RiscvIntPhiReg(findReg("fp"))),
+                  initBlock),
+              instr);
+        }
+    }
     code += rfoo->print();
   }
   return code;

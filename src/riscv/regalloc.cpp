@@ -4,7 +4,9 @@ int IntRegID = 0, FloatRegID = 0; // 测试阶段使用
 // 寄存器堆分配工作
 
 // 根据输入的寄存器的名字`reg`返回相应的寄存器类指针。
-Register *findReg(string reg) {
+// TODO:
+// 需要涉及sp、fp、a0-a7（整数函数参数）、fa0-fa7（浮点函数参数）等寄存器。
+Register *findReg(std::string reg) {
   if (reg == "a0") {
     return new Register(Register::RegType::Int, 10); // a0 is x10
   } else if (reg == "f0") {

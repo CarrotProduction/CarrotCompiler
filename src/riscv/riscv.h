@@ -1,11 +1,12 @@
 #ifndef RISCVH
 #define RISCVH
 #include "ir.h"
-#include "string.h"
-using std::string;
+#include "regalloc.h"
 
+class RiscvLabel;
 class RiscvBasicBlock;
 class RiscvInstr;
+class RegAlloca;
 
 class RiscvOperand {
 public:
@@ -75,7 +76,6 @@ public:
 };
 
 extern const int REG_NUMBER;
-extern Register * findReg(string reg);
 
 // 常数
 class RiscvConst : public RiscvOperand {
@@ -211,13 +211,16 @@ public:
 // 父函数调用子函数的参数算在子函数的栈空间内，子函数结束后由子函数清除这部分栈空间
 class RiscvFunction : public RiscvLabel {
 public:
+  RegAlloca *regAlloca;
   int num_args_;
   OpTy resType_;
   std::vector<RiscvOperand *> args;
   RiscvFunction(std::string name, int num_args,
                 OpTy Ty) // 返回值，无返回使用void类型
       : RiscvLabel(Function, name), num_args_(num_args), resType_(Ty),
-        base_(0) {}
+        base_(0) {
+    regAlloca = new RegAlloca();
+  }
   void setArgs(int ind, RiscvOperand *op) {
     assert(ind >= 0 && ind < args.size());
     args[ind] = op;
@@ -269,11 +272,13 @@ public:
       addArgs(val);
     return argsOffset[val];
   }
+  void ChangeBlock(RiscvBasicBlock *bb, int ind) {
+    assert(ind >= 0 && ind < blk.size());
+    blk[ind] = bb;
+  }
   void addBlock(RiscvBasicBlock *bb) { blk.push_back(bb); }
   std::string
   print(); // 函数语句，需先push保护现场，然后pop出需要的参数，再接入各block
-  void addRestoredBlock();
-  // 建议函数返回直接使用一个跳转语句跳转到返回语句块
 private:
   int base_;
   int tempRange; // 局部变量的数量，需要根据这个数量进行栈帧下移操作
@@ -285,7 +290,7 @@ private:
 函数栈帧结构
 +-----------+
 |    args   |
-+-----------+
++-----------+ <-以上为caller的栈帧，以下为callee的栈帧
 |     ra    | （旧返回地址）
 +-----------+
 | oldBP(fp) |

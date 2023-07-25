@@ -5,7 +5,7 @@ project(CarrotCompiler  VERSION 0.1
                         LANGUAGES CXX)
 # Common build options
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 # Generic includes
 set(INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/include")
@@ -21,4 +21,3 @@ if(BUILD_TESTING)
     add_subdirectory(runtime)
     add_subdirectory(test)
 endif()
-

@@ -57,4 +57,5 @@ RiscvOperand *RegAlloca::storeRet(Value *val) {
 }
 RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName, RiscvBasicBlock *bb, RiscvInstr *instr) {
   // TODO
+  assert(false);
 }

@@ -28,8 +28,14 @@ std::string RiscvFunction::print() {
 
 std::string RiscvBasicBlock::print() {
   std::string riscvInstr = this->name_ + ":\n";
-  for (auto x : this->instruction)
+  // std::cout << "TRY A BASIC BLOCK\n";
+  // std::cout << this->name_ + "\nEND\n";
+  for (auto x : this->instruction) {
+    // std::cout << "TEST AN INSTR\n";
+    // assert(x != nullptr);
+    // std::cout << x->print() << "\n";
     riscvInstr += x->print();
+  }
   return riscvInstr;
 }
 

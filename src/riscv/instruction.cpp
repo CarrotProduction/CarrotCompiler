@@ -13,7 +13,7 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::AND, "AND"},         {RiscvInstr::OR, "OR"},
     {RiscvInstr::ANDI, "ANDI"},       {RiscvInstr::ORI, "ORI"},
     {RiscvInstr::XOR, "XOR"},         {RiscvInstr::XORI, "XORI"},
-    {RiscvInstr::RET, "ret"},         {RiscvInstr::FPTOSI, "FCVT.W.S"},
+    {RiscvInstr::RET, "RET"},         {RiscvInstr::FPTOSI, "FCVT.W.S"},
     {RiscvInstr::SITOFP, "FCVT.S.W"}, {RiscvInstr::FMV, "FMV.S"},
     {RiscvInstr::CALL, "CALL"},       {RiscvInstr::LI, "LI"},
     {RiscvInstr::MOV, "MV"},          {RiscvInstr::PUSH, "PUSH"},
@@ -168,15 +168,16 @@ std::string FCmpRiscvInstr::print() {
 }
 
 std::string JumpRiscvInstr::print() {
-
+  std::string riscv_instr = "\t\tJMP\t" + this->operand_[0]->print() + "\n";
+  return riscv_instr;
 }
 
 std::string StoreRiscvInst::print() {
   std::string riscv_instr = "\t\t";
   if (this->type.tid_ == Type::FloatTyID)
-    riscv_instr += "fsw\t";
+    riscv_instr += "FSW\t";
   else
-    riscv_instr += "sw\t";
+    riscv_instr += "SW\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -187,9 +188,9 @@ std::string StoreRiscvInst::print() {
 std::string LoadRiscvInst::print() {
   std::string riscv_instr = "\t\t";
   if (this->type.tid_ == Type::FloatTyID)
-    riscv_instr += "flw\t";
+    riscv_instr += "FLW\t";
   else
-    riscv_instr += "lw\t";
+    riscv_instr += "LW\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -201,13 +202,13 @@ std::string MoveRiscvInst::print() {
   std::string riscv_instr = "\t\t";
   // li 指令
   if (this->operand_[1]->tid_ == RiscvOperand::IntReg)
-    riscv_instr += "li\t";
+    riscv_instr += "LI\t";
   // 寄存器传寄存器
   else if (this->operand_[1]->tid_ == RiscvOperand::IntReg)
-    riscv_instr += "mv\t";
+    riscv_instr += "MV\t";
   // 浮点数
   else
-    riscv_instr += "fmv\t";
+    riscv_instr += "FMV\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -216,13 +217,19 @@ std::string MoveRiscvInst::print() {
 }
 
 std::string SiToFpRiscvInstr::print() {
-  assert(false);
-  // TODO: Implement Signed to Float
-  return "";
+  std::string riscv_instr = "\t\tFCVT.S.W\t";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "\n";
+  return riscv_instr;
 }
 
 std::string FpToSiRiscvInstr::print() {
-  assert(false);
-  // TODO: Implement Float to Signed
-  return "";
+  std::string riscv_instr = "\t\tFCVT.W.S\t";
+  riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "\n";
+  return riscv_instr;
 }

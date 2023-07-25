@@ -92,6 +92,8 @@ public:
   explicit RiscvConst(int val) : RiscvOperand(IntImm), intval(val) {}
   explicit RiscvConst(float val) : RiscvOperand(FloatImm), floatval(val) {}
   std::string print() {
+    std::cout << "CONST PRINT\n";
+    std::cout << this->tid_ << "\n";
     if (this->tid_ == IntImm)
       return std::to_string(intval);
     else

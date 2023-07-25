@@ -75,11 +75,21 @@ UnaryRiscvInst *RiscvBuilder::createUnaryInstr(RegAlloca *regAlloca,
   return instr;
 }
 
-StoreRiscvInst *RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
-                                               StoreInst *storeInstr,
-                                               RiscvBasicBlock *rbb) {
-  StoreRiscvInst *instr = new StoreRiscvInst(
-      storeInstr->type_, regAlloca->find(storeInstr->operands_[0], rbb),
+// IR中的Store对应到RISCV为MOV指令或LI指令
+MoveRiscvInst *RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
+                                              StoreInst *storeInstr,
+                                              RiscvBasicBlock *rbb) {
+  if (typeid(*storeInstr->operands_[1]) == typeid(ConstantInt)) {
+    // 整数部分可以直接li指令
+    MoveRiscvInst *instr = new MoveRiscvInst(
+        regAlloca->find(storeInstr->operands_[0], rbb),
+        static_cast<ConstantInt *>(storeInstr->operands_[1])->value_, rbb);
+    return instr;
+  }
+  // 浮点部分需要提前写入内存中，然后等效于直接mov
+  // TODO:先把浮点常数以全局变量形式存入内存中，再直接fmv
+  MoveRiscvInst *instr = new MoveRiscvInst(
+      regAlloca->find(storeInstr->operands_[0], rbb),
       regAlloca->find(storeInstr->operands_[1], rbb, nullptr, 1), rbb);
   return instr;
 }
@@ -311,6 +321,10 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     }
     }
   }
+  // std::cout << "TEST A BASIC BLOCK"
+  //           << "\n";
+  // std::cout << rbb->print() << "\n";
+  // std::cout << "END BLOCK PRINT" << "\n";
   return rbb;
 }
 
@@ -362,9 +376,16 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       }
     }
   }
+  // TODO:浮点常量进入内存
+  // std::cout << "GLOBAL VARIABLE"
+  //           << "\n";
+  // std::cout << code << "\n";
   code += ".section .text\n";
   // 函数体
   for (Function *foo : m->function_list_) {
+    // std::cout << "cur IR func"
+    //           << "\n";
+    // std::cout << foo->name_ << "\n";
     auto rfoo = createRiscvFunction(foo);
     rm->addFunction(rfoo);
     if (rfoo->is_libfunc())
@@ -376,12 +397,15 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         // 处理AllocaInstr
         if (typeid(*instr) == typeid(AllocaInst)) {
           int curSP = rfoo->querySP();
+          // std::cout << "SAVED " << curSP << "\n";
           RiscvOperand *stackPos = static_cast<RiscvOperand *>(
               new RiscvIntPhiReg(findReg("fp"), curSP));
           rfoo->regAlloca->setPosition(static_cast<Value *>(instr), stackPos);
           rfoo->addTempVar(stackPos);
         }
     rfoo->addBlock(initBlock);
+    // std::cout << "SAVE BLOCK"
+    //           << "\n";
     for (BasicBlock *bb : foo->basic_blocks_)
       rfoo->addBlock(this->transferRiscvBasicBlock(bb, rfoo));
     // 分配完成寄存器后，考虑将需要保护的寄存器进行保护

@@ -1,7 +1,7 @@
 #ifndef BACKENDH
 #define BACKENDH
-#include "ir.h"
 #include "instruction.h"
+#include "ir.h"
 #include "optimize.h"
 #include "regalloc.h"
 #include "riscv.h"
@@ -71,8 +71,9 @@ public:
                                      RiscvBasicBlock *rbb);
   UnaryRiscvInst *createUnaryInstr(RegAlloca *regAlloca, UnaryInst *unaryInstr,
                                    RiscvBasicBlock *rbb);
-  StoreRiscvInst *createStoreInstr(RegAlloca *regAlloca, StoreInst *storeInstr,
-                                   RiscvBasicBlock *rbb);
+  MoveRiscvInst *createStoreInstr(RegAlloca *regAlloca,
+                                                StoreInst *storeInstr,
+                                                RiscvBasicBlock *rbb);
   LoadRiscvInst *createLoadInstr(RegAlloca *regAlloca, LoadInst *loadInstr,
                                  RiscvBasicBlock *rbb);
   ICmpRiscvInstr *createICMPInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
@@ -87,12 +88,10 @@ public:
                                       RiscvBasicBlock *rbb);
   CallRiscvInst *createCallInstr(RegAlloca *regAlloca, CallInst *callInstr,
                                  RiscvBasicBlock *rbb);
-  JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca,
-                                                BranchInst *brInstr,
-                                                RiscvBasicBlock *rbb);
+  JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca, BranchInst *brInstr,
+                                  RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
-  ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca,
-                                                ReturnInst *returnInstr,
-                                                RiscvBasicBlock *rbb);
+  ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca, ReturnInst *returnInstr,
+                                  RiscvBasicBlock *rbb);
 };
 #endif // !BACKENDH

@@ -175,10 +175,10 @@ public:
   std::string print() override;
   MoveRiscvInst() = default;
   MoveRiscvInst(RiscvOperand *v1, int Imm, RiscvBasicBlock *bb, bool flag = 0)
-      : RiscvInstr(InstrType::LI, 1, bb) {
+      : RiscvInstr(InstrType::LI, 2, bb) {
     RiscvOperand *Const = new RiscvConst(Imm);
-    setOperand(0, Const);
-    setResult(v1);
+    setOperand(0, v1);
+    setOperand(1, Const);
     this->parent_ = bb;
     if (flag)
       this->parent_->addInstrBack(this);
@@ -186,9 +186,9 @@ public:
   // v2->v1
   MoveRiscvInst(RiscvOperand *v1, RiscvOperand *v2, RiscvBasicBlock *bb,
                 bool flag = 0)
-      : RiscvInstr(InstrType::MOV, 1, bb) {
-    setOperand(0, v2);
-    setResult(v1);
+      : RiscvInstr(InstrType::MOV, 2, bb) {
+    setOperand(0, v1);
+    setOperand(1, v2);
     this->parent_ = bb;
     if (flag)
       this->parent_->addInstrBack(this);

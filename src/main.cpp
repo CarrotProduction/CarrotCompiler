@@ -14,7 +14,7 @@ extern FILE *yyin;
 int main(int argc, char **argv) {
   // TODO: argument parser
   char *filename = nullptr;
-  bool print_ir = false;
+  bool print_ir = true;
   assert(argc >= 2);
   if (argc == 2) {
     filename = argv[1];

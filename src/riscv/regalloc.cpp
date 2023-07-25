@@ -55,3 +55,6 @@ RiscvOperand *RegAlloca::storeRet(Value *val) {
     return new RiscvIntReg(findReg("f0"));
   }
 }
+RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName, RiscvBasicBlock *bb, RiscvInstr *instr) {
+  // TODO
+}

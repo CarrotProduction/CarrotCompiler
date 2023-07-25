@@ -4,6 +4,11 @@
 
 const int REG_NUMBER = 32;
 
+RiscvFunction::RiscvFunction(std::string name, int num_args,
+              OpTy Ty) // 返回值，无返回使用void类型
+    : RiscvLabel(Function, name), num_args_(num_args), resType_(Ty), base_(0) {
+  regAlloca = new RegAlloca();
+}
 // 输出函数对应的全部riscv语句序列
 // 由于一个函数可能有若干个出口，因而恢复现场的语句根据basic block
 // 语句中的ret语句前面附带出现，因而不在此出现

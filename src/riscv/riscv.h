@@ -1,12 +1,17 @@
 #ifndef RISCVH
 #define RISCVH
-#include "ir.h"
-#include "regalloc.h"
 
 class RiscvLabel;
 class RiscvBasicBlock;
 class RiscvInstr;
 class RegAlloca;
+class Register;
+class RiscvOperand;
+
+#include "ir.h"
+#include "regalloc.h"
+#include "string.h"
+
 
 class RiscvOperand {
 public:
@@ -216,11 +221,7 @@ public:
   OpTy resType_;
   std::vector<RiscvOperand *> args;
   RiscvFunction(std::string name, int num_args,
-                OpTy Ty) // 返回值，无返回使用void类型
-      : RiscvLabel(Function, name), num_args_(num_args), resType_(Ty),
-        base_(0) {
-    regAlloca = new RegAlloca();
-  }
+                OpTy Ty); // 返回值，无返回使用void类型
   void setArgs(int ind, RiscvOperand *op) {
     assert(ind >= 0 && ind < args.size());
     args[ind] = op;

@@ -1,8 +1,6 @@
 #ifndef REGALLOCH
 #define REGALLOCH
 
-#include "instruction.h"
-#include "ir.h"
 #include "riscv.h"
 #include <cassert>
 

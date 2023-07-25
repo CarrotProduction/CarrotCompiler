@@ -3,7 +3,7 @@
 
 void RiscvBuilder::initializeRegisterFile() {
   // todo：分配寄存器堆，初始化寄存器堆各项参数
-  assert(false);
+  // assert(false);
 }
 
 const std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp = {};
@@ -194,17 +194,20 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     // 分支指令
     case Instruction::Br:
-      if (forward->op_id_ == Instruction::FCmp)
+      if (forward == nullptr) {
+        rbb->addInstrBack(this->createJumpInstr(
+            foo->regAlloca, static_cast<BranchInst *>(instr), rbb));
+      } else if (forward->op_id_ == Instruction::FCmp) {
         rbb->addInstrBack(this->createFCMPInstr(
             foo->regAlloca, static_cast<FCmpInst *>(forward),
             static_cast<BranchInst *>(instr), rbb));
-      else if (forward->op_id_ == Instruction::ICmp)
+      } else if (forward->op_id_ == Instruction::ICmp) {
         rbb->addInstrBack(this->createICMPInstr(
             foo->regAlloca, static_cast<ICmpInst *>(forward),
             static_cast<BranchInst *>(instr), rbb));
-      else
-        rbb->addInstrBack(this->createJumpInstr(
-            foo->regAlloca, static_cast<BranchInst *>(instr), rbb));
+      } else {
+        assert(0);
+      }
       forward = nullptr;
       break;
     case Instruction::Add:

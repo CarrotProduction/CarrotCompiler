@@ -7,19 +7,22 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::ADD, "ADD"},         {RiscvInstr::ADDI, "ADDI"},
     {RiscvInstr::SUB, "SUB"},         {RiscvInstr::SUBI, "SUBI"},
     {RiscvInstr::FADD, "FADD.S"},     {RiscvInstr::FSUB, "FSUB.S"},
-    {RiscvInstr::MUL, "MUL"},         {RiscvInstr::MULU, "MULU"},
-    {RiscvInstr::DIVU, "DIVU"},       {RiscvInstr::DIV, "DIV"},
-    {RiscvInstr::REMU, "REMU"},       {RiscvInstr::REM, "REM"},
-    {RiscvInstr::AND, "AND"},         {RiscvInstr::OR, "OR"},
-    {RiscvInstr::ANDI, "ANDI"},       {RiscvInstr::ORI, "ORI"},
-    {RiscvInstr::XOR, "XOR"},         {RiscvInstr::XORI, "XORI"},
-    {RiscvInstr::RET, "RET"},         {RiscvInstr::FPTOSI, "FCVT.W.S"},
-    {RiscvInstr::SITOFP, "FCVT.S.W"}, {RiscvInstr::FMV, "FMV.S"},
-    {RiscvInstr::CALL, "CALL"},       {RiscvInstr::LI, "LI"},
-    {RiscvInstr::MOV, "MV"},          {RiscvInstr::PUSH, "PUSH"},
-    {RiscvInstr::POP, "POP"},         {RiscvInstr::SW, "SW"},
-    {RiscvInstr::LW, "LW"},           {RiscvInstr::FSW, "FSW"},
-    {RiscvInstr::FLW, "FLW"}};
+    {RiscvInstr::FMUL, "FMUL.S"},     {RiscvInstr::FDIV, "FDIV.S"},
+    {RiscvInstr::MUL, "MUL"},         {RiscvInstr::DIV, "DIV"},
+    {RiscvInstr::REM, "REM"},         {RiscvInstr::AND, "AND"},
+    {RiscvInstr::OR, "OR"},           {RiscvInstr::ANDI, "ANDI"},
+    {RiscvInstr::ORI, "ORI"},         {RiscvInstr::XOR, "XOR"},
+    {RiscvInstr::XORI, "XORI"},       {RiscvInstr::RET, "RET"},
+    {RiscvInstr::FPTOSI, "FCVT.W.S"}, {RiscvInstr::SITOFP, "FCVT.S.W"},
+    {RiscvInstr::FMV, "FMV.S"},       {RiscvInstr::CALL, "CALL"},
+    {RiscvInstr::LI, "LI"},           {RiscvInstr::MOV, "MV"},
+    {RiscvInstr::PUSH, "PUSH"},       {RiscvInstr::POP, "POP"},
+    {RiscvInstr::SW, "SW"},           {RiscvInstr::LW, "LW"},
+    {RiscvInstr::FSW, "FSW"},         {RiscvInstr::FLW, "FLW"},
+    {RiscvInstr::SHL, "SLL"},         {RiscvInstr::ASHR, "SRA"},
+    {RiscvInstr::SHLI, "SLLI"},       {RiscvInstr::LSHR, "SRL"},
+    {RiscvInstr::ASHRI, "SRAI"},      {RiscvInstr::LSHRI, "SRLI"},
+};
 // Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},
@@ -90,29 +93,32 @@ std::string CallRiscvInst::print() {
   return riscv_instr;
 }
 
-
 // 注意：return 语句不会进行相应的寄存器约定检查
 std::string ReturnRiscvInst::print() {
-  std::string riscvInstr = "";
-  // 接入返回语句
-  riscvInstr += "\t\tMV\tx2, fp\n";
-  // 恢复函数返回地址
-  riscvInstr += "\t\tPOP\tra\n";
-  riscvInstr += "\t\tRET\n";
-  return riscvInstr;
+  std::string riscv_instr = "\t\tLW\tra, -4(sp)\n";
+  riscv_instr += "\t\tRET\n";
+  return riscv_instr;
 }
 
 std::string PushRiscvInst::print() {
   std::string riscv_instr = "";
-  for (auto x : this->operand_)
-    riscv_instr += "\t\tPUSH\t" + x->print() + "\n";
+  int shift = 0;
+  for (auto x : this->operand_) {
+    shift -= 4;
+    riscv_instr += "\t\tSW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
+  }
+  riscv_instr += "\t\tADDI\tsp, " + std::to_string(shift) + "\n";
   return riscv_instr;
 }
 
 std::string PopRiscvInst::print() {
   std::string riscv_instr = "";
-  for (auto x : this->operand_)
-    riscv_instr += "\t\tPOP\t" + x->print() + "\n";
+  int shift = 0;
+  for (auto x : this->operand_) {
+    shift -= 4;
+    riscv_instr += "\t\tLW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
+  }
+  riscv_instr += "\t\tADDI\tsp, " + std::to_string(-shift) + "\n";
   return riscv_instr;
 }
 
@@ -159,16 +165,19 @@ std::string FCmpRiscvInstr::print() {
       this->fcmp_op_ == FCmpInst::FCMP_ONE ||
       this->fcmp_op_ == FCmpInst::FCMP_UNE)
     std::swap(this->operand_[3], this->operand_[4]);
-  riscv_instr += "BNE\t" + this->operand_[2]->print() + ", ZERO, " + this->operand_[3]->print() + "\n";
+  riscv_instr += "BNE\t" + this->operand_[2]->print() + ", ZERO, " +
+                 this->operand_[3]->print() + "\n";
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[4]);
   // 不连续则假链也要跳转
   if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
-    riscv_instr += "\t\tJMP\t" + falseLink->print() + "\n";
+    riscv_instr += "\t\tJMP\t" + falseLink->name_ + "\n";
   return riscv_instr;
 }
 
 std::string JumpRiscvInstr::print() {
-  std::string riscv_instr = "\t\tJMP\t" + this->operand_[0]->print() + "\n";
+  std::string riscv_instr =
+      "\t\tJ\t" + static_cast<RiscvBasicBlock *>(this->operand_[0])->name_ +
+      "\n";
   return riscv_instr;
 }
 
@@ -201,7 +210,7 @@ std::string LoadRiscvInst::print() {
 std::string MoveRiscvInst::print() {
   std::string riscv_instr = "\t\t";
   // li 指令
-  if (this->operand_[1]->tid_ == RiscvOperand::IntReg)
+  if (this->operand_[1]->tid_ == RiscvOperand::IntImm)
     riscv_instr += "LI\t";
   // 寄存器传寄存器
   else if (this->operand_[1]->tid_ == RiscvOperand::IntReg)

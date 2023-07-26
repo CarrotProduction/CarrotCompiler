@@ -12,7 +12,6 @@ class RiscvOperand;
 #include "regalloc.h"
 #include "string.h"
 
-
 class RiscvOperand {
 public:
   enum OpTy {
@@ -92,8 +91,6 @@ public:
   explicit RiscvConst(int val) : RiscvOperand(IntImm), intval(val) {}
   explicit RiscvConst(float val) : RiscvOperand(FloatImm), floatval(val) {}
   std::string print() {
-    std::cout << "CONST PRINT\n";
-    std::cout << this->tid_ << "\n";
     if (this->tid_ == IntImm)
       return std::to_string(intval);
     else
@@ -107,7 +104,7 @@ class RiscvIntReg : public RiscvOperand {
 public:
   Register *reg_;
   RiscvIntReg(Register *reg) : RiscvOperand(IntReg), reg_(reg) {
-    assert(reg_->regtype_ == Register::Int); // 判断整型寄存器存储
+    // assert(reg_->regtype_ == Register::Int); // 判断整型寄存器存储
   }
   std::string print() { return reg_->print(); }
 };
@@ -128,10 +125,18 @@ class RiscvIntPhiReg : public RiscvOperand {
 public:
   int shift_;
   Register *base_;
+  std::string MemBaseName;
   RiscvIntPhiReg(Register *base, int shift = 0)
       : RiscvOperand(IntMem), base_(base), shift_(shift) {}
+  // 内存以全局形式存在的变量（常量）
+  RiscvIntPhiReg(std::string s, int shift = 0)
+      : RiscvOperand(IntMem), base_(nullptr), shift_(shift), MemBaseName(s) {}
   std::string print() {
-    std::string ans = "(" + base_->print() + ")";
+    std::string ans = "";
+    if (base_ != nullptr)
+      ans += "(" + base_->print() + ")";
+    else
+      ans += "(" + MemBaseName + ")";
     if (shift_)
       ans = std::to_string(shift_) + ans;
     return ans;
@@ -144,10 +149,18 @@ class RiscvFloatPhiReg : public RiscvOperand {
 public:
   int shift_;
   Register *base_;
+  std::string MemBaseName;
   RiscvFloatPhiReg(Register *base, int shift = 0)
       : RiscvOperand(FloatMem), base_(base), shift_(shift) {}
+  // 内存以全局形式存在的变量（常量）
+  RiscvFloatPhiReg(std::string s, int shift = 0)
+      : RiscvOperand(FloatMem), base_(nullptr), shift_(shift), MemBaseName(s) {}
   std::string print() {
-    std::string ans = "(" + base_->print() + ")";
+    std::string ans = "";
+    if (base_ != nullptr)
+      ans += "(" + base_->print() + ")";
+    else
+      ans += "(" + MemBaseName + ")";
     if (shift_)
       ans = std::to_string(shift_) + ans;
     return ans;

@@ -66,19 +66,18 @@ public:
   // 指令类型，除分支语句外，其他对应到riscv
   // 加立即数或者浮点加需要做区分
   enum InstrType {
-    ADD = 1,
+    ADD = 0,
     ADDI,
     SUB,
     SUBI,
-    FADD,
-    FSUB,
     MUL,
-    MULU,
     DIV,
-    DIVU,
     REM,
-    REMU,
-    XOR,
+    FADD = 8,
+    FSUB = 10,
+    FMUL = 12, 
+    FDIV = 14, 
+    XOR = 16,
     XORI,
     AND,
     ANDI,
@@ -86,6 +85,8 @@ public:
     ORI,
     SW,
     LW,
+    FSW = 30,
+    FLW,
     ICMP,
     FCMP,
     PUSH,
@@ -95,11 +96,15 @@ public:
     LI,
     MOV,
     FMV,
-    FLW,
-    FSW,
     FPTOSI,
     SITOFP,
-    JMP
+    JMP, 
+    SHL, 
+    LSHR, 
+    ASHR, 
+    SHLI = 52, 
+    LSHRI, 
+    ASHRI
   };
   const static std::map<InstrType, std::string> RiscvName;
 
@@ -233,13 +238,13 @@ public:
   virtual std::string print() override;
 };
 
-// 仅返回语句，返回参数由上层的block对应的function构造push语句
+// 仅返回语句，返回参数由上层的block对应的function构造push语句和lw sw指令
 class ReturnRiscvInst : public RiscvInstr {
 public:
   // 有返回值
   ReturnRiscvInst(RiscvOperand *retVal, RiscvBasicBlock *bb)
       : RiscvInstr(InstrType::RET, 1, bb) {
-    setOperand(1, retVal);
+    setOperand(0, retVal);
   }
   // 无返回值
   ReturnRiscvInst(RiscvBasicBlock *bb) : RiscvInstr(InstrType::RET, 0, bb) {}

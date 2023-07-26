@@ -1,6 +1,6 @@
 #include "regalloc.h"
 
-int IntRegID = 0, FloatRegID = 0; // 测试阶段使用
+int IntRegID = 8, FloatRegID = 0; // 测试阶段使用
 // 寄存器堆分配工作
 
 // 根据输入的寄存器的名字`reg`返回相应的寄存器类指针。
@@ -20,16 +20,18 @@ Register *findReg(std::string reg) {
 
 RiscvOperand *RegAlloca::find(Value *val, RiscvBasicBlock *bb,
                               RiscvInstr *instr, int inReg) {
+  if (curReg.count(val))
+    return curReg[val];
   // 目前下面是一个没有考虑任何寄存器分配的工作，认为所有的变量都是寄存器存储，所有值可以直接使用的
-  if (val->type_->tid_ == Type::IntegerTyID) {
+  if (val->type_->tid_ == Type::IntegerTyID || Type::PointerTyID) {
     ++IntRegID;
     RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, ++IntRegID));
-    return cur;
+    return curReg[val] = cur;
   } else {
     ++FloatRegID;
     RiscvFloatReg *cur =
         new RiscvFloatReg(new Register(Register::Float, ++IntRegID));
-    return cur;
+    return curReg[val] = cur;
   }
   /*下面的代码是模拟一个大致结构
       // 首先找 空闲寄存器

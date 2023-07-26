@@ -14,12 +14,10 @@ RiscvFunction::RiscvFunction(std::string name, int num_args,
 // 语句中的ret语句前面附带出现，因而不在此出现
 std::string RiscvFunction::print() {
   std::string riscvInstr = this->name_ + ":\n"; // 函数标号打印
-  riscvInstr += "\t\tPUSH\tra\n";
-  riscvInstr += "\t\tPUSH\tfp\n";
-  riscvInstr += "\t\tMV\tsp, fp\n";
+  riscvInstr += "\t\tSW\tra, (sp)\n";
+  riscvInstr += "\t\tSW\tsp, -4(sp)\n";
   // 为函数局部变量腾出空间
-  if (this->base_)
-    riscvInstr += "\t\tADD\tsp, " + std::to_string(this->base_) + "\n";
+  riscvInstr += "\t\tADD\tsp, " + std::to_string(this->base_ - 8) + "\n";
   // 对各个basic block进行拼接
   for (auto x : this->blk)
     riscvInstr += x->print();
@@ -28,14 +26,8 @@ std::string RiscvFunction::print() {
 
 std::string RiscvBasicBlock::print() {
   std::string riscvInstr = this->name_ + ":\n";
-  // std::cout << "TRY A BASIC BLOCK\n";
-  // std::cout << this->name_ + "\nEND\n";
-  for (auto x : this->instruction) {
-    // std::cout << "TEST AN INSTR\n";
-    // assert(x != nullptr);
-    // std::cout << x->print() << "\n";
+  for (auto x : this->instruction) 
     riscvInstr += x->print();
-  }
   return riscvInstr;
 }
 

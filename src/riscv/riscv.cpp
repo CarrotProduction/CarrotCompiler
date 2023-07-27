@@ -22,7 +22,7 @@ std::string RiscvFunction::print() {
 
 std::string RiscvBasicBlock::print() {
   std::string riscvInstr = this->name_ + ":\n";
-  for (auto x : this->instruction) 
+  for (auto x : this->instruction)
     riscvInstr += x->print();
   return riscvInstr;
 }

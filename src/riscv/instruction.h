@@ -344,18 +344,20 @@ public:
 
 class FpToSiRiscvInstr : public RiscvInstr {
 public:
-  FpToSiRiscvInstr(RiscvOperand *val, RiscvBasicBlock *bb)
+  FpToSiRiscvInstr(RiscvOperand *Source, RiscvOperand *Target, RiscvBasicBlock *bb)
       : RiscvInstr(FPTOSI, 2, bb) {
-    setOperand(0, val);
+    setOperand(0, Source);
+    setOperand(1, Target);
   }
   virtual std::string print() override;
 };
 
 class SiToFpRiscvInstr : public RiscvInstr {
 public:
-  SiToFpRiscvInstr(RiscvOperand *val, RiscvBasicBlock *bb)
+  SiToFpRiscvInstr(RiscvOperand *Source, RiscvOperand *Target, RiscvBasicBlock *bb)
       : RiscvInstr(SITOFP, 2, bb) {
-    setOperand(0, val);
+    setOperand(0, Source);
+    setOperand(1, Target);
   }
   virtual std::string print() override;
 };

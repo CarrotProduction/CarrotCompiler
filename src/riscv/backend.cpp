@@ -84,7 +84,7 @@ void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
 // ZExt翻译：执行零扩展，等效于合流
 void RiscvBuilder::solveZExtInstr(ZextInst *instr) {
   DSU_for_Variable.merge(instr->operands_[1]->name_,
-                           instr->operands_[0]->name_);
+                         instr->operands_[0]->name_);
 }
 
 BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
@@ -232,14 +232,18 @@ SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(RegAlloca *regAlloca,
                                                   SiToFpInst *sitofpInstr,
                                                   RiscvBasicBlock *rbb) {
   return new SiToFpRiscvInstr(
-      regAlloca->findReg(sitofpInstr->operands_[0], rbb, nullptr, 1), rbb);
+      regAlloca->findReg(sitofpInstr->operands_[0], rbb, nullptr, 1),
+      regAlloca->findReg(static_cast<Value *>(sitofpInstr), rbb, nullptr, 1), 
+      rbb);
 }
 
 FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(RegAlloca *regAlloca,
                                                   FpToSiInst *fptosiInstr,
                                                   RiscvBasicBlock *rbb) {
   return new FpToSiRiscvInstr(
-      regAlloca->findReg(fptosiInstr->operands_[0], rbb, nullptr, 1), rbb);
+      regAlloca->findReg(fptosiInstr->operands_[0], rbb, nullptr, 1),
+      regAlloca->findReg(static_cast<Value *>(fptosiInstr), rbb, nullptr, 1), 
+      rbb);
 }
 
 RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,

@@ -88,33 +88,31 @@ std::string UnaryRiscvInst::print() {
 
 std::string CallRiscvInst::print() {
   // 增补push指令
-  std::string riscv_instr = "\t\tCALL\t";
+  std::string riscv_instr = "\t\tJALR\tra, ";
   riscv_instr += static_cast<RiscvFunction *>(this->operand_[0])->name_;
   return riscv_instr;
 }
 
 // 注意：return 语句不会进行相应的寄存器约定检查
 std::string ReturnRiscvInst::print() {
-  std::string riscv_instr = "\t\tLW\tra, -4(sp)\n";
-  riscv_instr += "\t\tRET\n";
+  std::string riscv_instr = "\t\tRET\n";
   return riscv_instr;
 }
 
 std::string PushRiscvInst::print() {
   std::string riscv_instr = "";
-  int shift = 0;
+  int shift = this->basicShift_;
   for (auto x : this->operand_) {
     shift -= 4;
     riscv_instr +=
         "\t\tSW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
   }
-  riscv_instr += "\t\tADDI\tsp, " + std::to_string(shift) + "\n";
   return riscv_instr;
 }
 
 std::string PopRiscvInst::print() {
   std::string riscv_instr = "";
-  int shift = 0;
+  int shift = this->basicShift_;
   for (auto x : this->operand_) {
     shift -= 4;
     riscv_instr +=

@@ -202,9 +202,10 @@ public:
 
 // 注意压栈顺序问题！打印的时候严格按照lists内顺序
 class PushRiscvInst : public RiscvInstr {
+  int basicShift_;
 public:
-  PushRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb)
-      : RiscvInstr(InstrType::PUSH, lists.size(), bb) {
+  PushRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb, int basicShift)
+      : RiscvInstr(InstrType::PUSH, lists.size(), bb), basicShift_(basicShift) {
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
   }
@@ -213,10 +214,11 @@ public:
 
 // 注意出栈顺序问题！打印的时候严格按照lists内顺序
 class PopRiscvInst : public RiscvInstr {
+  int basicShift_;
 public:
   // 传入所有要pop的变量
-  PopRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb)
-      : RiscvInstr(InstrType::POP, lists.size(), bb) {
+  PopRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb, int basicShift)
+      : RiscvInstr(InstrType::POP, lists.size(), bb), basicShift_(basicShift) {
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
   }
@@ -241,12 +243,6 @@ public:
 // 仅返回语句，返回参数由上层的block对应的function构造push语句和lw sw指令
 class ReturnRiscvInst : public RiscvInstr {
 public:
-  // 有返回值
-  ReturnRiscvInst(RiscvOperand *retVal, RiscvBasicBlock *bb)
-      : RiscvInstr(InstrType::RET, 1, bb) {
-    setOperand(0, retVal);
-  }
-  // 无返回值
   ReturnRiscvInst(RiscvBasicBlock *bb) : RiscvInstr(InstrType::RET, 0, bb) {}
   std::string print() override;
 };

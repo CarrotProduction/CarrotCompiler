@@ -7,13 +7,14 @@ int IntRegID = 8, FloatRegID = 0; // 测试阶段使用
 // TODO:
 // 需要涉及sp、fp、a0-a7（整数函数参数）、fa0-fa7（浮点函数参数）等寄存器。
 Register *NamefindReg(std::string reg) {
-  if (reg == "a0") {
-    return new Register(Register::RegType::Int, 10); // a0 is x10
-  } else if (reg == "f0") {
-    return new Register(Register::RegType::Float, 0);
-  } else if (reg == "fp") {
-    return new Register(Register::RegType::Int, 10); // fp is x8
+  if (reg[0] == 'a') {
+    return new Register(Register::RegType::Int, 10 + std::atoi(reg.substr(1).c_str())); // a0 is x10
+  } else if (reg.substr(0, 2) == "fa") {
+    return new Register(Register::RegType::Float, std::atoi(reg.substr(2).c_str()));
+  } else if (reg == "sp") {
+    return new Register(Register::RegType::Int, 2); // sp is x2
   } else {
+    std::cout << "FAIL REG " << reg << "\n";
     assert(false);
   }
 }
@@ -57,14 +58,15 @@ RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   pos[val] = riscvVal;
 }
-RiscvOperand *RegAlloca::storeRet(Value *val) {
-  if (val->type_->tid_ == Type::FloatTyID) {
-    return new RiscvIntReg(NamefindReg("a0"));
-  } else {
-    // 浮点寄存器约定
-    return new RiscvIntReg(NamefindReg("f0"));
-  }
-}
+
+// RiscvOperand *RegAlloca::storeRet(Value *val) {
+//   if (val->type_->tid_ == Type::FloatTyID) {
+//     return this->findSpecificReg(val"a0");
+//   } else {
+//     // 浮点寄存器约定
+//     return this->setPositionReg(val, new RiscvFloatReg(NamefindReg("fa0")));
+//   }
+// }
 RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName, RiscvBasicBlock *bb, RiscvInstr *instr) {
   // TODO
   assert(false);
@@ -72,5 +74,6 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName, RiscvB
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
   // TODO
+  curReg[val] = riscvReg;
   // assert(false);
 }

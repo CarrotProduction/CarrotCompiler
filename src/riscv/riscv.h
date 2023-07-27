@@ -67,7 +67,7 @@ public:
     case 7:
       return "t" + std::to_string(this->rid_ - 5);
     case 8:
-      return "fp";
+      return "fp"; // another name: s0
     case 9:
       return "s1";
     }
@@ -301,21 +301,6 @@ private:
   std::map<RiscvOperand *, int>
       storedEnvironment; // 栈中要保护的地址。该部分需要在函数结束的时候全部恢复
 };
-
-/*
-函数栈帧结构
-+-----------+
-|    args   |
-+-----------+ <-以上为caller的栈帧，以下为callee的栈帧
-|     ra    | （旧返回地址）
-+-----------+
-| oldBP(fp) |
-+-----------+ <- cur BP
-|  tempVar  |
-+-----------+
-
-注意：如果不需要用栈存ra，那么需要修改callInstr指令产生时对各个寄存器位置的定义（setPosition函数的参数）
-*/
 
 class RiscvModule {
 public:

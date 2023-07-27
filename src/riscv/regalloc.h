@@ -22,6 +22,8 @@
 
 // 注意区分指针类型（如*a0）和算数值（a0）的区别
 
+// 每个变量会有一个固定的内存或栈地址，可能会被分配一个固定寄存器地址
+
 extern int IntRegID, FloatRegID; // 测试阶段使用
 extern Register *NamefindReg(std::string reg);
 // RegAlloca类被放置在**每个函数**内，每个函数内是一个新的寄存器分配类。
@@ -54,13 +56,12 @@ public:
   RiscvOperand *findSpecificReg(Value *val, std::string RegName,
                                 RiscvBasicBlock *bb,
                                 RiscvInstr *instr = nullptr);
-  // 建立IR中变量到实际变量（内存固定地址空间）的映射
+  // 建立IR中变量到实际变量（内存固定地址空间）或寄存器的映射 
   void setPosition(Value *val, RiscvOperand *riscvVal);
-
-  // 存在返回值的函数，返回值必在a0或者fa0中。
   void setPositionReg(Value *val, RiscvOperand *riscvReg);
+
   // 根据返回值是浮点型还是整型决定使用什么寄存器
-  RiscvOperand *storeRet(Value *val);
+  // RiscvOperand *storeRet(Value *val);
   // TODO:6
   // 使用到的callee保存寄存器，使用这个vector存储。具体为x8-x9,x18-x27（整型）；f8-f9,f18-f27（浮点）
   // 这些寄存器会在函数开始的时候压入栈中，return时会恢复

@@ -60,6 +60,7 @@ public:
   // 考虑将y1、y2全部合并到y3上
   DSU<std::string> DSU_for_Variable;
   void solvePhiInstr(PhiInst *instr);
+  void solveZExtInstr(ZextInst *instr);
   std::string buildRISCV(Module *m);
 
   // 下面的语句是需要生成对应riscv语句
@@ -90,7 +91,6 @@ public:
   JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca, BranchInst *brInstr,
                                   RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
-  ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca, ReturnInst *returnInstr,
-                                  RiscvBasicBlock *rbb);
+  ReturnRiscvInst *createRetInstr(RiscvBasicBlock *rbb);
 };
 #endif // !BACKENDH

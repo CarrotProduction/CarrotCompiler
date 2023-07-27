@@ -89,7 +89,7 @@ std::string UnaryRiscvInst::print() {
 std::string CallRiscvInst::print() {
   // 增补push指令
   std::string riscv_instr = "\t\tCALL\t";
-  riscv_instr += this->operand_[0]->print();
+  riscv_instr += static_cast<RiscvFunction *>(this->operand_[0])->name_;
   return riscv_instr;
 }
 
@@ -105,7 +105,8 @@ std::string PushRiscvInst::print() {
   int shift = 0;
   for (auto x : this->operand_) {
     shift -= 4;
-    riscv_instr += "\t\tSW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
+    riscv_instr +=
+        "\t\tSW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
   }
   riscv_instr += "\t\tADDI\tsp, " + std::to_string(shift) + "\n";
   return riscv_instr;
@@ -116,7 +117,8 @@ std::string PopRiscvInst::print() {
   int shift = 0;
   for (auto x : this->operand_) {
     shift -= 4;
-    riscv_instr += "\t\tLW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
+    riscv_instr +=
+        "\t\tLW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
   }
   riscv_instr += "\t\tADDI\tsp, " + std::to_string(-shift) + "\n";
   return riscv_instr;
@@ -129,28 +131,30 @@ std::string ICmpRiscvInstr::print() {
     std::swap(this->operand_[0], this->operand_[1]);
     this->icmp_op_ = static_cast<ICmpInst::ICmpOp>((int)this->icmp_op_ ^ 2);
   }
-  riscv_instr += ICmpOpName.at(this->icmp_op_);
+  riscv_instr += ICmpOpName.at(this->icmp_op_) + "\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
   riscv_instr += ", ";
-  riscv_instr += this->operand_[2]->print();
+  riscv_instr += static_cast<RiscvBasicBlock *>(this->operand_[2])->name_;
   riscv_instr += "\n";
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
   // 不连续则假链也要跳转
   if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
-    riscv_instr += "\t\tJMP\t" + falseLink->print() + "\n";
+    riscv_instr += "\t\tJMP\t" + falseLink->name_ + "\n";
   return riscv_instr;
 }
 
 std::string FCmpRiscvInstr::print() {
   if (this->fcmp_op_ == FCmpInst::FCMP_FALSE)
-    return "\t\tJMP\t" + this->operand_[4]->print() + "\n";
+    return "\t\tJMP\t" +
+           static_cast<RiscvBasicBlock *>(this->operand_[4])->name_ + "\n";
   else if (this->fcmp_op_ == FCmpInst::FCMP_TRUE)
-    return "\t\tJMP\t" + this->operand_[3]->print() + "\n";
+    return "\t\tJMP\t" +
+           static_cast<RiscvBasicBlock *>(this->operand_[3])->name_ + "\n";
   // 第一条指令
   std::string riscv_instr = "\t\t";
-  riscv_instr += FCmpOpName.at(this->fcmp_op_);
+  riscv_instr += FCmpOpName.at(this->fcmp_op_) + "\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -166,7 +170,8 @@ std::string FCmpRiscvInstr::print() {
       this->fcmp_op_ == FCmpInst::FCMP_UNE)
     std::swap(this->operand_[3], this->operand_[4]);
   riscv_instr += "BNE\t" + this->operand_[2]->print() + ", ZERO, " +
-                 this->operand_[3]->print() + "\n";
+                 static_cast<RiscvBasicBlock *>(this->operand_[3])->name_ +
+                 "\n";
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[4]);
   // 不连续则假链也要跳转
   if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)

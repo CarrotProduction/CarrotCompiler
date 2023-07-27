@@ -71,9 +71,9 @@ public:
                                      RiscvBasicBlock *rbb);
   UnaryRiscvInst *createUnaryInstr(RegAlloca *regAlloca, UnaryInst *unaryInstr,
                                    RiscvBasicBlock *rbb);
-  MoveRiscvInst *createStoreInstr(RegAlloca *regAlloca, StoreInst *storeInstr,
+  RiscvInstr *createStoreInstr(RegAlloca *regAlloca, StoreInst *storeInstr,
                                   RiscvBasicBlock *rbb);
-  MoveRiscvInst *createLoadInstr(RegAlloca *regAlloca, LoadInst *loadInstr,
+  RiscvInstr *createLoadInstr(RegAlloca *regAlloca, LoadInst *loadInstr,
                                  RiscvBasicBlock *rbb);
   ICmpRiscvInstr *createICMPInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
                                   BranchInst *brInstr, RiscvBasicBlock *rbb);

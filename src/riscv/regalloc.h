@@ -23,7 +23,7 @@
 // 注意区分指针类型（如*a0）和算数值（a0）的区别
 
 extern int IntRegID, FloatRegID; // 测试阶段使用
-extern Register *findReg(std::string reg);
+extern Register *NamefindReg(std::string reg);
 // RegAlloca类被放置在**每个函数**内，每个函数内是一个新的寄存器分配类。
 // 因而约定x8-x9 x18-27、f8-9、f18-27
 // 是约定的所有函数都要保护的寄存器，用完要恢复原值
@@ -42,8 +42,11 @@ public:
   // instr 表示需要插入到哪条指令的前面，默认为最后面
   // TODO:1 find函数
   // 实现一个find——对于IR的一个给定值value*，找到一个寄存器（RiscvOperand*）以存放该值
-  RiscvOperand *find(Value *val, RiscvBasicBlock *bb,
+  RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
                      RiscvInstr *instr = nullptr, int inReg = 0);
+  // 找到IR的value的内存地址（用于IR级别的store和load指令）
+  // 如果regalloca中没有存储它的内存地址（没有被setPosition过），assert报错
+  RiscvOperand *findMem(Value *val);
   // TODO:2 findNonuse
   // 实现一个函数，以找到一个当前尚未使用的寄存器以存放某个值。
   RiscvOperand *findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
@@ -53,6 +56,9 @@ public:
                                 RiscvInstr *instr = nullptr);
   // 建立IR中变量到实际变量（内存固定地址空间）的映射
   void setPosition(Value *val, RiscvOperand *riscvVal);
+
+  // 存在返回值的函数，返回值必在a0或者fa0中。
+  void setPositionReg(Value *val, RiscvOperand *riscvReg);
   // 根据返回值是浮点型还是整型决定使用什么寄存器
   RiscvOperand *storeRet(Value *val);
   // TODO:6

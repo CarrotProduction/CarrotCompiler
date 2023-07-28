@@ -207,19 +207,20 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
   std::vector<RiscvOperand *> args;
   // push 指令需要寄存器
   int argnum = callInstr->operands_.size() - 1;
-  for (int i = 1; i < callInstr->operands_.size(); i++) {
+  for (int i = 0; i < argnum; i++) {
     args.push_back(
         regAlloca->findReg(callInstr->operands_[i], rbb, nullptr, 1));
     // 子函数栈帧
     RiscvOperand *stackPos = static_cast<RiscvOperand *>(
-        new RiscvIntPhiReg(NamefindReg("sp"), 4 * (argnum - i + 1)));
+        new RiscvIntPhiReg(NamefindReg("sp"), 4 * (argnum - i)));
     // 为 ra 和 BP 腾出两个空间出来
     regAlloca->setPosition(callInstr->operands_[i], stackPos);
   }
   // 涉及从Function 到RISCV function转换问题（第一个参数）
-  CallRiscvInst *instr = new CallRiscvInst(
-      createRiscvFunction(static_cast<Function *>(callInstr->operands_[0])),
-      rbb, args);
+  CallRiscvInst *instr =
+      new CallRiscvInst(createRiscvFunction(static_cast<Function *>(
+                            callInstr->operands_[argnum])),
+                        rbb, args);
   return instr;
 }
 
@@ -233,7 +234,7 @@ SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(RegAlloca *regAlloca,
                                                   RiscvBasicBlock *rbb) {
   return new SiToFpRiscvInstr(
       regAlloca->findReg(sitofpInstr->operands_[0], rbb, nullptr, 1),
-      regAlloca->findReg(static_cast<Value *>(sitofpInstr), rbb, nullptr, 1), 
+      regAlloca->findReg(static_cast<Value *>(sitofpInstr), rbb, nullptr, 1),
       rbb);
 }
 
@@ -242,7 +243,7 @@ FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(RegAlloca *regAlloca,
                                                   RiscvBasicBlock *rbb) {
   return new FpToSiRiscvInstr(
       regAlloca->findReg(fptosiInstr->operands_[0], rbb, nullptr, 1),
-      regAlloca->findReg(static_cast<Value *>(fptosiInstr), rbb, nullptr, 1), 
+      regAlloca->findReg(static_cast<Value *>(fptosiInstr), rbb, nullptr, 1),
       rbb);
 }
 

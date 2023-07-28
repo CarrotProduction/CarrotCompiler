@@ -191,7 +191,7 @@ FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(RegAlloca *regAlloca,
   return instr;
 }
 
-// 无条件跳转指令：JMP
+// 无条件跳转指令：JMP -> J
 JumpRiscvInstr *RiscvBuilder::createJumpInstr(RegAlloca *regAlloca,
                                               BranchInst *brInstr,
                                               RiscvBasicBlock *rbb) {

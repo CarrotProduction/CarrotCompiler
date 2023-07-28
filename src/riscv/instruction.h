@@ -287,7 +287,7 @@ public:
 // 整型比较
 // 类型：cmpop val1, val2, true_link
 // 传入参数：val1, val2, true_link, false_link（basic block指针形式）
-// false_link如果为为下一条语句则不会发射jmp false_link指令
+// false_link如果为为下一条语句则不会发射j false_link指令
 class ICmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<ICmpInst::ICmpOp, std::string> ICmpOpName;
@@ -315,7 +315,7 @@ public:
 // 浮点比较
 // 类型：cmpop val1, val2, true_link, false_link
 // 假定basic block是顺序排布的，那么如果false_link恰好为下一个basic
-// block，则不会发射jmp false_link指令
+// block，则不会发射j false_link指令
 class FCmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpName;

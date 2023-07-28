@@ -76,11 +76,11 @@ int main(int argc, char **argv) {
     *out << IR << std::endl;
   }
 
-  // Generate object file
+  // Generate assembly file
   // TODO
-  auto builder = new RiscvBuilder();
-  const std::string RiscvCode = builder->buildRISCV(m.get());
   if (print_asm) {
+    auto builder = new RiscvBuilder();
+    const std::string RiscvCode = builder->buildRISCV(m.get());
     *out << RiscvCode << std::endl;
   }
   return 0;

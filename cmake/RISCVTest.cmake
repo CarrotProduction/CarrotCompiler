@@ -24,19 +24,19 @@ else(EXISTS "${TEST_DIR}/${TEST_NAME}.in")
   set(TEST_INS "/dev/null")
 endif(EXISTS "${TEST_DIR}/${TEST_NAME}.in")
 
-set(RUNTIME_ASM "${RUNTIME}/sysy.ll")
+set(RUNTIME_LIB "${RUNTIME}/libsysy.a")
 
 # Generated
-set(TEST_ASM "${TEST_NAME}.ll")
-set(TEST_BTC "${TEST_NAME}.bc")
-set(TEST_OUT "${TEST_NAME}_ir.out")
+set(TEST_ASM "${TEST_NAME}.s")
+set(TEST_EXE "${TEST_NAME}")
+set(TEST_OUT "${TEST_NAME}_rv.out")
 configure_file("${TEST_DIR}/${TEST_NAME}.out" "${TEST_NAME}.ref" NEWLINE_STYLE LF)
 set(TEST_REF "${TEST_NAME}.ref")
 
-# SysY to LLVM IR
+# SysY to RISC-V Assembly
 execute_process(
   COMMAND
-  ${COMPILER} -c ${TEST_SRC}
+  ${COMPILER} -S ${TEST_SRC}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   OUTPUT_FILE ${TEST_ASM}
   ERROR_VARIABLE TEST_ERR
@@ -48,24 +48,23 @@ if(TEST_RET)
   return(-1)
 endif(TEST_RET)
 
-# LLVM IR & Runtime link to BitCode
+# GCC Assemble and Link
 execute_process(
   COMMAND
-  llvm-link "${RUNTIME_ASM}" "${CMAKE_CURRENT_BINARY_DIR}/${TEST_ASM}"
+  riscv64-linux-gnu-gcc "${CMAKE_CURRENT_BINARY_DIR}/${TEST_ASM}" "${RUNTIME_LIB}" -static -o "${CMAKE_CURRENT_BINARY_DIR}/${TEST_EXE}"
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  OUTPUT_FILE ${TEST_BTC}
   ERROR_VARIABLE TEST_ERR
   RESULT_VARIABLE TEST_RET
 )
 
 if(TEST_RET)
-  message(FATAL_ERROR "Failed: LLVM Link Error in ${TEST_SRC}: ${TEST_ERR}")
+  message(FATAL_ERROR "Failed: GCC Assemble and Link Error in ${TEST_SRC}: ${TEST_ERR}")
 endif(TEST_RET)
 
-# Run BitCode with lli
+# Run the executable with qemu
 execute_process(
   COMMAND
-  lli ${TEST_BTC}
+  qemu-riscv64 ${TEST_EXE}
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   INPUT_FILE ${TEST_INS}
   OUTPUT_VARIABLE TEST_OUT_CONTENT

@@ -23,6 +23,13 @@ function(add_test_dir testdir)
       -D "TEST_DIR=${testdir}"
       -D "TEST_NAME=${testfile}"
       -P ${CMAKE_SOURCE_DIR}/cmake/LLVMIRTest.cmake)
+      add_test(NAME "${testname}_asm"
+      COMMAND ${CMAKE_COMMAND}
+      -D "COMPILER=${CMAKE_BINARY_DIR}/compiler"
+      -D "RUNTIME=${CMAKE_BINARY_DIR}/runtime"
+      -D "TEST_DIR=${testdir}"
+      -D "TEST_NAME=${testfile}"
+      -P ${CMAKE_SOURCE_DIR}/cmake/RISCVTest.cmake)
   endforeach()
 endfunction()
 

@@ -70,7 +70,16 @@ void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
 // }
 RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName, RiscvBasicBlock *bb, RiscvInstr *instr) {
   // TODO
-  assert(false);
+  // assert(false);
+  Register * reg = NamefindReg(RegName);
+  RiscvOperand * retOperand = nullptr;
+  if(reg->regtype_ == reg->Int)
+    retOperand = new RiscvIntReg(reg);
+  else if(reg->regtype_ == reg->Float)
+    retOperand = new RiscvFloatReg(reg);
+  else
+    throw "Unknown register type in findSpecificReg().";
+  return retOperand;
 }
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {

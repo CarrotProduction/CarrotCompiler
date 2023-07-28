@@ -71,7 +71,7 @@ public:
     SUB,
     SUBI,
     MUL,
-    DIV,
+    DIV = 6,
     REM,
     FADD = 8,
     FSUB = 10,

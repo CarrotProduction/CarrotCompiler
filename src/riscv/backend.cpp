@@ -76,15 +76,13 @@ RiscvFunction *createRiscvFunction(Function *foo) {
 // 全部合流
 void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
   int n = instr->operands_.size();
-  for (int i = 1; i < n; i++)
-    DSU_for_Variable.merge(instr->operands_[i]->name_,
-                           instr->operands_[0]->name_);
+  for (int i = 0; i < n; i++)
+    DSU_for_Variable.merge(static_cast<Value *>(instr), instr->operands_[0]);
 }
 
 // ZExt翻译：执行零扩展，等效于合流
 void RiscvBuilder::solveZExtInstr(ZextInst *instr) {
-  DSU_for_Variable.merge(instr->operands_[1]->name_,
-                         instr->operands_[0]->name_);
+  DSU_for_Variable.merge(instr->operands_[0], static_cast<Value *>(instr));
 }
 
 BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
@@ -92,8 +90,23 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
                                                  RiscvBasicBlock *rbb) {
   auto id = toRiscvOp.at(binaryInstr->op_id_);
   // 立即数区分
-  if (dynamic_cast<ConstantInt *>(binaryInstr->operands_[1]) != nullptr)
-    id = static_cast<RiscvInstr::InstrType>(id ^ 1);
+  if (dynamic_cast<ConstantInt *>(binaryInstr->operands_[1]) != nullptr) {
+    switch (binaryInstr->type_->tid_) {
+    case Instruction::OpID::Mul:
+    case Instruction::OpID::SDiv:
+    case Instruction::OpID::SRem:
+    case Instruction::OpID::UDiv:
+    case Instruction::OpID::URem:
+    // 找一个寄存器先放这个常数（LI），再做这些整数乘除法操作
+      rbb->addInstrBack(new MoveRiscvInst(
+          regAlloca->findNonuse(rbb),
+          dynamic_cast<ConstantInt *>(binaryInstr->operands_[1])->value_, rbb));
+      break;
+    default:
+      id = static_cast<RiscvInstr::InstrType>(id ^ 1);
+      break;
+    }
+  }
   BinaryRiscvInst *instr = new BinaryRiscvInst(
       id, regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(binaryInstr->operands_[1], rbb, nullptr, 1),
@@ -300,7 +313,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           foo->regAlloca, static_cast<UnaryInst *>(instr), rbb));
       break;
     case Instruction::PHI:
-      this->solvePhiInstr(static_cast<PhiInst *>(instr));
+      // this->solvePhiInstr(static_cast<PhiInst *>(instr));
       break;
     // 直接删除的指令
     case Instruction::BitCast:
@@ -308,7 +321,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     case Instruction::ZExt:
       // 等价一条合流语句操作
-      this->solveZExtInstr(static_cast<ZextInst *>(instr));
+      // this->solveZExtInstr(static_cast<ZextInst *>(instr));
       break;
     case Instruction::Alloca:
       break;
@@ -454,6 +467,14 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   std::string code = ".section .text\n";
   // std::cout << "START FUNCTION\n";
   // 函数体
+  // 预处理：首先合并所有的合流语句操作，然后在分配单元（storeOnStack）部分使用DSU合并
+  for (Function *foo : m->function_list_)
+    for (BasicBlock *bb : foo->basic_blocks_)
+      for (Instruction *instr : bb->instr_list_)
+        if (instr->op_id_ == Instruction::OpID::PHI)
+          this->solvePhiInstr(static_cast<PhiInst *>(instr));
+        else if (instr->op_id_ == Instruction::OpID::ZExt)
+          this->solvePhiInstr(static_cast<PhiInst *>(instr));
   for (Function *foo : m->function_list_) {
     auto rfoo = createRiscvFunction(foo);
     rm->addFunction(rfoo);
@@ -481,6 +502,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     std::map<Value *, int> haveAllocated;
     int IntParaCount = 0, FloatParaCount = 0, ParaShift = 0;
     auto storeOnStack = [&](Value *val) {
+      if (val == nullptr)
+        return;
+      val = this->DSU_for_Variable.query(val);
       if (haveAllocated.count(val))
         return;
       // 几种特殊类型，不需要分栈空间
@@ -490,12 +514,14 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         return;
       // 注意：函数参数不用分配，而是直接指定！
       // 这里设定是：v开头的是局部变量，arg开头的是函数寄存器变量
-      std::string valname = val->name_;
       // 无名常量
-      if (valname.empty())
+      if (val->name_.empty())
         return;
-      // 函数参数
-      if (valname.substr(0, 3) == "arg") {
+      // 全局变量不用给他保存栈上地址，它本身就有对应的内存地址，直接忽略
+      if (dynamic_cast<GlobalVariable *>(val) != nullptr)
+        return;
+      // 除了全局变量之外的参数
+      if (dynamic_cast<Argument *>(val) != nullptr) {
         // 不用额外分配空间
         // 整型参数
         if (val->type_->tid_ == Type::TypeID::IntegerTyID ||
@@ -523,9 +549,8 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         }
         ParaShift += 4;
       }
-      // 函数内参数（v开头）
+      // 函数内参数
       else {
-        assert(valname[0] == 'v');
         int curSP = rfoo->querySP();
         RiscvOperand *stackPos = static_cast<RiscvOperand *>(
             new RiscvIntPhiReg(NamefindReg("sp"), curSP));
@@ -562,7 +587,8 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     +-----------+
     |    a0     |
     +-----------+ <-
-    caller和callee分界线。新函数栈帧从这里开始向下扩展，以此为基准 |  分配变量 |
+    caller和callee分界线。新函数栈帧从这里开始向下扩展，以此为基准 |  分配变量
+    |
     +-----------+
     | 保护寄存器 |
     +-----------+

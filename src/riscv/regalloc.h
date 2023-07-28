@@ -43,7 +43,10 @@ public:
   // inReg 参数如果为1，则要求必须返回寄存器；否则可以返回内存或栈上地址
   // instr 表示需要插入到哪条指令的前面，默认为最后面
   // TODO:1 find函数
-  // 实现一个find——对于IR的一个给定值value*，找到一个寄存器（RiscvOperand*）以存放该值
+  // 实现一个find——对于IR的一个给定值value*，找到一个寄存器（RiscvOperand*，返回值）以存放该值
+  // bb是当前访问该变量的IR语句所在的RISCVBasicBlock块，如果当需要发射lw和sw指令时，使用该bb调用
+  // instr是当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
+  // inReg参数表示该分配地址是否必须是寄存器。如果为0则可以为内存或栈地址
   RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
                      RiscvInstr *instr = nullptr, int inReg = 0);
   // 找到IR的value的内存地址（用于IR级别的store和load指令）
@@ -52,12 +55,15 @@ public:
   // TODO:2 findNonuse
   // 实现一个函数，以找到一个当前尚未使用的寄存器以存放某个值。
   RiscvOperand *findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
-  // TODO:5 findSpecificReg 将一个IR的value*找到一个特定的寄存器进行分配
+  // TODO:5 findSpecificReg 将一个IR的value*找到一个特定的寄存器（以RegName标识）进行分配
+  // bb是当前访问该变量的IR语句所在的RISCVBasicBlock块，如果当需要发射lw和sw指令时，使用该bb调用
+  // instr是当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
   RiscvOperand *findSpecificReg(Value *val, std::string RegName,
                                 RiscvBasicBlock *bb,
                                 RiscvInstr *instr = nullptr);
-  // 建立IR中变量到实际变量（内存固定地址空间）或寄存器的映射 
+  // 建立IR中变量到实际变量（内存固定地址空间，用riscvVal指针表示）或寄存器的映射
   void setPosition(Value *val, RiscvOperand *riscvVal);
+  // 建立IR中变量到实际寄存器（用riscvReg指针表示）的映射
   void setPositionReg(Value *val, RiscvOperand *riscvReg);
 
   // 根据返回值是浮点型还是整型决定使用什么寄存器

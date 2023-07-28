@@ -58,7 +58,7 @@ public:
   // phi语句的合流：此处建立一个并查集DSU_for_Variable维护相同的变量。
   // 例如，对于if (A) y1=do something else y2=do another thing. Phi y3 y1, y2
   // 考虑将y1、y2全部合并到y3上
-  DSU<std::string> DSU_for_Variable;
+  DSU<Value *> DSU_for_Variable;
   void solvePhiInstr(PhiInst *instr);
   void solveZExtInstr(ZextInst *instr);
   std::string buildRISCV(Module *m);

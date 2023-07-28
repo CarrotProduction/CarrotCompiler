@@ -171,7 +171,9 @@ class RiscvLabel : public RiscvOperand {
 public:
   std::string name_; // 标号名称
   ~RiscvLabel() = default;
-  RiscvLabel(OpTy Type, std::string name) : RiscvOperand(Type), name_(name) {}
+  RiscvLabel(OpTy Type, std::string name) : RiscvOperand(Type), name_(name) {
+    // std::cout << "CREATE A LABEL:" << name << "\n";
+  }
   virtual std::string print() = 0;
 };
 
@@ -188,18 +190,21 @@ public:
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue)
       : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
-        elementNum_(1) {}
+        elementNum_(1) {
+          // std::cout << "CREATING A SINGLE GB\n";
+        }
   // 对于数组全局变量的定义
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue, int elementNum)
       : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
-        elementNum_(elementNum) {}
+        elementNum_(elementNum) {
+          // std::cout << "CREATING AN ARRAY GB\n";
+        }
   // 输出全局变量定义
   // 根据ir中全局变量定义转化
   // 问题在于全局变量如果是数组有初值如何处理
   std::string print() {
     std::string code = this->name_ + ":\t";
-
     // 整型
     if (initValue_->type_->tid_ == Type::TypeID::IntegerTyID)
       code += ".word ";
@@ -211,14 +216,14 @@ public:
       if (zeroNumber == 1)
         code += "0";
       else
-        code += "[" + std::to_string(zeroNumber) + "dup(0)]";
+        code += "[" + std::to_string(zeroNumber) + " dup(0)]";
     } else {
       if (typeid(*initValue_) == typeid(ConstantArray)) {
         zeroNumber -=
             static_cast<ArrayType *>(initValue_->type_)->num_elements_;
         // 补充冗余0
         if (zeroNumber > 0)
-          code += "[" + std::to_string(zeroNumber) + "dup(0)]";
+          code += "[" + std::to_string(zeroNumber) + " dup(0)]";
       }
     }
     code += "\n";

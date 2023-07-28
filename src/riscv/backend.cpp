@@ -97,7 +97,7 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
     case Instruction::OpID::SRem:
     case Instruction::OpID::UDiv:
     case Instruction::OpID::URem:
-    // 找一个寄存器先放这个常数（LI），再做这些整数乘除法操作
+      // 找一个寄存器先放这个常数（LI），再做这些整数乘除法操作
       rbb->addInstrBack(new MoveRiscvInst(
           regAlloca->findNonuse(rbb),
           dynamic_cast<ConstantInt *>(binaryInstr->operands_[1])->value_, rbb));
@@ -415,9 +415,6 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     }
     }
   }
-  // std::cout << "TRANSFER BLOCK END\n";
-  // std::cout << rbb->print() << "\n";
-  // std::cout << "END BLOCK CODE\n";
   return rbb;
 }
 
@@ -428,37 +425,54 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   // 全局变量
   if (m->global_list_.size()) {
     for (GlobalVariable *gb : m->global_list_) {
+      auto curType = static_cast<PointerType *>(gb->type_)->contained_;
+      // std::cout << "GB START:" << gb->name_ << "\n";
       RiscvGlobalVariable *curGB = nullptr;
-      ArrayType *containedType = nullptr;
-      switch (gb->type_->tid_) {
+      Type *containedType = nullptr;
+      switch (curType->tid_) {
+      case Type::PointerTyID:
+        assert(false);
+        break;
       case Type::ArrayTyID:
-        containedType = static_cast<ArrayType *>(gb->type_);
+        containedType = curType;
+        while (1) {
+          if (containedType->tid_ == Type::TypeID::ArrayTyID)
+            containedType = static_cast<ArrayType *>(containedType)->contained_;
+          else
+            break;
+        }
         if (containedType->tid_ == Type::IntegerTyID) {
           curGB = new RiscvGlobalVariable(RiscvOperand::IntImm, gb->name_,
                                           gb->is_const_, gb->init_val_,
-                                          containedType->num_elements_);
+                                          static_cast<ArrayType *>(gb->type_)->num_elements_);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         } else {
           curGB = new RiscvGlobalVariable(RiscvOperand::FloatImm, gb->name_,
                                           gb->is_const_, gb->init_val_,
-                                          containedType->num_elements_);
+                                          static_cast<ArrayType *>(gb->type_)->num_elements_);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         }
         break;
-      case Type::TypeID::IntegerTyID:
-        curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_,
+      case Type::TypeID::IntegerTyID: {
+        // std::cout << "START A INT GB:" << gb->name_ << "\n";
+        // std::cout << gb->is_const_ << "!" << gb->init_val_ << "\n";
+        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_, // 神秘bad alloc!
+                                        gb->is_const_, gb->init_val_);
+        assert(curGB != nullptr);
+        // std::cout << "FIRST CREATE A GB\n";
+        rm->addGlobalVariable(curGB);
+        data += curGB->print();
+        break;
+      }
+      case Type::TypeID::FloatTyID: {
+        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::FloatImm, gb->name_,
                                         gb->is_const_, gb->init_val_);
         rm->addGlobalVariable(curGB);
         data += curGB->print();
         break;
-      case Type::TypeID::FloatTyID:
-        curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::FloatImm, gb->name_,
-                                        gb->is_const_, gb->init_val_);
-        rm->addGlobalVariable(curGB);
-        data += curGB->print();
-        break;
+      }
       }
     }
   }
@@ -518,8 +532,22 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       if (val->name_.empty())
         return;
       // 全局变量不用给他保存栈上地址，它本身就有对应的内存地址，直接忽略
-      if (dynamic_cast<GlobalVariable *>(val) != nullptr)
+      if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
+        auto curType = val->type_;
+        while (1) {
+          if (curType->tid_ == Type::TypeID::ArrayTyID)
+            curType = static_cast<ArrayType *>(curType)->contained_;
+          else if (curType->tid_ == Type::TypeID::PointerTyID)
+            curType = static_cast<PointerType *>(curType)->contained_;
+          else
+            break;
+        }
+        if (curType->tid_ == Type::TypeID::IntegerTyID)
+          rfoo->regAlloca->setPosition(val, new RiscvIntPhiReg(val->name_));
+        else
+          rfoo->regAlloca->setPosition(val, new RiscvFloatPhiReg(val->name_));
         return;
+      }
       // 除了全局变量之外的参数
       if (dynamic_cast<Argument *>(val) != nullptr) {
         // 不用额外分配空间

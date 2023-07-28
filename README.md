@@ -8,9 +8,17 @@ Windows 用户请自行查找方案，如使用 WSL 等。
 
 首先确保您使用的 Linux 发行版上存在以下本项目的依赖项：
 
-`flex` `bison` `cmake` `make` `llvm` `clang` `gcc`
+`flex` `bison` `cmake` `make` `gcc`
 
-之后执行如下指令进行编译：
+如果需要运行 LLIR 测试，则还需要以下依赖项：
+
+`llvm` `clang`
+
+如果需要运行 RISC-V 汇编测试，则还需要以下依赖项：
+
+`qemu-user` `riscv64-linux-gnu-gcc`
+
+之后在项目根目录下执行如下指令进行项目构建：
 
 ```shell
 mkdir build

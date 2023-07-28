@@ -4,24 +4,45 @@
 #include <fstream>
 #include <iostream>
 #include "backend.h"
+#include <ostream>
+#include <unistd.h>
 
 extern unique_ptr<CompUnitAST> root;
 extern int yyparse();
 extern FILE *yyin;
 
-
-
 int main(int argc, char **argv) {
-  // TODO: argument parser
-  char *filename = nullptr;
-  bool print_ir = true;
+  // Assert the number of arguments
   assert(argc >= 2);
-  if (argc == 2) {
-    filename = argv[1];
-  } else if (argc == 3) {
-    print_ir = true;
-    filename = argv[2];
+
+  // TODO: advanced argument parser
+  char *filename = nullptr;
+  int print_ir = false;
+  int print_asm = false;
+
+  std::string output = "-";
+
+  int opt;
+  while((opt = getopt(argc, argv, "Sco:")) != -1)
+  {
+    switch (opt) {
+      case 'S':
+        print_asm = true;
+        print_ir = false;
+        break;
+      case 'c':
+        print_ir = true;
+        print_asm = false;
+        break;
+      case 'o':
+        output = optarg;
+        break;
+      default:
+        return -1;
+    }
   }
+  filename = argv[optind];
+
   yyin = fopen(filename, "r");
   if (yyin == nullptr) {
     std::cout << "yyin open" << filename << "failed" << std::endl;
@@ -39,16 +60,28 @@ int main(int argc, char **argv) {
   // Run IR optimization
   // TODO
 
+  // Open output file
+  std::ofstream fout;
+  std::ostream *out;
+  if (output == "-") {
+    out = &std::cout;
+  } else {
+    fout.open(output);
+    out = &fout;
+  }
+
   // Print IR result
   const std::string IR = m->print();
   if (print_ir) {
-    std::cout << IR << std::endl;
+    *out << IR << std::endl;
   }
 
   // Generate object file
   // TODO
   auto builder = new RiscvBuilder();
   const std::string RiscvCode = builder->buildRISCV(m.get());
-  std::cout << RiscvCode << std::endl;
+  if (print_asm) {
+    *out << RiscvCode << std::endl;
+  }
   return 0;
 }

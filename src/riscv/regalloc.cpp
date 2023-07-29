@@ -47,10 +47,18 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   }
 
   auto mem_addr = findMem(val);
-  auto current_reg = curReg[val];
-  auto load_type = getStoreTypeFromRegType(current_reg);
+  if (mem_addr != nullptr) {
+    auto current_reg = curReg[val];
+    auto load_type = getStoreTypeFromRegType(current_reg);
 
-  bb->addInstrBefore(new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
+    bb->addInstrBefore(new LoadRiscvInst(load_type, current_reg, mem_addr, bb),
+                       instr);
+
+  } else {
+    std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
+              << ")'s memory map not found. Maybe an immediate number."
+              << std::endl;
+  }
 
   return curReg[val];
 
@@ -64,9 +72,11 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
 }
 
 RiscvOperand *RegAlloca::findMem(Value *val) {
-  if (pos.count(val) == 0)
-    std::cout << val->name_ << "\n";
-  assert(pos.count(val) == 1);
+  // if (pos.count(val) == 0)
+  //   std::cout << val->name_ << "\n";
+  // assert(pos.count(val) == 1);
+  if (pos.find(val) == pos.end())
+    return nullptr;
   return pos[val];
 }
 
@@ -77,8 +87,9 @@ RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
 }
 
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
-  if(pos.find(val) != pos.end())
-    throw std::string("Trying overwriting memory address of value:") + val->print();
+  if (pos.find(val) != pos.end())
+    throw std::string("Trying overwriting memory address of value:") +
+        val->print();
   pos[val] = riscvVal;
 }
 

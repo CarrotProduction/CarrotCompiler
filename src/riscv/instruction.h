@@ -31,12 +31,20 @@ public:
   }
   void replaceInstr(RiscvInstr *oldinst, RiscvInstr *newinst) {}
   // 在全部指令后面加入
-  void addInstrBack(RiscvInstr *instr) { instruction.push_back(instr); }
+  void addInstrBack(RiscvInstr *instr) {
+    if (instr == nullptr)
+      return;
+    instruction.push_back(instr);
+  }
   // 在全部指令之前加入
   void addInstrFront(RiscvInstr *instr) {
+    if (instr == nullptr)
+      return;
     instruction.insert(instruction.begin(), instr);
   }
   void addInstrBefore(RiscvInstr *instr, RiscvInstr *dst) {
+    if (instr == nullptr)
+      return;
     auto it = std::find(instruction.begin(), instruction.end(), dst);
     if (it != instruction.end())
       instruction.insert(it, instr);
@@ -44,6 +52,8 @@ public:
       addInstrBack(instr);
   }
   void addInstrAfter(RiscvInstr *instr, RiscvInstr *dst) {
+    if (instr == nullptr)
+      return;
     auto it = std::find(instruction.begin(), instruction.end(), instr);
     if (it != instruction.end()) {
       if (next(it) == instruction.end())

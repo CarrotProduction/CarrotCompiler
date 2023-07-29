@@ -89,7 +89,21 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
                                                  BinaryInst *binaryInstr,
                                                  RiscvBasicBlock *rbb) {
   auto id = toRiscvOp.at(binaryInstr->op_id_);
-  // 立即数区分
+  // 立即数处理
+
+  // If both operands are imm value, caculate the result directly and save to
+  // binaryInstr value.
+  if (binaryInstr->operands_[0]->name_[0] ==
+          binaryInstr->operands_[1]->name_[0] &&
+      binaryInstr->operands_[0]->name_[0] == 0) {
+    int value_result =
+        static_cast<ConstantInt *>(binaryInstr->operands_[0])->value_ -
+        static_cast<ConstantInt *>(binaryInstr->operands_[1])->value_;
+    rbb->addInstrBack(new MoveRiscvInst(regAlloca->findReg(binaryInstr, rbb),
+                                        value_result, rbb));
+    return nullptr;
+  }
+
   if (dynamic_cast<ConstantInt *>(binaryInstr->operands_[1]) != nullptr) {
     switch (binaryInstr->op_id_) {
     case Instruction::OpID::Mul:

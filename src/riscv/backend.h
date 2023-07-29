@@ -72,10 +72,12 @@ public:
                                      RiscvBasicBlock *rbb);
   UnaryRiscvInst *createUnaryInstr(RegAlloca *regAlloca, UnaryInst *unaryInstr,
                                    RiscvBasicBlock *rbb);
-  RiscvInstr *createStoreInstr(RegAlloca *regAlloca, StoreInst *storeInstr,
-                                  RiscvBasicBlock *rbb);
-  RiscvInstr *createLoadInstr(RegAlloca *regAlloca, LoadInst *loadInstr,
-                                 RiscvBasicBlock *rbb);
+  std::vector<RiscvInstr *> createStoreInstr(RegAlloca *regAlloca,
+                                             StoreInst *storeInstr,
+                                             RiscvBasicBlock *rbb);
+  std::vector<RiscvInstr *> createLoadInstr(RegAlloca *regAlloca,
+                                             LoadInst *loadInstr,
+                                             RiscvBasicBlock *rbb);
   ICmpRiscvInstr *createICMPInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
                                   BranchInst *brInstr, RiscvBasicBlock *rbb);
   FCmpRiscvInstr *createFCMPInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,

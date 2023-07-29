@@ -91,7 +91,7 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
   auto id = toRiscvOp.at(binaryInstr->op_id_);
   // 立即数区分
   if (dynamic_cast<ConstantInt *>(binaryInstr->operands_[1]) != nullptr) {
-    switch (binaryInstr->type_->tid_) {
+    switch (binaryInstr->op_id_) {
     case Instruction::OpID::Mul:
     case Instruction::OpID::SDiv:
     case Instruction::OpID::SRem:
@@ -125,16 +125,20 @@ UnaryRiscvInst *RiscvBuilder::createUnaryInstr(RegAlloca *regAlloca,
 }
 
 // IR中的Store对应到RISCV为MOV指令或浮点MOV指令或LI指令或真正的store指令
-RiscvInstr *RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
-                                           StoreInst *storeInstr,
-                                           RiscvBasicBlock *rbb) {
+std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
+                                                         StoreInst *storeInstr,
+                                                         RiscvBasicBlock *rbb) {
   auto testConstInt = dynamic_cast<ConstantInt *>(storeInstr->operands_[0]);
   if (testConstInt != nullptr) {
     // 整数部分可以直接li指令
-    MoveRiscvInst *instr =
-        new MoveRiscvInst(regAlloca->findReg(storeInstr->operands_[1], rbb),
-                          new RiscvConst(testConstInt->value_), rbb);
-    return instr;
+    std::vector<RiscvInstr *> ans;
+    auto regPos = regAlloca->findReg(storeInstr->operands_[1], rbb);
+    ans.push_back(
+        new MoveRiscvInst(regPos, new RiscvConst(testConstInt->value_), rbb));
+    ans.push_back(
+        new StoreRiscvInst(storeInstr->operands_[0]->type_, regPos,
+                           regAlloca->findMem(storeInstr->operands_[1]), rbb));
+    return ans;
   }
   // 真正的store：第二操作数为一个指针类型
   if (storeInstr->operands_[0]->type_->tid_ == Type::TypeID::PointerTyID) {
@@ -143,35 +147,48 @@ RiscvInstr *RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
         curType->contained_,
         regAlloca->findReg(storeInstr->operands_[1], rbb, nullptr, 1),
         regAlloca->findMem(storeInstr->operands_[0]), rbb);
-    return instr;
+    return {instr};
   }
   // 下面为整型或浮点的mov
   // 浮点部分需要提前写入内存中，然后等效于直接mov
   // TODO:先把浮点常数以全局变量形式存入内存中，再直接fmv
-  MoveRiscvInst *instr = new MoveRiscvInst(
-      regAlloca->findReg(storeInstr->operands_[1], rbb),
-      regAlloca->findReg(storeInstr->operands_[0], rbb, nullptr, 1), rbb);
-  return instr;
+  std::vector<RiscvInstr *> ans;
+  auto regPos = regAlloca->findReg(storeInstr->operands_[0], rbb, nullptr, 1);
+  ans.push_back(new MoveRiscvInst(
+      regAlloca->findReg(storeInstr->operands_[1], rbb), regPos, rbb));
+  ans.push_back(new StoreRiscvInst(storeInstr->operands_[0]->type_, regPos,
+                                   regAlloca->findMem(storeInstr->operands_[0]),
+                                   rbb));
+  return ans;
 }
 
 // Load 指令仅一个参数！它本身就是一个value
-RiscvInstr *RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
-                                          LoadInst *loadInstr,
-                                          RiscvBasicBlock *rbb) {
+std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
+                                                        LoadInst *loadInstr,
+                                                        RiscvBasicBlock *rbb) {
   // 如果是指针类型，则是RISCV中lw指令
   if (loadInstr->operands_[0]->type_->tid_ == Type::TypeID::PointerTyID) {
     auto curType = static_cast<PointerType *>(loadInstr->operands_[0]->type_);
-    LoadRiscvInst *instr = new LoadRiscvInst(
-        curType->contained_,
-        regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1),
-        regAlloca->findMem(loadInstr->operands_[0]), rbb);
-    return instr;
+    std::vector<RiscvInstr *> ans;
+    auto regPos =
+        regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1);
+    ans.push_back(new LoadRiscvInst(curType->contained_, regPos,
+                                    regAlloca->findMem(loadInstr->operands_[0]),
+                                    rbb));
+    ans.push_back(new StoreRiscvInst(
+        curType->contained_, regPos,
+        regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
+    return ans;
   }
   // 否则是mov。其实可能不存在这一类
-  MoveRiscvInst *instr = new MoveRiscvInst(
-      regAlloca->findReg(static_cast<Value *>(loadInstr), rbb),
-      regAlloca->findReg(loadInstr->operands_[0], rbb, nullptr, 1), rbb);
-  return instr;
+  std::vector<RiscvInstr *> ans;
+  auto regPos = regAlloca->findReg(loadInstr->operands_[0], rbb, nullptr, 1);
+  ans.push_back(new MoveRiscvInst(
+      regAlloca->findReg(static_cast<Value *>(loadInstr), rbb), regPos, rbb));
+  ans.push_back(new StoreRiscvInst(
+      static_cast<Value *>(loadInstr)->type_, regPos,
+      regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
+  return ans;
 }
 
 ICmpRiscvInstr *RiscvBuilder::createICMPInstr(RegAlloca *regAlloca,
@@ -338,14 +355,20 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       rbb->addInstrBack(this->createSiToFpInstr(
           foo->regAlloca, static_cast<SiToFpInst *>(instr), rbb));
       break;
-    case Instruction::Load:
-      rbb->addInstrBack(this->createLoadInstr(
-          foo->regAlloca, static_cast<LoadInst *>(instr), rbb));
+    case Instruction::Load: {
+      auto instrSet = this->createLoadInstr(
+          foo->regAlloca, static_cast<LoadInst *>(instr), rbb);
+      for (auto x : instrSet)
+        rbb->addInstrBack(x);
       break;
-    case Instruction::Store:
-      rbb->addInstrBack(this->createStoreInstr(
-          foo->regAlloca, static_cast<StoreInst *>(instr), rbb));
+    }
+    case Instruction::Store: {
+      auto instrSet = this->createStoreInstr(
+          foo->regAlloca, static_cast<StoreInst *>(instr), rbb);
+      for (auto *x : instrSet)
+        rbb->addInstrBack(x);
       break;
+    }
     case Instruction::ICmp:
     case Instruction::FCmp:
       forward = instr;
@@ -442,33 +465,32 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (containedType->tid_ == Type::IntegerTyID) {
-          curGB = new RiscvGlobalVariable(RiscvOperand::IntImm, gb->name_,
-                                          gb->is_const_, gb->init_val_,
-                                          static_cast<ArrayType *>(gb->type_)->num_elements_);
+          curGB = new RiscvGlobalVariable(
+              RiscvOperand::IntImm, gb->name_, gb->is_const_, gb->init_val_,
+              static_cast<ArrayType *>(gb->type_)->num_elements_);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         } else {
-          curGB = new RiscvGlobalVariable(RiscvOperand::FloatImm, gb->name_,
-                                          gb->is_const_, gb->init_val_,
-                                          static_cast<ArrayType *>(gb->type_)->num_elements_);
+          curGB = new RiscvGlobalVariable(
+              RiscvOperand::FloatImm, gb->name_, gb->is_const_, gb->init_val_,
+              static_cast<ArrayType *>(gb->type_)->num_elements_);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         }
         break;
       case Type::TypeID::IntegerTyID: {
-        // std::cout << "START A INT GB:" << gb->name_ << "\n";
-        // std::cout << gb->is_const_ << "!" << gb->init_val_ << "\n";
-        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_, // 神秘bad alloc!
-                                        gb->is_const_, gb->init_val_);
+        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm,
+                                             gb->name_,
+                                             gb->is_const_, gb->init_val_);
         assert(curGB != nullptr);
-        // std::cout << "FIRST CREATE A GB\n";
         rm->addGlobalVariable(curGB);
         data += curGB->print();
         break;
       }
       case Type::TypeID::FloatTyID: {
-        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::FloatImm, gb->name_,
-                                        gb->is_const_, gb->init_val_);
+        auto curGB =
+            new RiscvGlobalVariable(RiscvOperand::OpTy::FloatImm, gb->name_,
+                                    gb->is_const_, gb->init_val_);
         rm->addGlobalVariable(curGB);
         data += curGB->print();
         break;

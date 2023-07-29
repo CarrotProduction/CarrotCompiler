@@ -266,7 +266,7 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
     RiscvOperand *stackPos = static_cast<RiscvOperand *>(
         new RiscvIntPhiReg(NamefindReg("sp"), 4 * (argnum - i)));
     // 为 ra 和 BP 腾出两个空间出来
-    regAlloca->setPositionReg(callInstr->operands_[i], stackPos);
+    regAlloca->setPosition(callInstr->operands_[i], stackPos);
   }
   // 涉及从Function 到RISCV function转换问题（第一个参数）
   CallRiscvInst *instr =
@@ -597,11 +597,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (curType->tid_ == Type::TypeID::IntegerTyID)
-          rfoo->regAlloca->setPositionReg(*val,
-                                          new RiscvIntPhiReg((*val)->name_));
+          rfoo->regAlloca->setPosition(val, new RiscvIntPhiReg(val->name_));
         else
-          rfoo->regAlloca->setPositionReg(*val,
-                                          new RiscvFloatPhiReg((*val)->name_));
+          rfoo->regAlloca->setPosition(val, new RiscvFloatPhiReg(val->name_));
         return;
       }
       // 除了全局变量之外的参数
@@ -612,10 +610,10 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
           IntParaCount++;
           if (IntParaCount < 8)
-            rfoo->regAlloca->setPositionReg(
+            rfoo->regAlloca->setPosition(
                 *val, new RiscvIntReg(
-                          NamefindReg("a" + std::to_string(IntParaCount))));
-          rfoo->regAlloca->setPositionReg(
+                         NamefindReg("a" + std::to_string(IntParaCount))));
+          rfoo->regAlloca->setPosition(
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
         }
         // 浮点参数
@@ -624,11 +622,11 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           FloatParaCount++;
           // 寄存器有
           if (FloatParaCount < 8) {
-            rfoo->regAlloca->setPositionReg(
+            rfoo->regAlloca->setPosition(
                 *val, new RiscvFloatReg(
-                          NamefindReg("fa" + std::to_string(FloatParaCount))));
+                         NamefindReg("fa" + std::to_string(FloatParaCount))));
           }
-          rfoo->regAlloca->setPositionReg(
+          rfoo->regAlloca->setPosition(
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
         }
         ParaShift += 4;

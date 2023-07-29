@@ -90,6 +90,7 @@ std::string CallRiscvInst::print() {
   // 增补push指令
   std::string riscv_instr = "\t\tJALR\tra, ";
   riscv_instr += static_cast<RiscvFunction *>(this->operand_[0])->name_;
+  riscv_instr += "\n";
   return riscv_instr;
 }
 

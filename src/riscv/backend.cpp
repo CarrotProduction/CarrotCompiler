@@ -600,9 +600,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (curType->tid_ == Type::TypeID::IntegerTyID)
-          rfoo->regAlloca->setPosition(val, new RiscvIntPhiReg(val->name_));
+          rfoo->regAlloca->setPosition(*val, new RiscvIntPhiReg((*val)->name_));
         else
-          rfoo->regAlloca->setPosition(val, new RiscvFloatPhiReg(val->name_));
+          rfoo->regAlloca->setPosition(*val, new RiscvFloatPhiReg((*val)->name_));
         return;
       }
       // 除了全局变量之外的参数

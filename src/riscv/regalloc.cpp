@@ -36,7 +36,8 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   if (val->type_->tid_ == Type::IntegerTyID ||
       val->type_->tid_ == Type::PointerTyID) {
     ++IntRegID;
-    if(IntRegID > 29) IntRegID = 8;
+    if (IntRegID > 29)
+      IntRegID = 8;
     RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
     setPositionReg(val, cur);
   } else {
@@ -87,9 +88,10 @@ RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
 
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   if (pos.find(val) != pos.end()) {
-    std::cerr << "\n[Fatal Error] Trying overwriting memory address of value "
-              << std::hex << val << std::endl;
-    throw -1;
+    std::cerr << "\n[Warning] Trying overwriting memory address map of value "
+              << std::hex << val << " (" << val->name_ << ") [" << riscvVal
+              << " -> " << pos[val] << "]" << std::endl;
+    // std::terminate();
   }
   pos[val] = riscvVal;
 }

@@ -141,12 +141,12 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
     return ans;
   }
   // 真正的store：第二操作数为一个指针类型
-  if (storeInstr->operands_[0]->type_->tid_ == Type::TypeID::PointerTyID) {
-    auto curType = static_cast<PointerType *>(storeInstr->operands_[0]->type_);
+  if (storeInstr->operands_[1]->type_->tid_ == Type::TypeID::PointerTyID) {
+    auto curType = static_cast<PointerType *>(storeInstr->operands_[1]->type_);
     StoreRiscvInst *instr = new StoreRiscvInst(
         curType->contained_,
-        regAlloca->findReg(storeInstr->operands_[1], rbb, nullptr, 1),
-        regAlloca->findMem(storeInstr->operands_[0]), rbb);
+        regAlloca->findReg(storeInstr->operands_[0], rbb, nullptr, 1),
+        regAlloca->findMem(storeInstr->operands_[1]), rbb);
     return {instr};
   }
   // 下面为整型或浮点的mov

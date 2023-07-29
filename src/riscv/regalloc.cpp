@@ -77,6 +77,8 @@ RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
 }
 
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
+  if(pos.find(val) != pos.end())
+    throw std::string("Trying overwriting memory address of value:") + val->print();
   pos[val] = riscvVal;
 }
 

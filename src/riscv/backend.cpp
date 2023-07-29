@@ -311,6 +311,59 @@ FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(RegAlloca *regAlloca,
       rbb);
 }
 
+// 固定采用x30作为偏移量，x31作为乘法的LI指令地址
+std::vector<RiscvInstr *>
+RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
+                                 RiscvBasicBlock *rbb) {
+  Value *op0 = instr->get_operand(0);
+  RiscvOperand *dest = regAlloca->findReg(static_cast<Value *>(instr), rbb);
+  std::vector<RiscvInstr *> ans;
+  if (auto gv = dynamic_cast<GlobalVariable *>(op0)) {
+    // 全局变量：使用la指令取基础地址
+    ans.push_back(new LoadAddressRiscvInstr(dest, op0->name_, rbb));
+  } else if (auto oi = dynamic_cast<Instruction *>(op0)) {
+    // 指令是在栈上分配的临时地址，则dest=当前的sp+现在分配的变量的偏移地址
+    int varOffset = 0;
+    if (op0->type_->tid_ == Type::TypeID::FloatTyID)
+      varOffset =
+          static_cast<RiscvFloatPhiReg *>(regAlloca->findMem(op0))->shift_;
+    else
+      varOffset =
+          static_cast<RiscvIntPhiReg *>(regAlloca->findMem(op0))->shift_;
+    ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
+                                      new RiscvIntReg(NamefindReg("sp")),
+                                      new RiscvConst(varOffset), dest, rbb));
+  }
+  int curTypeSize = 0;
+  unsigned int num_operands = instr->num_ops_;
+  int indexVal, totalOffset = 0;
+  Type *cur_type =
+      static_cast<PointerType *>(instr->get_operand(0)->type_)->contained_;
+  for (unsigned int i = 1; i <= num_operands - 1; i++) {
+    if (i > 1)
+      cur_type = static_cast<ArrayType *>(cur_type)->contained_;
+    Value *opi = instr->get_operand(i);
+    curTypeSize = calcTypeSize(cur_type);
+    if (auto ci = dynamic_cast<ConstantInt *>(opi)) {
+      indexVal = ci->value_;
+      totalOffset += indexVal * curTypeSize;
+    } else {
+      // assert(dynamic_cast<Instruction *>(opi) || dynamic_cast<Argument
+      // *>(opi));
+      assert(opi->type_->tid_ == Type::IntegerTyID);
+      RiscvOperand *mulTempReg = new RiscvIntReg(NamefindReg("t6"));
+      // 先把常量塞进x31寄存器，然后做乘法dest=dest*x31
+      ans.push_back(new MoveRiscvInst(mulTempReg, curTypeSize, rbb));
+      ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::MUL, dest,
+                                        mulTempReg, dest, rbb));
+    }
+  }
+  if (totalOffset > 0)
+    ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
+                                      new RiscvConst(totalOffset), dest, rbb));
+  return ans;
+}
+
 RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
                                                        RiscvFunction *foo) {
   RiscvBasicBlock *rbb = createRiscvBasicBlock(bb);
@@ -377,7 +430,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     // 找偏移量，待完成
     case Instruction::GetElementPtr:
-      
+
       break;
     case Instruction::FPtoSI:
       rbb->addInstrBack(this->createFptoSiInstr(
@@ -698,4 +751,16 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     code += rfoo->print();
   }
   return data + code;
+}
+
+int RiscvBuilder::calcTypeSize(Type *ty) {
+  int totalsize = 1;
+  while (ty->tid_ == Type::ArrayTyID) {
+    totalsize *= static_cast<ArrayType *>(ty)->num_elements_;
+    ty = static_cast<ArrayType *>(ty)->contained_;
+  }
+  assert(ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID ||
+         ty->tid_ == Type::PointerTyID);
+  totalsize *= 4;
+  return totalsize;
 }

@@ -245,3 +245,9 @@ std::string FpToSiRiscvInstr::print() {
   riscv_instr += "\n";
   return riscv_instr;
 }
+
+std::string LoadAddressRiscvInstr::print() {
+  std::string riscv_instr =
+      "\t\tLLA\t" + this->operand_[0]->print() + this->name_ + "\n";
+  return riscv_instr;
+}

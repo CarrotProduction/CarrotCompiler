@@ -118,7 +118,8 @@ public:
     ASHR,
     SHLI = 52,
     LSHRI,
-    ASHRI
+    ASHRI,
+    LA
   };
   const static std::map<InstrType, std::string> RiscvName;
 
@@ -378,6 +379,17 @@ public:
       : RiscvInstr(SITOFP, 2, bb) {
     setOperand(0, Source);
     setOperand(1, Target);
+  }
+  virtual std::string print() override;
+};
+
+class LoadAddressRiscvInstr : public RiscvInstr {
+public:
+  std::string name_;
+  LoadAddressRiscvInstr(RiscvOperand *dest, std::string name,
+                        RiscvBasicBlock *bb)
+      : RiscvInstr(LA, 1, bb), name_(name) {
+    setOperand(0, dest);
   }
   virtual std::string print() override;
 };

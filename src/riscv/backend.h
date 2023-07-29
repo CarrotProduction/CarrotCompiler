@@ -93,8 +93,11 @@ public:
   JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca, BranchInst *brInstr,
                                   RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
-  ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca,
-                                            ReturnInst *returnInstr,
-                                            RiscvBasicBlock *rbb);
+  ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca, ReturnInst *returnInstr,
+                                  RiscvBasicBlock *rbb);
+  int calcTypeSize(Type *ty);
+  std::vector<RiscvInstr *> solveGetElementPtr(RegAlloca *regAlloca,
+                                               GetElementPtrInst *instr,
+                                               RiscvBasicBlock *rbb);
 };
 #endif // !BACKENDH

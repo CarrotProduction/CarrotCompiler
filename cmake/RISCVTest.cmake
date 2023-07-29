@@ -44,7 +44,7 @@ execute_process(
 )
 
 if(TEST_RET)
-  message(FATAL_ERROR "Failed: SysY Compiler Error in ${TEST_SRC}: ${TEST_ERR}")
+  message(SEND_ERROR "Failed: SysY Compiler Error in ${TEST_SRC}: ${TEST_ERR}")
   file(READ "${TEST_SRC}" TEST_SRC_CONTENT)
   message(NOTICE "Source File:\n ${TEST_SRC_CONTENT}")
   return(-1)

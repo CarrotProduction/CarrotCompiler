@@ -377,8 +377,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     // 找偏移量，待完成
     case Instruction::GetElementPtr:
-      // TODO
-      assert(false);
+      
       break;
     case Instruction::FPtoSI:
       rbb->addInstrBack(this->createFptoSiInstr(
@@ -569,25 +568,26 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     std::map<Value *, int> haveAllocated;
     int IntParaCount = 0, FloatParaCount = 0, ParaShift = 0;
 
-    auto storeOnStack = [&](Value *val) {
+    auto storeOnStack = [&](Value **val) {
       if (val == nullptr)
         return;
-      val = this->DSU_for_Variable.query(val);
-      if (haveAllocated.count(val))
+      assert(*val != nullptr);
+      *val = this->DSU_for_Variable.query(*val);
+      if (haveAllocated.count(*val))
         return;
       // 几种特殊类型，不需要分栈空间
-      if (dynamic_cast<Function *>(val) != nullptr)
+      if (dynamic_cast<Function *>(*val) != nullptr)
         return;
-      if (dynamic_cast<BasicBlock *>(val) != nullptr)
+      if (dynamic_cast<BasicBlock *>(*val) != nullptr)
         return;
       // 注意：函数参数不用分配，而是直接指定！
       // 这里设定是：v开头的是局部变量，arg开头的是函数寄存器变量
       // 无名常量
-      if (val->name_.empty())
+      if ((*val)->name_.empty())
         return;
       // 全局变量不用给他保存栈上地址，它本身就有对应的内存地址，直接忽略
-      if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
-        auto curType = val->type_;
+      if (dynamic_cast<GlobalVariable *>(*val) != nullptr) {
+        auto curType = (*val)->type_;
         while (1) {
           if (curType->tid_ == Type::TypeID::ArrayTyID)
             curType = static_cast<ArrayType *>(curType)->contained_;
@@ -597,37 +597,39 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (curType->tid_ == Type::TypeID::IntegerTyID)
-          rfoo->regAlloca->setPositionReg(val, new RiscvIntPhiReg(val->name_));
+          rfoo->regAlloca->setPositionReg(*val,
+                                          new RiscvIntPhiReg((*val)->name_));
         else
-          rfoo->regAlloca->setPositionReg(val, new RiscvFloatPhiReg(val->name_));
+          rfoo->regAlloca->setPositionReg(*val,
+                                          new RiscvFloatPhiReg((*val)->name_));
         return;
       }
       // 除了全局变量之外的参数
-      if (dynamic_cast<Argument *>(val) != nullptr) {
+      if (dynamic_cast<Argument *>(*val) != nullptr) {
         // 不用额外分配空间
         // 整型参数
-        if (val->type_->tid_ == Type::TypeID::IntegerTyID ||
-            val->type_->tid_ == Type::TypeID::PointerTyID) {
+        if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
+            (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
           IntParaCount++;
           if (IntParaCount < 8)
             rfoo->regAlloca->setPositionReg(
-                val, new RiscvIntReg(
-                         NamefindReg("a" + std::to_string(IntParaCount))));
+                *val, new RiscvIntReg(
+                          NamefindReg("a" + std::to_string(IntParaCount))));
           rfoo->regAlloca->setPositionReg(
-              val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
         }
         // 浮点参数
         else {
-          assert(val->type_->tid_ == Type::TypeID::FloatTyID);
+          assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
           FloatParaCount++;
           // 寄存器有
           if (FloatParaCount < 8) {
             rfoo->regAlloca->setPositionReg(
-                val, new RiscvFloatReg(
-                         NamefindReg("fa" + std::to_string(FloatParaCount))));
+                *val, new RiscvFloatReg(
+                          NamefindReg("fa" + std::to_string(FloatParaCount))));
           }
           rfoo->regAlloca->setPositionReg(
-              val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
         }
         ParaShift += 4;
       }
@@ -636,18 +638,21 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         int curSP = rfoo->querySP();
         RiscvOperand *stackPos = static_cast<RiscvOperand *>(
             new RiscvIntPhiReg(NamefindReg("sp"), curSP));
-        rfoo->regAlloca->setPosition(static_cast<Value *>(val), stackPos);
+        rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
         rfoo->addTempVar(stackPos);
       }
-      haveAllocated[val] = 1;
+      haveAllocated[*val] = 1;
     };
 
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_) {
         // 所有的函数局部变量都要压入栈
-        storeOnStack(static_cast<Value *>(instr));
-        for (auto *val : instr->operands_)
-          storeOnStack(static_cast<Value *>(val));
+        auto tempPtr = static_cast<Value *>(instr);
+        storeOnStack(&tempPtr);
+        for (auto *val : instr->operands_) {
+          tempPtr = static_cast<Value *>(val);
+          storeOnStack(&tempPtr);
+        }
       }
     // std::cout << "ALL ALLOCA END\n";
     rfoo->addBlock(initBlock);

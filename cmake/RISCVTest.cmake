@@ -45,6 +45,8 @@ execute_process(
 
 if(TEST_RET)
   message(FATAL_ERROR "Failed: SysY Compiler Error in ${TEST_SRC}: ${TEST_ERR}")
+  file(READ "${TEST_SRC}" TEST_SRC_CONTENT)
+  message(NOTICE "Source File:\n ${TEST_SRC_CONTENT}")
   return(-1)
 endif(TEST_RET)
 
@@ -58,7 +60,10 @@ execute_process(
 )
 
 if(TEST_RET)
-  message(FATAL_ERROR "Failed: GCC Assemble and Link Error in ${TEST_SRC}: ${TEST_ERR}")
+  message(SEND_ERROR "Failed: GCC Assemble and Link Error in ${TEST_SRC}: ${TEST_ERR}")
+  file(READ "${TEST_ASM}" TEST_ASM_CONTENT)
+  message(NOTICE "Generated Assmebly:\n ${TEST_ASM_CONTENT}")
+  return(-1)
 endif(TEST_RET)
 
 # Run the executable with qemu
@@ -97,5 +102,9 @@ if(TEST_RESULT)
   # get_filename_component(TESTNAME "${TEST_ARGS}" NAME)
   # file(RENAME "${TEST_OUTPUT}" "${CMAKE_BINARY_DIR}/${TESTNAME}.out")
   # file(WRITE  "${CMAKE_BINARY_DIR}/${TESTNAME}.err" ${TEST_ERROR})
-  message(FATAL_ERROR "Failed: The output of ${TEST_NAME} did not match ${TEST_REF}")
+  message(SEND_ERROR "Failed: The output of ${TEST_NAME} did not match ${TEST_REF}")
+  file(READ ${TEST_REF} TEST_REF_CONTENT)
+  message(NOTICE "Expected Output: ${TEST_REF_CONTENT}")
+  message(NOTICE "Auctual Output: ${TEST_OUT_CONTENT}")
+  return(-1)
 endif(TEST_RESULT)

@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
+option(BUILD_IR_TESTING "Build IR testing" OFF)
 
 project(CarrotCompiler  VERSION 0.1
                         DESCRIPTION "Simple compiler targeted RV64 for SysY Language"
@@ -18,6 +19,8 @@ add_subdirectory(src)
 # Unit tests
 include(CTest)
 if(BUILD_TESTING)
-    add_subdirectory(runtime)
+    if(BUILD_IR_TESTING)
+        add_subdirectory(runtime)
+    endif(BUILD_IR_TESTING)
     add_subdirectory(test)
-endif()
+endif(BUILD_TESTING)

@@ -114,9 +114,12 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
       value_result = value[0] / value[1];
       break;
     default:
-      throw "Binary instruction immediate caculation not implemented";
+      std::cerr << "[Fatal Error] Binary instruction immediate caculation not "
+                   "implemented."
+                << std::endl;
+      std::terminate();
     }
-    rbb->addInstrBack(new MoveRiscvInst(regAlloca->findReg(binaryInstr, rbb),
+    rbb->addInstrBack(new MoveRiscvInst(regAlloca->findReg(binaryInstr, rbb, nullptr, 0, 0),
                                         value_result, rbb));
     return nullptr;
   }
@@ -132,7 +135,7 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
   BinaryRiscvInst *instr = new BinaryRiscvInst(
       id, regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(binaryInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findReg(binaryInstr, rbb, nullptr, 1), rbb);
+      regAlloca->findReg(binaryInstr, rbb, nullptr, 1, 0), rbb);
   return instr;
 }
 
@@ -142,7 +145,7 @@ UnaryRiscvInst *RiscvBuilder::createUnaryInstr(RegAlloca *regAlloca,
   UnaryRiscvInst *instr = new UnaryRiscvInst(
       toRiscvOp.at(unaryInstr->op_id_),
       regAlloca->findReg(unaryInstr->operands_[0], rbb, nullptr, 1),
-      regAlloca->findReg(unaryInstr, rbb, nullptr, 1), rbb);
+      regAlloca->findReg(unaryInstr, rbb, nullptr, 1, 0), rbb);
   return instr;
 }
 
@@ -193,7 +196,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
     auto curType = static_cast<PointerType *>(loadInstr->operands_[0]->type_);
     std::vector<RiscvInstr *> ans;
     auto regPos =
-        regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1);
+        regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);
     ans.push_back(new LoadRiscvInst(curType->contained_, regPos,
                                     regAlloca->findMem(loadInstr->operands_[0]),
                                     rbb));

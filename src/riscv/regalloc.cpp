@@ -29,7 +29,7 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
 }
 
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
-                                 RiscvInstr *instr, int inReg) {
+                                 RiscvInstr *instr, int inReg, int load) {
   if (curReg.count(val))
     return curReg[val];
   // 目前下面是一个没有考虑任何寄存器分配的工作，认为所有的变量都是寄存器存储，所有值可以直接使用的
@@ -47,9 +47,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     setPositionReg(val, cur);
   }
 
-  // If register has dirty value then write back.
+  // If value
   auto mem_addr = findMem(val);
-  if (mem_addr != nullptr) {
+  if (mem_addr != nullptr && load) {
     auto current_reg = curReg[val];
     auto load_type = getStoreTypeFromRegType(current_reg);
 

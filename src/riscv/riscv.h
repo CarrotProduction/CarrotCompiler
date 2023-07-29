@@ -29,6 +29,7 @@ public:
   explicit RiscvOperand(OpTy tid) : tid_(tid) {}
   ~RiscvOperand() = default;
   virtual std::string print() = 0;
+  OpTy getType();
 };
 
 // 寄存器堆

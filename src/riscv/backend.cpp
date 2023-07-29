@@ -258,10 +258,12 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
 ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
                                             ReturnInst *returnInstr,
                                             RiscvBasicBlock *rbb) {
+  RiscvOperand * reg_to_save = nullptr;
   if (returnInstr->operands_[0]->type_->tid_ == Type::TypeID::IntegerTyID)
-    regAlloca->findSpecificReg(returnInstr->operands_[0], "a0", rbb);
+    reg_to_save = regAlloca->findSpecificReg(returnInstr->operands_[0], "a0", rbb);
   else if (returnInstr->operands_[0]->type_->tid_ == Type::TypeID::FloatTyID)
-    regAlloca->findSpecificReg(returnInstr->operands_[0], "fa0", rbb);
+    reg_to_save = regAlloca->findSpecificReg(returnInstr->operands_[0], "fa0", rbb);
+  
   return new ReturnRiscvInst(rbb);
 }
 

@@ -5,7 +5,7 @@
 const int REG_NUMBER = 32;
 
 RiscvFunction::RiscvFunction(std::string name, int num_args,
-              OpTy Ty) // 返回值，无返回使用void类型
+                             OpTy Ty) // 返回值，无返回使用void类型
     : RiscvLabel(Function, name), num_args_(num_args), resType_(Ty), base_(0) {
   regAlloca = new RegAlloca();
 }
@@ -15,7 +15,8 @@ RiscvFunction::RiscvFunction(std::string name, int num_args,
 std::string RiscvFunction::print() {
   // TODO: temporaily add '.global' to declare function
   // Don't know if '.type' is needed
-  std::string riscvInstr = ".global " + this->name_ + "\n" + this->name_ + ":\n"; // 函数标号打印
+  std::string riscvInstr =
+      ".global " + this->name_ + "\n" + this->name_ + ":\n"; // 函数标号打印
   // 对各个basic block进行拼接
   for (auto x : this->blk)
     riscvInstr += x->print();
@@ -33,3 +34,5 @@ std::string RiscvBasicBlock::print() {
 // 建议不使用pop语句，直接从栈中取值，最后直接修改sp的值即可
 // 使用一个单独的return block以防止多出口return
 extern int LabelCount;
+
+RiscvOperand::OpTy RiscvOperand::getType() { return tid_; }

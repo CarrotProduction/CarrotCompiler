@@ -224,6 +224,8 @@ public:
         // 补充冗余0
         if (zeroNumber > 0)
           code += "[" + std::to_string(zeroNumber) + " dup(0)]";
+      } else {
+        code += initValue_->print();
       }
     }
     code += "\n";

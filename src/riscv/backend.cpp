@@ -96,29 +96,37 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
   if (binaryInstr->operands_[0]->name_[0] ==
           binaryInstr->operands_[1]->name_[0] &&
       binaryInstr->operands_[0]->name_[0] == 0) {
-    int value_result =
-        static_cast<ConstantInt *>(binaryInstr->operands_[0])->value_ -
-        static_cast<ConstantInt *>(binaryInstr->operands_[1])->value_;
+    int value[] = {
+        static_cast<ConstantInt *>(binaryInstr->operands_[0])->value_,
+        static_cast<ConstantInt *>(binaryInstr->operands_[1])->value_};
+    int value_result;
+    switch (binaryInstr->op_id_) {
+    case Instruction::OpID::Add:
+      value_result = value[0] + value[1];
+      break;
+    case Instruction::OpID::Sub:
+      value_result = value[0] - value[1];
+      break;
+    case Instruction::OpID::Mul:
+      value_result = value[0] * value[1];
+      break;
+    case Instruction::OpID::SDiv:
+      value_result = value[0] / value[1];
+      break;
+    default:
+      throw "Binary instruction immediate caculation not implemented";
+    }
     rbb->addInstrBack(new MoveRiscvInst(regAlloca->findReg(binaryInstr, rbb),
                                         value_result, rbb));
     return nullptr;
   }
 
-  if (dynamic_cast<ConstantInt *>(binaryInstr->operands_[1]) != nullptr) {
-    switch (binaryInstr->op_id_) {
-    case Instruction::OpID::Mul:
-    case Instruction::OpID::SDiv:
-    case Instruction::OpID::SRem:
-    case Instruction::OpID::UDiv:
-    case Instruction::OpID::URem:
-      // 找一个寄存器先放这个常数（LI），再做这些整数乘除法操作
+  for (int i = 0; i < 2; i++) {
+    if (binaryInstr->operands_[i]->name_[0] == 0) {
+      // Temporarily find a register for immediate value
       rbb->addInstrBack(new MoveRiscvInst(
-          regAlloca->findNonuse(rbb),
-          dynamic_cast<ConstantInt *>(binaryInstr->operands_[1])->value_, rbb));
-      break;
-    default:
-      id = static_cast<RiscvInstr::InstrType>(id ^ 1);
-      break;
+          regAlloca->findReg(binaryInstr->operands_[i], rbb, nullptr, 1),
+          dynamic_cast<ConstantInt *>(binaryInstr->operands_[i])->value_, rbb));
     }
   }
   BinaryRiscvInst *instr = new BinaryRiscvInst(

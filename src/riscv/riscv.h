@@ -195,7 +195,9 @@ public:
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue, int elementNum)
       : RiscvLabel(Type, name), isConst_(isConst), initValue_(initValue),
-        elementNum_(elementNum) {}
+        elementNum_(elementNum) {
+          // std::cout << "CREATING AN ARRAY GB\n";
+        }
   // 输出全局变量定义
   // 根据ir中全局变量定义转化
   // 问题在于全局变量如果是数组有初值如何处理
@@ -222,9 +224,8 @@ public:
           code.pop_back();
         // 补充冗余0
         if (zeroNumber > 0)
-          code += "[" + std::to_string(zeroNumber) + " dup(0)]\n";
-      } else
-        code += initValue_->print();
+          code += "[" + std::to_string(zeroNumber) + " dup(0)]";
+      }
     }
     code += "\n";
     return code;

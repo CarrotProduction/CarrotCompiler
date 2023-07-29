@@ -29,6 +29,11 @@
 
 extern int IntRegID, FloatRegID; // 测试阶段使用
 extern Register *NamefindReg(std::string reg);
+
+// 辅助函数
+// 根据寄存器 riscvReg 的类型返回存储指令的类型
+Type *getStoreTypeFromRegType(RiscvOperand *riscvReg);
+
 // RegAlloca类被放置在**每个函数**内，每个函数内是一个新的寄存器分配类。
 // 因而约定x8-x9 x18-27、f8-9、f18-27
 // 是约定的所有函数都要保护的寄存器，用完要恢复原值
@@ -81,8 +86,9 @@ public:
   // bb: 指令将要插入的基本块
   // instr:
   // 当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
-  void writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
-                 RiscvInstr *instr = nullptr);
+  // 返回最后写入的指令
+  RiscvInstr *writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
+                        RiscvInstr *instr = nullptr);
 
   // 返回 riscvReg 所对应的 Value
   Value *findRegVal(RiscvOperand *riscvReg);

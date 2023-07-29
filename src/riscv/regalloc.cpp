@@ -22,6 +22,12 @@ Register *NamefindReg(std::string reg) {
   }
 }
 
+Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
+  return riscvReg->getType() == RiscvOperand::OpTy::FloatReg
+             ? new Type(Type::TypeID::FloatTyID)
+             : new Type(Type::TypeID::IntegerTyID);
+}
+
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr, int inReg) {
   if (curReg.count(val))
@@ -39,6 +45,12 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
         new RiscvFloatReg(new Register(Register::Float, FloatRegID));
     setPositionReg(val, cur);
   }
+
+  auto mem_addr = findMem(val);
+  auto current_reg = curReg[val];
+  auto load_type = getStoreTypeFromRegType(current_reg);
+
+  bb->addInstrBefore(new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
 
   return curReg[val];
 
@@ -89,17 +101,14 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
   regPos[riscvReg] = val;
 }
 
-void RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
-                          RiscvInstr *instr) {
+RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
+                                 RiscvInstr *instr) {
   Value *value = findRegVal(riscvReg);
   if (value == nullptr)
-    return; // Value not found in map
+    return nullptr; // Value not found in map
   RiscvOperand *mem_addr = findMem(value);
 
-  auto reg_type = riscvReg->getType();
-  auto store_type = reg_type == RiscvOperand::OpTy::FloatReg
-                        ? new Type(Type::TypeID::FloatTyID)
-                        : new Type(Type::TypeID::IntegerTyID);
+  auto store_type = getStoreTypeFromRegType(riscvReg);
   auto store_instr = new StoreRiscvInst(store_type, riscvReg, mem_addr, bb);
 
   // Write store instruction
@@ -111,6 +120,8 @@ void RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   // Erase map info
   regPos.erase(riscvReg);
   curReg.erase(value);
+
+  return store_instr;
 }
 
 Value *RegAlloca::findRegVal(RiscvOperand *riscvReg) {

@@ -40,6 +40,8 @@ public:
     auto it = std::find(instruction.begin(), instruction.end(), dst);
     if (it != instruction.end())
       instruction.insert(it, instr);
+    else
+      addInstrBack(instr);
   }
   void addInstrAfter(RiscvInstr *instr, RiscvInstr *dst) {
     auto it = std::find(instruction.begin(), instruction.end(), instr);
@@ -48,6 +50,8 @@ public:
         instruction.push_back(instr);
       else
         instruction.insert(next(it), instr);
+    } else {
+      addInstrBack(instr);
     }
   }
   std::string print();
@@ -75,8 +79,8 @@ public:
     REM,
     FADD = 8,
     FSUB = 10,
-    FMUL = 12, 
-    FDIV = 14, 
+    FMUL = 12,
+    FDIV = 14,
     XOR = 16,
     XORI,
     AND,
@@ -98,12 +102,12 @@ public:
     FMV,
     FPTOSI,
     SITOFP,
-    JMP, 
-    SHL, 
-    LSHR, 
-    ASHR, 
-    SHLI = 52, 
-    LSHRI, 
+    JMP,
+    SHL,
+    LSHR,
+    ASHR,
+    SHLI = 52,
+    LSHRI,
     ASHRI
   };
   const static std::map<InstrType, std::string> RiscvName;
@@ -203,8 +207,10 @@ public:
 // 注意压栈顺序问题！打印的时候严格按照lists内顺序
 class PushRiscvInst : public RiscvInstr {
   int basicShift_;
+
 public:
-  PushRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb, int basicShift)
+  PushRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb,
+                int basicShift)
       : RiscvInstr(InstrType::PUSH, lists.size(), bb), basicShift_(basicShift) {
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
@@ -215,9 +221,11 @@ public:
 // 注意出栈顺序问题！打印的时候严格按照lists内顺序
 class PopRiscvInst : public RiscvInstr {
   int basicShift_;
+
 public:
   // 传入所有要pop的变量
-  PopRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb, int basicShift)
+  PopRiscvInst(std::vector<RiscvOperand *> &lists, RiscvBasicBlock *bb,
+               int basicShift)
       : RiscvInstr(InstrType::POP, lists.size(), bb), basicShift_(basicShift) {
     for (int i = 0; i < lists.size(); i++)
       setOperand(i, lists[i]);
@@ -344,7 +352,8 @@ public:
 
 class FpToSiRiscvInstr : public RiscvInstr {
 public:
-  FpToSiRiscvInstr(RiscvOperand *Source, RiscvOperand *Target, RiscvBasicBlock *bb)
+  FpToSiRiscvInstr(RiscvOperand *Source, RiscvOperand *Target,
+                   RiscvBasicBlock *bb)
       : RiscvInstr(FPTOSI, 2, bb) {
     setOperand(0, Source);
     setOperand(1, Target);
@@ -354,7 +363,8 @@ public:
 
 class SiToFpRiscvInstr : public RiscvInstr {
 public:
-  SiToFpRiscvInstr(RiscvOperand *Source, RiscvOperand *Target, RiscvBasicBlock *bb)
+  SiToFpRiscvInstr(RiscvOperand *Source, RiscvOperand *Target,
+                   RiscvBasicBlock *bb)
       : RiscvInstr(SITOFP, 2, bb) {
     setOperand(0, Source);
     setOperand(1, Target);

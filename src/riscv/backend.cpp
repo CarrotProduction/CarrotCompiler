@@ -256,14 +256,18 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
 
 // 注意：return语句本身并不负责返回值的传递，该语句由storeRet函数实现
 ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
-                                            ReturnInst *returnInstr,
-                                            RiscvBasicBlock *rbb) {
-  RiscvOperand * reg_to_save = nullptr;
-  if (returnInstr->operands_[0]->type_->tid_ == Type::TypeID::IntegerTyID)
-    reg_to_save = regAlloca->findSpecificReg(returnInstr->operands_[0], "a0", rbb);
-  else if (returnInstr->operands_[0]->type_->tid_ == Type::TypeID::FloatTyID)
-    reg_to_save = regAlloca->findSpecificReg(returnInstr->operands_[0], "fa0", rbb);
-  
+                                              ReturnInst *returnInstr,
+                                              RiscvBasicBlock *rbb) {
+  RiscvOperand *reg_to_save = nullptr;
+  auto &operand = returnInstr->operands_[0];
+  if (operand->type_->tid_ == Type::TypeID::IntegerTyID)
+    reg_to_save = regAlloca->findSpecificReg(operand, "a0", rbb);
+  else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
+    reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
+  auto instr = regAlloca->writeback(reg_to_save, rbb);
+  rbb->addInstrAfter(
+      new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb), rbb),
+      instr);
   return new ReturnRiscvInst(rbb);
 }
 
@@ -293,7 +297,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     switch (instr->op_id_) {
     case Instruction::Ret:
       // 在翻译过程中先指ret，恢复寄存器等操作在第二遍扫描的时候再插入
-      rbb->addInstrBack(this->createRetInstr(foo->regAlloca, static_cast<ReturnInst *>(instr), rbb));
+      rbb->addInstrBack(this->createRetInstr(
+          foo->regAlloca, static_cast<ReturnInst *>(instr), rbb));
       break;
     // 分支指令
     case Instruction::Br:
@@ -485,9 +490,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         }
         break;
       case Type::TypeID::IntegerTyID: {
-        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm,
-                                             gb->name_,
-                                             gb->is_const_, gb->init_val_);
+        auto curGB =
+            new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_,
+                                    gb->is_const_, gb->init_val_);
         assert(curGB != nullptr);
         rm->addGlobalVariable(curGB);
         data += curGB->print();

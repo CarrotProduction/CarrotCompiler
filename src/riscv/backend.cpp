@@ -667,44 +667,38 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         // 整型参数
         if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
             (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
-          if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
-              (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
-            IntParaCount++;
-            if (IntParaCount < 8)
-              rfoo->regAlloca->setPositionReg(
-                  *val, new RiscvIntReg(
-                            NamefindReg("a" + std::to_string(IntParaCount))));
+          IntParaCount++;
+          if (IntParaCount < 8)
             rfoo->regAlloca->setPositionReg(
-                *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
-          }
-          // 浮点参数
-          else {
-            assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
-            assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
-            FloatParaCount++;
-            // 寄存器有
-            if (FloatParaCount < 8) {
-              rfoo->regAlloca->setPositionReg(
-                  *val, new RiscvFloatReg(NamefindReg(
-                            "fa" + std::to_string(FloatParaCount))));
-            }
-            rfoo->regAlloca->setPositionReg(
-                *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
-          }
-          ParaShift += 4;
+                *val, new RiscvIntReg(
+                          NamefindReg("a" + std::to_string(IntParaCount))));
+          rfoo->regAlloca->setPositionReg(
+              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
         }
-        // 函数内参数
+        // 浮点参数
         else {
-          int curSP = rfoo->querySP();
-          RiscvOperand *stackPos = static_cast<RiscvOperand *>(
-              new RiscvIntPhiReg(NamefindReg("sp"), curSP));
-          rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
-          rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
-          rfoo->addTempVar(stackPos);
+          assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
+          FloatParaCount++;
+          // 寄存器有
+          if (FloatParaCount < 8) {
+            rfoo->regAlloca->setPositionReg(
+                *val, new RiscvFloatReg(
+                          NamefindReg("fa" + std::to_string(FloatParaCount))));
+          }
+          rfoo->regAlloca->setPositionReg(
+              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
         }
-        haveAllocated[*val] = 1;
-        haveAllocated[*val] = 1;
+        ParaShift += 4;
       }
+      // 函数内参数
+      else {
+        int curSP = rfoo->querySP();
+        RiscvOperand *stackPos = static_cast<RiscvOperand *>(
+            new RiscvIntPhiReg(NamefindReg("sp"), curSP));
+        rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
+        rfoo->addTempVar(stackPos);
+      }
+      haveAllocated[*val] = 1;
     };
 
     for (BasicBlock *bb : foo->basic_blocks_)

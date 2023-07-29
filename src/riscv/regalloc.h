@@ -56,8 +56,9 @@ public:
   // bb是当前访问该变量的IR语句所在的RISCVBasicBlock块，如果当需要发射lw和sw指令时，使用该bb调用
   // instr是当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
   // inReg参数表示该分配地址是否必须是寄存器。如果为0则可以为内存或栈地址
+  // load: 是否将值对应的内存地址读取到寄存器中
   RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
-                        RiscvInstr *instr = nullptr, int inReg = 0);
+                        RiscvInstr *instr = nullptr, int inReg = 0, int load = 1);
 
   // 找到IR的value的内存地址（用于IR级别的store和load指令）
   // 如果regalloca中没有存储它的内存地址（没有被setPosition过），assert报错

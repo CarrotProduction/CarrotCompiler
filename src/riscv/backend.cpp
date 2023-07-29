@@ -114,10 +114,14 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
       value_result = value[0] / value[1];
       break;
     default:
-      throw "Binary instruction immediate caculation not implemented";
+      std::cerr << "[Fatal Error] Binary instruction immediate caculation not "
+                   "implemented."
+                << std::endl;
+      std::terminate();
     }
-    rbb->addInstrBack(new MoveRiscvInst(regAlloca->findReg(binaryInstr, rbb),
-                                        value_result, rbb));
+    rbb->addInstrBack(
+        new MoveRiscvInst(regAlloca->findReg(binaryInstr, rbb, nullptr, 0, 0),
+                          value_result, rbb));
     return nullptr;
   }
 
@@ -132,7 +136,7 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
   BinaryRiscvInst *instr = new BinaryRiscvInst(
       id, regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(binaryInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findReg(binaryInstr, rbb, nullptr, 1), rbb);
+      regAlloca->findReg(binaryInstr, rbb, nullptr, 1, 0), rbb);
   return instr;
 }
 
@@ -142,7 +146,7 @@ UnaryRiscvInst *RiscvBuilder::createUnaryInstr(RegAlloca *regAlloca,
   UnaryRiscvInst *instr = new UnaryRiscvInst(
       toRiscvOp.at(unaryInstr->op_id_),
       regAlloca->findReg(unaryInstr->operands_[0], rbb, nullptr, 1),
-      regAlloca->findReg(unaryInstr, rbb, nullptr, 1), rbb);
+      regAlloca->findReg(unaryInstr, rbb, nullptr, 1, 0), rbb);
   return instr;
 }
 
@@ -193,7 +197,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
     auto curType = static_cast<PointerType *>(loadInstr->operands_[0]->type_);
     std::vector<RiscvInstr *> ans;
     auto regPos =
-        regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1);
+        regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);
     ans.push_back(new LoadRiscvInst(curType->contained_, regPos,
                                     regAlloca->findMem(loadInstr->operands_[0]),
                                     rbb));
@@ -266,7 +270,7 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
     RiscvOperand *stackPos = static_cast<RiscvOperand *>(
         new RiscvIntPhiReg(NamefindReg("sp"), 4 * (argnum - i)));
     // 为 ra 和 BP 腾出两个空间出来
-    regAlloca->setPositionReg(callInstr->operands_[i], stackPos);
+    regAlloca->setPosition(callInstr->operands_[i], stackPos);
   }
   // 涉及从Function 到RISCV function转换问题（第一个参数）
   CallRiscvInst *instr =
@@ -663,44 +667,50 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         // 整型参数
         if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
             (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
-          IntParaCount++;
-          if (IntParaCount < 8)
+          if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
+              (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
+            IntParaCount++;
+            if (IntParaCount < 8)
+              rfoo->regAlloca->setPositionReg(
+                  *val, new RiscvIntReg(
+                            NamefindReg("a" + std::to_string(IntParaCount))));
             rfoo->regAlloca->setPositionReg(
-                *val, new RiscvIntReg(
-                          NamefindReg("a" + std::to_string(IntParaCount))));
-          rfoo->regAlloca->setPositionReg(
-              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
-        }
-        // 浮点参数
-        else {
-          assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
-          FloatParaCount++;
-          // 寄存器有
-          if (FloatParaCount < 8) {
-            rfoo->regAlloca->setPositionReg(
-                *val, new RiscvFloatReg(
-                          NamefindReg("fa" + std::to_string(FloatParaCount))));
+                *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
           }
-          rfoo->regAlloca->setPositionReg(
-              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+          // 浮点参数
+          else {
+            assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
+            assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
+            FloatParaCount++;
+            // 寄存器有
+            if (FloatParaCount < 8) {
+              rfoo->regAlloca->setPositionReg(
+                  *val, new RiscvFloatReg(NamefindReg(
+                            "fa" + std::to_string(FloatParaCount))));
+            }
+            rfoo->regAlloca->setPositionReg(
+                *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+          }
+          ParaShift += 4;
         }
-        ParaShift += 4;
+        // 函数内参数
+        else {
+          int curSP = rfoo->querySP();
+          RiscvOperand *stackPos = static_cast<RiscvOperand *>(
+              new RiscvIntPhiReg(NamefindReg("sp"), curSP));
+          rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
+          rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
+          rfoo->addTempVar(stackPos);
+        }
+        haveAllocated[*val] = 1;
+        haveAllocated[*val] = 1;
       }
-      // 函数内参数
-      else {
-        int curSP = rfoo->querySP();
-        RiscvOperand *stackPos = static_cast<RiscvOperand *>(
-            new RiscvIntPhiReg(NamefindReg("sp"), curSP));
-        rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
-        rfoo->addTempVar(stackPos);
-      }
-      haveAllocated[*val] = 1;
     };
 
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_) {
         // 所有的函数局部变量都要压入栈
-        auto tempPtr = static_cast<Value *>(instr);
+        Value *tempPtr = static_cast<Value *>(instr);
         storeOnStack(&tempPtr);
         for (auto *val : instr->operands_) {
           tempPtr = static_cast<Value *>(val);

@@ -29,14 +29,15 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
 }
 
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
-                                 RiscvInstr *instr, int inReg) {
+                                 RiscvInstr *instr, int inReg, int load) {
   if (curReg.count(val))
     return curReg[val];
   // 目前下面是一个没有考虑任何寄存器分配的工作，认为所有的变量都是寄存器存储，所有值可以直接使用的
   if (val->type_->tid_ == Type::IntegerTyID ||
       val->type_->tid_ == Type::PointerTyID) {
     ++IntRegID;
-    if(IntRegID > 29) IntRegID = 8;
+    if (IntRegID > 29)
+      IntRegID = 8;
     RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
     setPositionReg(val, cur);
   } else {
@@ -47,9 +48,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     setPositionReg(val, cur);
   }
 
-  // If register has dirty value then write back.
+  // If value
   auto mem_addr = findMem(val);
-  if (mem_addr != nullptr) {
+  if (mem_addr != nullptr && load) {
     auto current_reg = curReg[val];
     auto load_type = getStoreTypeFromRegType(current_reg);
 
@@ -87,9 +88,10 @@ RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
 
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   if (pos.find(val) != pos.end()) {
-    std::cerr << "\n[Fatal Error] Trying overwriting memory address of value "
-              << std::hex << val << std::endl;
-    throw -1;
+    std::cerr << "\n[Warning] Trying overwriting memory address map of value "
+              << std::hex << val << " (" << val->name_ << ") [" << riscvVal
+              << " -> " << pos[val] << "]" << std::endl;
+    // std::terminate();
   }
   pos[val] = riscvVal;
 }

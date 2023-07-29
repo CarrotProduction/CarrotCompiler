@@ -15,7 +15,7 @@ RiscvFunction::RiscvFunction(std::string name, int num_args,
 std::string RiscvFunction::print() {
   // TODO: temporaily add '.global' to declare function
   // Don't know if '.type' is needed
-  std::string riscvInstr = ".global " + this->name_ + ":\n"; // 函数标号打印
+  std::string riscvInstr = ".global " + this->name_ + "\n" + this->name_ + ":\n"; // 函数标号打印
   // 对各个basic block进行拼接
   for (auto x : this->blk)
     riscvInstr += x->print();

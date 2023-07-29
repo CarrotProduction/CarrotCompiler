@@ -654,10 +654,10 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (curType->tid_ == Type::TypeID::IntegerTyID)
-          rfoo->regAlloca->setPositionReg(*val,
+          rfoo->regAlloca->setPosition(*val,
                                           new RiscvIntPhiReg((*val)->name_));
         else
-          rfoo->regAlloca->setPositionReg(*val,
+          rfoo->regAlloca->setPosition(*val,
                                           new RiscvFloatPhiReg((*val)->name_));
         return;
       }

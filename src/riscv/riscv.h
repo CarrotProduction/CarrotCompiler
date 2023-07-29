@@ -189,14 +189,14 @@ public:
   // 对于一般单个全局变量的定义
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue)
-      : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
+      : RiscvLabel(Type, name), isConst_(isConst), initValue_(initValue),
         elementNum_(1) {
           // std::cout << "CREATING A SINGLE GB\n";
         }
   // 对于数组全局变量的定义
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue, int elementNum)
-      : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
+      : RiscvLabel(Type, name), isConst_(isConst), initValue_(initValue),
         elementNum_(elementNum) {
           // std::cout << "CREATING AN ARRAY GB\n";
         }

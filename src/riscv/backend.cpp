@@ -458,7 +458,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       case Type::TypeID::IntegerTyID: {
         // std::cout << "START A INT GB:" << gb->name_ << "\n";
         // std::cout << gb->is_const_ << "!" << gb->init_val_ << "\n";
-        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_, // 神秘bad alloc!
+        auto curGB = new RiscvGlobalVariable(RiscvOperand::OpTy::IntImm, gb->name_, 
                                         gb->is_const_, gb->init_val_);
         assert(curGB != nullptr);
         // std::cout << "FIRST CREATE A GB\n";

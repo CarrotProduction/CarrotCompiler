@@ -255,7 +255,13 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
 }
 
 // 注意：return语句本身并不负责返回值的传递，该语句由storeRet函数实现
-ReturnRiscvInst *RiscvBuilder::createRetInstr(RiscvBasicBlock *rbb) {
+ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
+                                            ReturnInst *returnInstr,
+                                            RiscvBasicBlock *rbb) {
+  if (returnInstr->operands_[0]->type_->tid_ == Type::TypeID::IntegerTyID)
+    regAlloca->findSpecificReg(returnInstr->operands_[0], "a0", rbb);
+  else if (returnInstr->operands_[0]->type_->tid_ == Type::TypeID::FloatTyID)
+    regAlloca->findSpecificReg(returnInstr->operands_[0], "fa0", rbb);
   return new ReturnRiscvInst(rbb);
 }
 
@@ -285,7 +291,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     switch (instr->op_id_) {
     case Instruction::Ret:
       // 在翻译过程中先指ret，恢复寄存器等操作在第二遍扫描的时候再插入
-      rbb->addInstrBack(this->createRetInstr(rbb));
+      rbb->addInstrBack(this->createRetInstr(foo->regAlloca, static_cast<ReturnInst *>(instr), rbb));
       break;
     // 分支指令
     case Instruction::Br:
@@ -330,7 +336,6 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           foo->regAlloca, static_cast<UnaryInst *>(instr), rbb));
       break;
     case Instruction::PHI:
-      // this->solvePhiInstr(static_cast<PhiInst *>(instr));
       break;
     // 直接删除的指令
     case Instruction::BitCast:
@@ -338,7 +343,6 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     case Instruction::ZExt:
       // 等价一条合流语句操作
-      // this->solveZExtInstr(static_cast<ZextInst *>(instr));
       break;
     case Instruction::Alloca:
       break;
@@ -501,7 +505,6 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   // 浮点常量进入内存
   int ConstFloatCount = 0;
   std::string code = ".section .text\n";
-  // std::cout << "START FUNCTION\n";
   // 函数体
   // 预处理：首先合并所有的合流语句操作，然后在分配单元（storeOnStack）部分使用DSU合并
   for (Function *foo : m->function_list_)
@@ -516,7 +519,6 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     rm->addFunction(rfoo);
     if (rfoo->is_libfunc())
       continue;
-    // std::cout << "CUR FUNCTION " << foo->name_ << "\n";
     // 将该函数内的浮点常量全部处理出来并告知寄存器分配单元
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_)
@@ -537,6 +539,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     RiscvBasicBlock *initBlock = createRiscvBasicBlock();
     std::map<Value *, int> haveAllocated;
     int IntParaCount = 0, FloatParaCount = 0, ParaShift = 0;
+
     auto storeOnStack = [&](Value *val) {
       if (val == nullptr)
         return;
@@ -609,6 +612,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       }
       haveAllocated[val] = 1;
     };
+
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_) {
         // 所有的函数局部变量都要压入栈

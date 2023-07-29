@@ -26,13 +26,13 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   // 目前下面是一个没有考虑任何寄存器分配的工作，认为所有的变量都是寄存器存储，所有值可以直接使用的
   if (val->type_->tid_ == Type::IntegerTyID || val->type_->tid_ == Type::PointerTyID) {
     ++IntRegID;
-    RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, ++IntRegID));
+    RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
     return curReg[val] = cur;
   } else {
     assert(val->type_->tid_ == Type::TypeID::FloatTyID);
     ++FloatRegID;
     RiscvFloatReg *cur =
-        new RiscvFloatReg(new Register(Register::Float, ++FloatRegID));
+        new RiscvFloatReg(new Register(Register::Float, FloatRegID));
     return curReg[val] = cur;
   }
   /*下面的代码是模拟一个大致结构

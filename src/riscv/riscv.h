@@ -189,17 +189,13 @@ public:
   // 对于一般单个全局变量的定义
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue)
-      : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
-        elementNum_(1) {
-          // std::cout << "CREATING A SINGLE GB\n";
-        }
+      : RiscvLabel(Type, name), isConst_(isConst), initValue_(initValue),
+        elementNum_(1) {}
   // 对于数组全局变量的定义
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue, int elementNum)
-      : RiscvLabel(Type, name_), isConst_(isConst), initValue_(initValue),
-        elementNum_(elementNum) {
-          // std::cout << "CREATING AN ARRAY GB\n";
-        }
+      : RiscvLabel(Type, name), isConst_(isConst), initValue_(initValue),
+        elementNum_(elementNum) {}
   // 输出全局变量定义
   // 根据ir中全局变量定义转化
   // 问题在于全局变量如果是数组有初值如何处理
@@ -221,10 +217,14 @@ public:
       if (typeid(*initValue_) == typeid(ConstantArray)) {
         zeroNumber -=
             static_cast<ArrayType *>(initValue_->type_)->num_elements_;
+        code += initValue_->print();
+        if (code.back() == '\n')
+          code.pop_back();
         // 补充冗余0
         if (zeroNumber > 0)
-          code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-      }
+          code += "[" + std::to_string(zeroNumber) + " dup(0)]\n";
+      } else
+        code += initValue_->print();
     }
     code += "\n";
     return code;

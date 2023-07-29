@@ -76,8 +76,8 @@ public:
                                              StoreInst *storeInstr,
                                              RiscvBasicBlock *rbb);
   std::vector<RiscvInstr *> createLoadInstr(RegAlloca *regAlloca,
-                                             LoadInst *loadInstr,
-                                             RiscvBasicBlock *rbb);
+                                            LoadInst *loadInstr,
+                                            RiscvBasicBlock *rbb);
   ICmpRiscvInstr *createICMPInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
                                   BranchInst *brInstr, RiscvBasicBlock *rbb);
   FCmpRiscvInstr *createFCMPInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,
@@ -93,6 +93,8 @@ public:
   JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca, BranchInst *brInstr,
                                   RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
-  ReturnRiscvInst *createRetInstr(RiscvBasicBlock *rbb);
+  ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca,
+                                            ReturnInst *returnInstr,
+                                            RiscvBasicBlock *rbb);
 };
 #endif // !BACKENDH

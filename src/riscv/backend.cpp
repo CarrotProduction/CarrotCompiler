@@ -553,13 +553,13 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         if (containedType->tid_ == Type::IntegerTyID) {
           curGB = new RiscvGlobalVariable(
               RiscvOperand::IntImm, gb->name_, gb->is_const_, gb->init_val_,
-              static_cast<ArrayType *>(gb->type_)->num_elements_);
+              calcTypeSize(curType)/4);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         } else {
           curGB = new RiscvGlobalVariable(
               RiscvOperand::FloatImm, gb->name_, gb->is_const_, gb->init_val_,
-              static_cast<ArrayType *>(gb->type_)->num_elements_);
+              calcTypeSize(curType)/4);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         }

@@ -36,3 +36,5 @@ std::string RiscvBasicBlock::print() {
 extern int LabelCount;
 
 RiscvOperand::OpTy RiscvOperand::getType() { return tid_; }
+
+bool RiscvOperand::isRegister() { return tid_ == FloatReg || tid_ == IntReg; }

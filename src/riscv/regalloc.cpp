@@ -113,6 +113,12 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
 }
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
+  if (riscvReg->isRegister() == false) {
+    std::cerr << "[Fatal error] Trying to map value " << std::hex << val
+              << " to not a register operand." << std::endl;
+    std::terminate();
+  }
+
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;
 }

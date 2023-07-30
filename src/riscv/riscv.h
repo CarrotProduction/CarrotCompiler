@@ -30,6 +30,9 @@ public:
   ~RiscvOperand() = default;
   virtual std::string print() = 0;
   OpTy getType();
+  
+  // If this operand is a register, return true.
+  bool isRegister();
 };
 
 // 寄存器堆

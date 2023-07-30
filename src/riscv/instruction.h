@@ -281,6 +281,11 @@ public:
     setOperand(0, source);
     setOperand(1, target);
     this->parent_ = bb;
+    if (source->isRegister() == false) {
+      std::cerr << "[Fatal error] Invalid store instruction: " << print()
+                << std::endl;
+      std::terminate();
+    }
   }
   std::string print() override;
 };

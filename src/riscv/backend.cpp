@@ -672,7 +672,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             rfoo->regAlloca->setPositionReg(
                 *val, new RiscvIntReg(
                           NamefindReg("a" + std::to_string(IntParaCount))));
-          rfoo->regAlloca->setPositionReg(
+          rfoo->regAlloca->setPosition(
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
         }
         // 浮点参数

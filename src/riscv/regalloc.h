@@ -29,7 +29,6 @@
 
 extern int IntRegID, FloatRegID; // 测试阶段使用
 
-
 Register *NamefindReg(std::string reg);
 RiscvOperand *getRegOperand(std::string reg);
 
@@ -61,7 +60,8 @@ public:
   // inReg参数表示该分配地址是否必须是寄存器。如果为0则可以为内存或栈地址
   // load: 是否将值对应的内存地址读取到寄存器中
   RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
-                        RiscvInstr *instr = nullptr, int inReg = 0, int load = 1);
+                        RiscvInstr *instr = nullptr, int inReg = 0,
+                        int load = 1);
 
   // 找到IR的value的内存地址（用于IR级别的store和load指令）
   // 如果regalloca中没有存储它的内存地址（没有被setPosition过），assert报错
@@ -103,6 +103,9 @@ public:
   // 使用到的callee保存寄存器，使用这个vector存储。具体为x8-x9,x18-x27（整型）；f8-f9,f18-f27（浮点）
   // 这些寄存器会在函数开始的时候压入栈中，return时会恢复
   std::vector<RiscvOperand *> savedRegister;
+
+  // Initialize savedRegister
+  RegAlloca();
 
 private:
   std::map<Value *, RiscvOperand *> pos, curReg;

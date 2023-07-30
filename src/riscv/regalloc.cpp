@@ -16,6 +16,8 @@ Register *NamefindReg(std::string reg) {
                         std::atoi(reg.substr(2).c_str()));
   } else if (reg == "sp") {
     return new Register(Register::RegType::Int, 2); // sp is x2
+  } else if (reg == "ra") {
+    return new Register(Register::RegType::Int, 1); // ra is x1
   } else {
     std::cout << "FAIL REG " << reg << "\n";
     assert(false);
@@ -167,3 +169,5 @@ Value *RegAlloca::findRegVal(RiscvOperand *riscvReg) {
     return nullptr;
   return regPos[riscvReg];
 }
+
+RegAlloca::RegAlloca() { savedRegister.push_back(getRegOperand("ra")); }

@@ -18,6 +18,8 @@ Register *NamefindReg(std::string reg) {
     return new Register(Register::RegType::Int, 2); // sp is x2
   } else if (reg == "ra") {
     return new Register(Register::RegType::Int, 1); // ra is x1
+  } else if (reg == "t5") {
+    return new Register(Register::RegType::Int, 30);
   } else {
     std::cout << "FAIL REG " << reg << "\n";
     assert(false);
@@ -46,6 +48,7 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
 
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr, int inReg, int load) {
+  bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
   if (curReg.count(val))
     return curReg[val];
   // 目前下面是一个没有考虑任何寄存器分配的工作，认为所有的变量都是寄存器存储，所有值可以直接使用的
@@ -65,15 +68,10 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   }
 
   // If value
-  auto mem_addr = findMem(val);
+  auto mem_addr = findMem(val, bb, instr); // Value's memory address
   if (mem_addr != nullptr && load) {
-    auto current_reg = curReg[val];
+    auto current_reg = curReg[val]; // Value's current register
     auto load_type = getStoreTypeFromRegType(current_reg);
-    // 如果val是全局变量，首先la到x30寄存器
-    if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
-      bb->addInstrBefore(new LoadAddressRiscvInstr(current_reg, "t5", bb), instr);
-      mem_addr = new RiscvIntPhiReg("t5", 0);
-    }
     bb->addInstrBefore(new LoadRiscvInst(load_type, current_reg, mem_addr, bb),
                        instr);
   }
@@ -81,15 +79,31 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   return curReg[val];
 }
 
-RiscvOperand *RegAlloca::findMem(Value *val) {
+RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
+                                 RiscvInstr *instr) {
+  bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
   if (pos.count(val) == 0 && val->name_[0] != 0) {
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
               << ")'s memory map not found." << std::endl;
+  }
+  if (isGVar) {
+    if (bb == nullptr) {
+      std::cerr << "[Fatal Error] Trying to add global var addressing "
+                   "instruction, but basic block pointer is null."
+                << std::endl;
+      std::terminate();
+    }
+    bb->addInstrBefore(new LoadAddressRiscvInstr(pos[val], "t5", bb), instr);
+    return new RiscvIntPhiReg("t5", 0);
   }
   // assert(pos.count(val) == 1);
   if (pos.find(val) == pos.end())
     return nullptr;
   return pos[val];
+}
+
+RiscvOperand *RegAlloca::findMem(Value *val) {
+  return findMem(val, nullptr, nullptr);
 }
 
 RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {

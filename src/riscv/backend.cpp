@@ -161,9 +161,9 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
     auto regPos = regAlloca->findReg(storeInstr->operands_[1], rbb);
     ans.push_back(
         new MoveRiscvInst(regPos, new RiscvConst(testConstInt->value_), rbb));
-    ans.push_back(
-        new StoreRiscvInst(storeInstr->operands_[0]->type_, regPos,
-                           regAlloca->findMem(storeInstr->operands_[1]), rbb));
+    ans.push_back(new StoreRiscvInst(
+        storeInstr->operands_[0]->type_, regPos,
+        regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr), rbb));
     return ans;
   }
   // 真正的store：第二操作数为一个指针类型
@@ -172,7 +172,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
     StoreRiscvInst *instr = new StoreRiscvInst(
         curType->contained_,
         regAlloca->findReg(storeInstr->operands_[0], rbb, nullptr, 1),
-        regAlloca->findMem(storeInstr->operands_[1]), rbb);
+        regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr), rbb);
     return {instr};
   }
   // 下面为整型或浮点的mov
@@ -198,9 +198,9 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
     std::vector<RiscvInstr *> ans;
     auto regPos =
         regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);
-    ans.push_back(new LoadRiscvInst(curType->contained_, regPos,
-                                    regAlloca->findMem(loadInstr->operands_[0]),
-                                    rbb));
+    ans.push_back(new LoadRiscvInst(
+        curType->contained_, regPos,
+        regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr), rbb));
     ans.push_back(new StoreRiscvInst(
         curType->contained_, regPos,
         regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
@@ -509,20 +509,17 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       rbb->addInstrBack(new PushRiscvInst(parameters, rbb, foo->querySP()));
       // 调整到新栈空间
       rbb->addInstrBack(new BinaryRiscvInst(
-          RiscvInstr::ADDI,
-          static_cast<RiscvOperand *>(getRegOperand("sp")),
+          RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
           static_cast<RiscvOperand *>(new RiscvConst(foo->querySP() + SPShift)),
-          static_cast<RiscvOperand *>(getRegOperand("sp")),
-          rbb));
+          static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       // 第二步：进行函数调用
       rbb->addInstrBack(this->createCallInstr(foo->regAlloca, curInstr, rbb));
       // 第三步：caller恢复栈帧，清除所有的函数参数
       rbb->addInstrBack(new BinaryRiscvInst(
-          RiscvInstr::ADDI,
-          static_cast<RiscvOperand *>(getRegOperand("sp")),
-          static_cast<RiscvOperand *>(new RiscvConst( - foo->querySP() - SPShift)),
-          static_cast<RiscvOperand *>(getRegOperand("sp")),
-          rbb));
+          RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
+          static_cast<RiscvOperand *>(
+              new RiscvConst(-foo->querySP() - SPShift)),
+          static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       break;
     }
     }
@@ -654,10 +651,11 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (curType->tid_ == Type::TypeID::IntegerTyID)
-          rfoo->regAlloca->setPosition(*val, new RiscvIntPhiReg((*val)->name_));
-        else
           rfoo->regAlloca->setPosition(*val,
-                                       new RiscvFloatPhiReg((*val)->name_));
+                                       new RiscvIntPhiReg((*val)->name_, 0, 1));
+        else
+          rfoo->regAlloca->setPosition(
+              *val, new RiscvFloatPhiReg((*val)->name_, 0, 1));
         return;
       }
       // 除了全局变量之外的参数

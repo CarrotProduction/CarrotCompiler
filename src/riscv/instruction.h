@@ -54,7 +54,7 @@ public:
   void addInstrAfter(RiscvInstr *instr, RiscvInstr *dst) {
     if (instr == nullptr)
       return;
-    auto it = std::find(instruction.begin(), instruction.end(), instr);
+    auto it = std::find(instruction.begin(), instruction.end(), dst);
     if (it != instruction.end()) {
       if (next(it) == instruction.end())
         instruction.push_back(instr);

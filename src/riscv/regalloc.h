@@ -65,6 +65,7 @@ public:
 
   // 找到IR的value的内存地址（用于IR级别的store和load指令）
   // 如果regalloca中没有存储它的内存地址（没有被setPosition过），assert报错
+  RiscvOperand *findMem(Value *val, RiscvBasicBlock *bb, RiscvInstr *instr);
   RiscvOperand *findMem(Value *val);
 
   // TODO:2 findNonuse

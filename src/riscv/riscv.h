@@ -30,7 +30,7 @@ public:
   ~RiscvOperand() = default;
   virtual std::string print() = 0;
   OpTy getType();
-  
+
   // If this operand is a register, return true.
   bool isRegister();
 };
@@ -128,19 +128,26 @@ class RiscvIntPhiReg : public RiscvOperand {
 
 public:
   int shift_;
+  int isGlobalVariable;
   Register *base_;
   std::string MemBaseName;
-  RiscvIntPhiReg(Register *base, int shift = 0)
-      : RiscvOperand(IntMem), base_(base), shift_(shift) {}
+  RiscvIntPhiReg(Register *base, int shift = 0, int isGVar = false)
+      : RiscvOperand(IntMem), base_(base), shift_(shift),
+        isGlobalVariable(isGVar) {}
   // 内存以全局形式存在的变量（常量）
-  RiscvIntPhiReg(std::string s, int shift = 0)
-      : RiscvOperand(IntMem), base_(nullptr), shift_(shift), MemBaseName(s) {}
+  RiscvIntPhiReg(std::string s, int shift = 0, int isGVar = false)
+      : RiscvOperand(IntMem), base_(nullptr), shift_(shift), MemBaseName(s),
+        isGlobalVariable(isGVar) {}
   std::string print() {
     std::string ans = "";
     if (base_ != nullptr)
       ans += "(" + base_->print() + ")";
-    else
-      ans += "(" + MemBaseName + ")";
+    else {
+      if (isGlobalVariable)
+        return MemBaseName; // If global variable, use direct addressing
+      else
+        ans += "(" + MemBaseName + ")";
+    }
     if (shift_)
       ans = std::to_string(shift_) + ans;
     return ans;
@@ -154,17 +161,24 @@ public:
   int shift_;
   Register *base_;
   std::string MemBaseName;
-  RiscvFloatPhiReg(Register *base, int shift = 0)
-      : RiscvOperand(FloatMem), base_(base), shift_(shift) {}
+  int isGlobalVariable;
+  RiscvFloatPhiReg(Register *base, int shift = 0, int isGVar = false)
+      : RiscvOperand(FloatMem), base_(base), shift_(shift),
+        isGlobalVariable(isGVar) {}
   // 内存以全局形式存在的变量（常量）
-  RiscvFloatPhiReg(std::string s, int shift = 0)
-      : RiscvOperand(FloatMem), base_(nullptr), shift_(shift), MemBaseName(s) {}
+  RiscvFloatPhiReg(std::string s, int shift = 0, int isGVar = false)
+      : RiscvOperand(FloatMem), base_(nullptr), shift_(shift), MemBaseName(s),
+        isGlobalVariable(isGVar) {}
   std::string print() {
     std::string ans = "";
     if (base_ != nullptr)
       ans += "(" + base_->print() + ")";
-    else
-      ans += "(" + MemBaseName + ")";
+    else {
+      if (isGlobalVariable)
+        return MemBaseName; // If global variable, use direct addressing
+      else
+        ans += "(" + MemBaseName + ")";
+    }
     if (shift_)
       ans = std::to_string(shift_) + ans;
     return ans;
@@ -199,15 +213,15 @@ public:
   RiscvGlobalVariable(OpTy Type, std::string name, bool isConst,
                       Constant *initValue, int elementNum)
       : RiscvLabel(Type, name), isConst_(isConst), initValue_(initValue),
-        elementNum_(elementNum) {
-  }
+        elementNum_(elementNum) {}
   // 输出全局变量定义
   // 根据ir中全局变量定义转化
   // 问题在于全局变量如果是数组有初值如何处理
   std::string print() {
     std::string code = this->name_ + ":\t";
     // 如果无初始值，或初始值为0（IR中有ConstZero类），则直接用zero命令
-    if (initValue_ == nullptr || dynamic_cast<ConstantZero *>(initValue_) != nullptr) {
+    if (initValue_ == nullptr ||
+        dynamic_cast<ConstantZero *>(initValue_) != nullptr) {
       code += ".zero\t" + std::to_string(4 * elementNum_) + "\n";
       return code;
     }

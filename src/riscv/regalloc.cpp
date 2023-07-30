@@ -69,20 +69,16 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   if (mem_addr != nullptr && load) {
     auto current_reg = curReg[val];
     auto load_type = getStoreTypeFromRegType(current_reg);
-
+    // 如果val是全局变量，首先la到x30寄存器
+    if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
+      bb->addInstrBefore(new LoadAddressRiscvInstr(current_reg, "t5", bb), instr);
+      mem_addr = new RiscvIntPhiReg("t5", 0);
+    }
     bb->addInstrBefore(new LoadRiscvInst(load_type, current_reg, mem_addr, bb),
                        instr);
   }
 
   return curReg[val];
-
-  /*下面的代码是模拟一个大致结构
-      // 首先找 空闲寄存器
-
-      if (inReg) {
-      // 如果找不到，需要到对应的bb处对应指令发射一条push指令或lw、sw指令
-      }
-  */
 }
 
 RiscvOperand *RegAlloca::findMem(Value *val) {

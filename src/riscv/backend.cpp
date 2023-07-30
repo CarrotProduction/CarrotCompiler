@@ -320,9 +320,9 @@ std::vector<RiscvInstr *>
 RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
                                  RiscvBasicBlock *rbb) {
   Value *op0 = instr->get_operand(0);
-  RiscvOperand *dest = regAlloca->findReg(static_cast<Value *>(instr), rbb);
+  RiscvOperand *dest = regAlloca->findReg(instr, rbb);
   std::vector<RiscvInstr *> ans;
-  if (auto gv = dynamic_cast<GlobalVariable *>(op0)) {
+  if (dynamic_cast<GlobalVariable *>(op0) != nullptr) {
     // 全局变量：使用la指令取基础地址
     ans.push_back(new LoadAddressRiscvInstr(dest, op0->name_, rbb));
   } else if (auto oi = dynamic_cast<Instruction *>(op0)) {
@@ -434,7 +434,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     // 找偏移量，待完成
     case Instruction::GetElementPtr:
-
+      
       break;
     case Instruction::FPtoSI:
       rbb->addInstrBack(this->createFptoSiInstr(

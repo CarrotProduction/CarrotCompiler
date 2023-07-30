@@ -388,6 +388,9 @@ public:
   virtual std::string print() override;
 };
 
+// LA rd, symbol ; x[rd] = &symbol
+// `dest` : rd
+// `name` : symbol
 class LoadAddressRiscvInstr : public RiscvInstr {
 public:
   std::string name_;
@@ -398,5 +401,4 @@ public:
   }
   virtual std::string print() override;
 };
-
 #endif // !INSTRUCTIONH

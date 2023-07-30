@@ -12,15 +12,17 @@ include_directories(${INCLUDE_DIRECTORY})
 
 set(SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/sylib.c")
 
-add_custom_target(sysy-ir ALL
-  COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS}
-  -I ${INCLUDE_DIRECTORY}
-  -S -emit-llvm
-  ${SOURCE_FILES}
-  -o ${CMAKE_CURRENT_BINARY_DIR}/sysy.ll
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  COMMENT "Compiling SysY Runtime Library to LLVM-IR"
-  SOURCES ${SOURCE_FILES})
+if(BUILD_IR_TESTING)
+  add_custom_target(sysy-ir ALL
+    COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS}
+    -I ${INCLUDE_DIRECTORY}
+    -S -emit-llvm
+    ${SOURCE_FILES}
+    -o ${CMAKE_CURRENT_BINARY_DIR}/sysy.ll
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMENT "Compiling SysY Runtime Library to LLVM-IR"
+    SOURCES ${SOURCE_FILES})
+endif(BUILD_IR_TESTING)
 
 add_library(sysy STATIC ${SOURCE_FILES})
 

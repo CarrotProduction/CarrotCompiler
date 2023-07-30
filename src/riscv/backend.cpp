@@ -1,4 +1,5 @@
 #include "backend.h"
+#include "ir.h"
 #include <cassert>
 
 void RiscvBuilder::initializeRegisterFile() {
@@ -425,7 +426,11 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     // 直接删除的指令
     case Instruction::BitCast:
-      assert(false);
+      rbb->addInstrBack(new MoveRiscvInst(
+        foo->regAlloca->findReg(static_cast<Value*>(instr), rbb, nullptr, 1),
+        foo->regAlloca->findReg(instr->get_operand(0), rbb, nullptr, 1),
+        rbb));
+      // assert(false);
       break;
     case Instruction::ZExt:
       // 等价一条合流语句操作

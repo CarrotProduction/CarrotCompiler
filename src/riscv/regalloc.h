@@ -28,7 +28,10 @@
 // 每个变量会有一个固定的内存或栈地址，可能会被分配一个固定寄存器地址
 
 extern int IntRegID, FloatRegID; // 测试阶段使用
-extern Register *NamefindReg(std::string reg);
+
+
+Register *NamefindReg(std::string reg);
+RiscvOperand *getRegOperand(std::string reg);
 
 // 辅助函数
 // 根据寄存器 riscvReg 的类型返回存储指令的类型

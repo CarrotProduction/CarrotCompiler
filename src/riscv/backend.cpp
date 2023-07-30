@@ -335,7 +335,7 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
       varOffset =
           static_cast<RiscvIntPhiReg *>(regAlloca->findMem(op0))->shift_;
     ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
-                                      new RiscvIntReg(NamefindReg("sp")),
+                                      getRegOperand("sp"),
                                       new RiscvConst(varOffset), dest, rbb));
   }
   int curTypeSize = 0;
@@ -510,18 +510,18 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 调整到新栈空间
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI,
-          static_cast<RiscvOperand *>(new RiscvIntPhiReg(NamefindReg("sp"))),
+          static_cast<RiscvOperand *>(getRegOperand("sp")),
           static_cast<RiscvOperand *>(new RiscvConst(foo->querySP() + SPShift)),
-          static_cast<RiscvOperand *>(new RiscvIntPhiReg(NamefindReg("sp"))),
+          static_cast<RiscvOperand *>(getRegOperand("sp")),
           rbb));
       // 第二步：进行函数调用
       rbb->addInstrBack(this->createCallInstr(foo->regAlloca, curInstr, rbb));
       // 第三步：caller恢复栈帧，清除所有的函数参数
       rbb->addInstrBack(new BinaryRiscvInst(
-          RiscvInstr::SUBI,
-          static_cast<RiscvOperand *>(new RiscvIntPhiReg(NamefindReg("sp"))),
-          static_cast<RiscvOperand *>(new RiscvConst(foo->querySP() + SPShift)),
-          static_cast<RiscvOperand *>(new RiscvIntPhiReg(NamefindReg("sp"))),
+          RiscvInstr::ADDI,
+          static_cast<RiscvOperand *>(getRegOperand("sp")),
+          static_cast<RiscvOperand *>(new RiscvConst( - foo->querySP() - SPShift)),
+          static_cast<RiscvOperand *>(getRegOperand("sp")),
           rbb));
       break;
     }
@@ -654,11 +654,10 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (curType->tid_ == Type::TypeID::IntegerTyID)
-          rfoo->regAlloca->setPosition(*val,
-                                          new RiscvIntPhiReg((*val)->name_));
+          rfoo->regAlloca->setPosition(*val, new RiscvIntPhiReg((*val)->name_));
         else
           rfoo->regAlloca->setPosition(*val,
-                                          new RiscvFloatPhiReg((*val)->name_));
+                                       new RiscvFloatPhiReg((*val)->name_));
         return;
       }
       // 除了全局变量之外的参数

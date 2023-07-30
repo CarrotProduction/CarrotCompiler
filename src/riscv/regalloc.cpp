@@ -22,6 +22,20 @@ Register *NamefindReg(std::string reg) {
   }
 }
 
+RiscvOperand *getRegOperand(std::string reg) {
+  auto cur_reg = NamefindReg(reg);
+  auto reg_type = cur_reg->regtype_;
+  switch (reg_type) {
+  case Register::Float:
+    return new RiscvFloatReg(cur_reg);
+  case Register::Int:
+    return new RiscvIntReg(cur_reg);
+  default:
+    std::cerr << "[Fatal error] Not a register." << std::endl;
+    std::terminate();
+  }
+}
+
 Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
   return riscvReg->getType() == RiscvOperand::OpTy::FloatReg
              ? new Type(Type::TypeID::FloatTyID)

@@ -526,13 +526,13 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
         }
       }
       // 存放参数造成的额外开销。每个函数参数都放到了栈上，前8+8个参数也在寄存器中有备份
-      int SPShift = parameters.size() * 4;
+      int SPShift = parameters.size() * 4 + 4;
       reverse(parameters.begin(), parameters.end());
       rbb->addInstrBack(new PushRiscvInst(parameters, rbb, foo->querySP()));
       // 调整到新栈空间
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
-          static_cast<RiscvOperand *>(new RiscvConst(foo->querySP() + SPShift)),
+          static_cast<RiscvOperand *>(new RiscvConst(foo->querySP() - SPShift)),
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       // ra的保护由caller去做
       rbb->addInstrBack(new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID),
@@ -544,14 +544,12 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 第三步：caller恢复栈帧，清除所有的函数参数
       // 首先恢复ra
       rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),
-                                           new RiscvIntPhiReg("sp"), 
-                                           new RiscvIntReg(NamefindReg("ra")),rbb));
+                                          new RiscvIntReg(NamefindReg("ra")),
+                                          new RiscvIntPhiReg("sp"), rbb));
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
-          static_cast<RiscvOperand *>(getRegOperand("sp")),
-          static_cast<RiscvOperand *>(
-              new RiscvConst(-foo->querySP() - SPShift)),
-          rbb));
+          static_cast<RiscvOperand *>(new RiscvConst(-foo->querySP() + SPShift)),
+          static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       break;
     }
     }
@@ -763,7 +761,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     |    a0     |
     +-----------+ <-
     caller和callee分界线。新函数栈帧从这里开始向下扩展，以此为基准 |
-    分配变量。新函数栈帧从这里开始为0，向上为正，向下为负 |   旧ra    |
+    分配变量。新函数栈帧从这里开始为0，向上为正，向下为负
     +-----------+
     | 新局部变量 |
     +-----------+

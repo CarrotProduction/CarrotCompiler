@@ -51,7 +51,6 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
   if (curReg.count(val))
     return curReg[val];
-  // 目前下面是一个没有考虑任何寄存器分配的工作，认为所有的变量都是寄存器存储，所有值可以直接使用的
   if (val->type_->tid_ == Type::IntegerTyID ||
       val->type_->tid_ == Type::PointerTyID) {
     ++IntRegID;
@@ -127,14 +126,18 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
                                          RiscvInstr *instr) {
   if (curReg.find(val) != curReg.end())
     writeback(curReg[val], bb, instr);
+  auto memPos = findMem(val);
+  
   Register *reg = NamefindReg(RegName);
   RiscvOperand *retOperand = nullptr;
+
   if (reg->regtype_ == reg->Int)
     retOperand = new RiscvIntReg(reg);
   else if (reg->regtype_ == reg->Float)
     retOperand = new RiscvFloatReg(reg);
   else
     throw "Unknown register type in findSpecificReg().";
+  bb->addInstrBack(new LoadRiscvInst(val->type_, retOperand, memPos, bb));
   return retOperand;
 }
 
@@ -180,4 +183,6 @@ Value *RegAlloca::findRegVal(RiscvOperand *riscvReg) {
   return regPos[riscvReg];
 }
 
-RegAlloca::RegAlloca() { savedRegister.push_back(getRegOperand("ra")); }
+RegAlloca::RegAlloca() {
+  // savedRegister.push_back(getRegOperand("ra"));
+}

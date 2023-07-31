@@ -248,13 +248,9 @@ public:
 // 0作为函数名，1-n是函数各参数
 class CallRiscvInst : public RiscvInstr {
 public:
-  CallRiscvInst(RiscvFunction *func, RiscvBasicBlock *bb,
-                std::vector<RiscvOperand *> args)
-      : RiscvInstr(InstrType::CALL, 1 + args.size(), bb) {
+  CallRiscvInst(RiscvFunction *func, RiscvBasicBlock *bb)
+      : RiscvInstr(InstrType::CALL, 1, bb) {
     setOperand(0, func);
-    for (int i = 0; i < args.size(); i++)
-      setOperand(i + 1, args[i]);
-    // 栈内顺序同args顺序，依次使用PUSH操作
   }
   virtual std::string print() override;
 };

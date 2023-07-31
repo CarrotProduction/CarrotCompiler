@@ -260,23 +260,39 @@ JumpRiscvInstr *RiscvBuilder::createJumpInstr(RegAlloca *regAlloca,
 CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
                                              CallInst *callInstr,
                                              RiscvBasicBlock *rbb) {
-  std::vector<RiscvOperand *> args;
   // push 指令需要寄存器
-  int argnum = callInstr->operands_.size() - 1;
+  int argnum = callInstr->operands_.size() - 1, intRegCount = 0,
+      floatRegCount = 0;
   for (int i = 0; i < argnum; i++) {
-    args.push_back(
-        regAlloca->findReg(callInstr->operands_[i], rbb, nullptr, 1));
-    // 子函数栈帧
+    std::string name = "";
+    if (callInstr->operands_[i]->type_->tid_ == Type::IntegerTyID) {
+      if (intRegCount < 8)
+        name = "a" + std::to_string(intRegCount);
+      intRegCount++;
+    } else {
+      if (floatRegCount < 8)
+        name = "fa" + std::to_string(floatRegCount);
+      floatRegCount++;
+    }
+    // 如果寄存器不超过数额，约定寄存器
+    if (!name.empty()) {
+      if (name.front() == 'a')
+        regAlloca->setPositionReg(callInstr->operands_[i],
+                                  new RiscvIntReg(NamefindReg(name)));
+      else
+        regAlloca->setPositionReg(callInstr->operands_[i],
+                                  new RiscvFloatReg(NamefindReg(name)));
+    }
+    // 相对于子函数栈帧进行栈分配
     RiscvOperand *stackPos = static_cast<RiscvOperand *>(
-        new RiscvIntPhiReg(NamefindReg("sp"), 4 * (argnum - i)));
-    // 为 ra 和 BP 腾出两个空间出来
+        new RiscvIntPhiReg(NamefindReg("sp"), 4 * i));
     regAlloca->setPosition(callInstr->operands_[i], stackPos);
   }
   // 涉及从Function 到RISCV function转换问题（第一个参数）
   CallRiscvInst *instr =
       new CallRiscvInst(createRiscvFunction(static_cast<Function *>(
                             callInstr->operands_[argnum])),
-                        rbb, args);
+                        rbb);
   return instr;
 }
 
@@ -433,9 +449,13 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     case Instruction::Alloca:
       break;
     // 找偏移量，待完成
-    case Instruction::GetElementPtr:
-      
+    case Instruction::GetElementPtr: {
+      std::vector<RiscvInstr *> instrSet = this->solveGetElementPtr(
+          foo->regAlloca, static_cast<GetElementPtrInst *>(instr), rbb);
+      for (auto *x : instrSet)
+        rbb->addInstrBack(x);
       break;
+    }
     case Instruction::FPtoSI:
       rbb->addInstrBack(this->createFptoSiInstr(
           foo->regAlloca, static_cast<FpToSiInst *>(instr), rbb));
@@ -469,7 +489,9 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 除此之外不在任何地方调整sp的值
       // 在call语句结束之后要手动恢复回原来的栈帧
       CallInst *curInstr = static_cast<CallInst *>(instr);
-      // 如果存在返回值，则要将返回值的寄存器地址告知regalloca
+      RiscvFunction *calleeFoo = createRiscvFunction(
+          static_cast<Function *>(curInstr->operands_.back()));
+      // 如果存在返回值，则要将返回值的寄存器地址告知caller的regalloca
       if (curInstr->type_->tid_ == Type::TypeID::IntegerTyID ||
           curInstr->type_->tid_ == Type::TypeID::PointerTyID)
         foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
@@ -492,11 +514,11 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
             name = "fa" + std::to_string(floatRegCount);
           floatRegCount++;
         }
-        // 如果寄存器超过数额，放入栈中
+        // 如果寄存器超过数额，由caller放入栈中
         if (name.empty())
           parameters.push_back(
               foo->regAlloca->findReg(curInstr->operands_[i], rbb, nullptr, 1));
-        // 否则放到指定寄存器a0-a7 fa0-fa7。
+        // 否则由caller的regAlloca，放到指定寄存器a0-a7 fa0-fa7。
         // 此处为了防止运算过程中可能没地方放，因而还是进行了栈空间的分配
         else {
           parameters.push_back(foo->regAlloca->findSpecificReg(
@@ -512,14 +534,24 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
           static_cast<RiscvOperand *>(new RiscvConst(foo->querySP() + SPShift)),
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
-      // 第二步：进行函数调用
-      rbb->addInstrBack(this->createCallInstr(foo->regAlloca, curInstr, rbb));
+      // ra的保护由caller去做
+      rbb->addInstrBack(new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID),
+                                           new RiscvIntReg(NamefindReg("ra")),
+                                           new RiscvIntPhiReg("sp"), rbb));
+      // 第二步：进行函数调用，告知callee的regAlloca分配单元。
+      rbb->addInstrBack(
+          this->createCallInstr(calleeFoo->regAlloca, curInstr, rbb));
       // 第三步：caller恢复栈帧，清除所有的函数参数
+      // 首先恢复ra
+      rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),
+                                           new RiscvIntPhiReg("sp"), 
+                                           new RiscvIntReg(NamefindReg("ra")),rbb));
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
+          static_cast<RiscvOperand *>(getRegOperand("sp")),
           static_cast<RiscvOperand *>(
               new RiscvConst(-foo->querySP() - SPShift)),
-          static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
+          rbb));
       break;
     }
     }
@@ -551,15 +583,15 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (containedType->tid_ == Type::IntegerTyID) {
-          curGB = new RiscvGlobalVariable(
-              RiscvOperand::IntImm, gb->name_, gb->is_const_, gb->init_val_,
-              calcTypeSize(curType)/4);
+          curGB = new RiscvGlobalVariable(RiscvOperand::IntImm, gb->name_,
+                                          gb->is_const_, gb->init_val_,
+                                          calcTypeSize(curType) / 4);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         } else {
-          curGB = new RiscvGlobalVariable(
-              RiscvOperand::FloatImm, gb->name_, gb->is_const_, gb->init_val_,
-              calcTypeSize(curType)/4);
+          curGB = new RiscvGlobalVariable(RiscvOperand::FloatImm, gb->name_,
+                                          gb->is_const_, gb->init_val_,
+                                          calcTypeSize(curType) / 4);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
         }
@@ -620,8 +652,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     // 首先检查所有的alloca指令，加入一个基本块进行寄存器保护以及栈空间分配
     RiscvBasicBlock *initBlock = createRiscvBasicBlock();
     std::map<Value *, int> haveAllocated;
-    int IntParaCount = 0, FloatParaCount = 0, ParaShift = 0;
+    int IntParaCount = 0, FloatParaCount = 0, ParaShift = -4;
 
+    // 函数起始栈帧就从-4开始，在riscvFunction提前修订base的值
     auto storeOnStack = [&](Value **val) {
       if (val == nullptr)
         return;
@@ -729,8 +762,10 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     +-----------+
     |    a0     |
     +-----------+ <-
-    caller和callee分界线。新函数栈帧从这里开始向下扩展，以此为基准 |  分配变量
-    |
+    caller和callee分界线。新函数栈帧从这里开始向下扩展，以此为基准 |
+    分配变量。新函数栈帧从这里开始为0，向上为正，向下为负 |   旧ra    |
+    +-----------+
+    | 新局部变量 |
     +-----------+
     | 保护寄存器 |
     +-----------+

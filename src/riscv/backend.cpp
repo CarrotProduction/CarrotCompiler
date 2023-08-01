@@ -302,7 +302,7 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
     reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
   auto instr = regAlloca->writeback(reg_to_save, rbb);
   rbb->addInstrAfter(
-      new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb), rbb),
+      new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb, instr), rbb),
       instr);
   return new ReturnRiscvInst(rbb);
 }

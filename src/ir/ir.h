@@ -128,6 +128,9 @@ public:
   // user的第i个操作数准备不再使用this，因此删除this与user相关的use联系
   bool remove_used(Instruction *user, unsigned int i);
 
+  // Return if the value is a constant.
+  bool is_constant();
+
   //******************************************************************
 
   void replace_all_use_with(Value *new_val);
@@ -403,14 +406,16 @@ public:
     Call,
   };
   // 创建指令并插入基本块（ty是指令返回值类型）
-  // If before set to true, then use add_instruction_front() instead of add_instruction()
-  Instruction(Type *ty, OpID id, unsigned num_ops, BasicBlock *parent, bool before = false)
+  // If before set to true, then use add_instruction_front() instead of
+  // add_instruction()
+  Instruction(Type *ty, OpID id, unsigned num_ops, BasicBlock *parent,
+              bool before = false)
       : Value(ty, ""), op_id_(id), num_ops_(num_ops), parent_(parent) {
     operands_.resize(
         num_ops_,
         nullptr); // 此句不能删去！否则operands_为空时无法用set_operand设置操作数，而只能用push_back设置操作数！
     use_pos_.resize(num_ops_);
-    if(!before)
+    if (!before)
       parent_->add_instruction(this);
     else
       parent_->add_instruction_front(this);

@@ -68,11 +68,23 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
 
   // If value
   auto mem_addr = findMem(val, bb, instr); // Value's memory address
-  if (mem_addr != nullptr && load) {
+  if (load) {
     auto current_reg = curReg[val]; // Value's current register
     auto load_type = getStoreTypeFromRegType(current_reg);
-    bb->addInstrBefore(new LoadRiscvInst(load_type, current_reg, mem_addr, bb),
-                       instr);
+    if (mem_addr != nullptr)
+      bb->addInstrBefore(
+          new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
+    else if (val->is_constant()) {
+      auto cval = dynamic_cast<ConstantInt *>(val);
+      if (cval != nullptr)
+        bb->addInstrBefore(new MoveRiscvInst(current_reg, cval->value_, bb),
+                           instr);
+      else {
+        std::cerr << "[Warning] Trying to find a register for unknown type of "
+                     "constant value which is not implemented for now."
+                  << std::endl;
+      }
+    }
   }
 
   return curReg[val];
@@ -127,7 +139,7 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
   if (curReg.find(val) != curReg.end())
     writeback(curReg[val], bb, instr);
   auto memPos = findMem(val);
-  
+
   Register *reg = NamefindReg(RegName);
   RiscvOperand *retOperand = nullptr;
 

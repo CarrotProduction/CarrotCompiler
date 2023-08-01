@@ -158,7 +158,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
   if (testConstInt != nullptr) {
     // 整数部分可以直接li指令
     std::vector<RiscvInstr *> ans;
-    auto regPos = regAlloca->findReg(storeInstr->operands_[1], rbb);
+    auto regPos = regAlloca->findReg(storeInstr->operands_[1], rbb, nullptr, 0, 0);
     ans.push_back(
         new MoveRiscvInst(regPos, new RiscvConst(testConstInt->value_), rbb));
     ans.push_back(new StoreRiscvInst(

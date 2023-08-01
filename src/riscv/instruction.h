@@ -316,6 +316,8 @@ public:
 class ICmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<ICmpInst::ICmpOp, std::string> ICmpOpName;
+  static const std::map<ICmpInst::ICmpOp, std::string> ICmpOpSName;
+  static const std::map<ICmpInst::ICmpOp, ICmpInst::ICmpOp> ICmpOpEquiv;
   ICmpRiscvInstr(ICmpInst::ICmpOp op, RiscvOperand *v1, RiscvOperand *v2,
                  RiscvBasicBlock *trueLink, RiscvBasicBlock *falseLink,
                  RiscvBasicBlock *bb)
@@ -334,6 +336,18 @@ public:
     setOperand(3, nullptr);
   }
   ICmpInst::ICmpOp icmp_op_;
+  std::string print() override;
+};
+
+class ICmpSRiscvInstr : public ICmpRiscvInstr {
+public:
+  ICmpSRiscvInstr(ICmpInst::ICmpOp op, RiscvOperand *v1, RiscvOperand *v2,
+                  RiscvOperand *target)
+      : ICmpRiscvInstr(op, v1, v2, nullptr, nullptr) {
+    setOperand(0, v1);
+    setOperand(1, v2);
+    setResult(target);
+  }
   std::string print() override;
 };
 

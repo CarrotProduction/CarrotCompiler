@@ -70,7 +70,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
       setPositionReg(val, cur, bb, instr);
     }
-  } else
+  } else if (!val->is_constant())
     return curReg[val];
 
   // ! Though all registers are considered unsafe, there is no way
@@ -173,7 +173,7 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
                                RiscvBasicBlock *bb, RiscvInstr *instr) {
-  Value * old_val = getRegPosition(riscvReg);
+  Value *old_val = getRegPosition(riscvReg);
   if (old_val != nullptr && old_val != val)
     writeback(riscvReg, bb, instr);
   setPositionReg(val, riscvReg);

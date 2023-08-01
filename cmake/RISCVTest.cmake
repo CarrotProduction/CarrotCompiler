@@ -61,7 +61,7 @@ execute_process(
 
 if(TEST_RET)
   message(SEND_ERROR "Failed: GCC Assemble and Link Error in ${TEST_SRC}: ${TEST_ERR}")
-  file(READ "${TEST_ASM}" TEST_ASM_CONTENT)
+  # file(READ "${TEST_ASM}" TEST_ASM_CONTENT)
   message(NOTICE "Generated Assmebly:\n ${TEST_ASM_CONTENT}")
   return()
 endif(TEST_RET)

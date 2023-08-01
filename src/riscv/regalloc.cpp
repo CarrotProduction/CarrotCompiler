@@ -49,6 +49,7 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr, int inReg, int load,
                                  RiscvOperand *specified) {
+  val = this->DSU_for_Variable.query(val);
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
 
   // If there is no register allocated for value then get a new one
@@ -111,6 +112,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
 
 RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr) {
+  val = this->DSU_for_Variable.query(val);
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
   if (pos.count(val) == 0 && !val->is_constant()) {
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
@@ -156,6 +158,7 @@ void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
 RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
                                          RiscvBasicBlock *bb,
                                          RiscvInstr *instr) {
+  val = this->DSU_for_Variable.query(val);
   Register *reg = NamefindReg(RegName);
   RiscvOperand *retOperand = nullptr;
 
@@ -176,6 +179,7 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
 }
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
+  val = this->DSU_for_Variable.query(val);
   if (riscvReg->isRegister() == false) {
     std::cerr << "[Fatal error] Trying to map value " << std::hex << val
               << " to not a register operand." << std::endl;

@@ -197,7 +197,10 @@ std::string StoreRiscvInst::print() {
   return riscv_instr;
 }
 
+// 注意：简易版 load。如果不存在目标内存地址，本条指令不执行
 std::string LoadRiscvInst::print() {
+  if (this->operand_[0] == nullptr || this->operand_[1] == nullptr)
+    return "";
   std::string riscv_instr = "\t\t";
   if (this->type.tid_ == Type::FloatTyID)
     riscv_instr += "FLW\t";
@@ -205,6 +208,7 @@ std::string LoadRiscvInst::print() {
     riscv_instr += "LW\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
+  assert(this->operand_[1] != nullptr);
   riscv_instr += this->operand_[1]->print();
   riscv_instr += "\n";
   return riscv_instr;

@@ -257,6 +257,7 @@ public:
     return code;
   }
 };
+
 // 用标号标识函数
 // 函数挂靠在module下，接入若干条instruction，以及function不设置module指针
 // 默认不保护现场，如果当寄存器不够的时候再临时压栈
@@ -306,6 +307,7 @@ public:
     addArgs(val);
     tempRange += 4;
   }
+  void storeArray(int elementNum) { base_ -= 4 * elementNum; }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
   // 默认所有寄存器不保护
   // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复

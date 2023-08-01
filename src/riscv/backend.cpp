@@ -523,12 +523,6 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 第二步：进行函数调用，告知callee的regAlloca分配单元。
       rbb->addInstrBack(
           this->createCallInstr(calleeFoo->regAlloca, curInstr, rbb));
-      // Then save return value (a0) to target value.
-      if (curInstr->type_->tid_ != curInstr->type_->VoidTyID) {
-        rbb->addInstrBack(
-            new StoreRiscvInst(new IntegerType(32), getRegOperand("a0"),
-                               foo->regAlloca->findMem(curInstr), rbb));
-      }
       // 第三步：caller恢复栈帧，清除所有的函数参数
       // 首先恢复ra
       rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),
@@ -539,6 +533,12 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           static_cast<RiscvOperand *>(
               new RiscvConst(-foo->querySP() + SPShift)),
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
+      // At last, save return value (a0) to target value.
+      if (curInstr->type_->tid_ != curInstr->type_->VoidTyID) {
+        rbb->addInstrBack(
+            new StoreRiscvInst(new IntegerType(32), getRegOperand("a0"),
+                               foo->regAlloca->findMem(curInstr), rbb));
+      }
       break;
     }
     }

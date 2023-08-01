@@ -86,12 +86,13 @@ public:
   // 建立IR中变量到实际寄存器（用riscvReg指针表示）的映射
   void setPositionReg(Value *val, RiscvOperand *riscvReg);
 
-  // 将不安全的寄存器内容写回到内存地址中，并移除该寄存器在pos中映射的地址
-  // riscvReg: 将要写回的寄存器
-  // bb: 指令将要插入的基本块
-  // instr:
-  // 当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
-  // 返回最后写入的指令
+  /**
+   * 将寄存器内容写回到内存地址中，并移除该寄存器在pos中映射的地址。
+   * @param riscvReg 将要写回的寄存器
+   * @param bb 指令将要插入的基本块
+   * @param instr 当前需要在哪一条指令前方插入sw指令
+   * @return 返回最后写入的指令
+   */
   RiscvInstr *writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr);
 

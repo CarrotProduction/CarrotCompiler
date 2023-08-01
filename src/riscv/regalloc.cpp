@@ -49,32 +49,43 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr, int inReg, int load) {
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
-  if (curReg.count(val))
-    return curReg[val];
-  if (val->type_->tid_ == Type::IntegerTyID ||
-      val->type_->tid_ == Type::PointerTyID) {
-    ++IntRegID;
-    if (IntRegID > 29)
-      IntRegID = 8;
-    RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
-    setPositionReg(val, cur);
-  } else {
-    assert(val->type_->tid_ == Type::TypeID::FloatTyID);
-    ++FloatRegID;
-    RiscvFloatReg *cur =
-        new RiscvFloatReg(new Register(Register::Float, FloatRegID));
-    setPositionReg(val, cur);
-  }
 
-  // If value
+  // If there is no register allocated for value then get a new one
+  if (curReg.find(val) == curReg.end()) {
+    if (val->type_->tid_ == Type::IntegerTyID ||
+        val->type_->tid_ == Type::PointerTyID) {
+      ++IntRegID;
+      if (IntRegID > 29)
+        IntRegID = 8;
+      RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
+      setPositionReg(val, cur);
+    } else {
+      assert(val->type_->tid_ == Type::TypeID::FloatTyID);
+      ++FloatRegID;
+      RiscvFloatReg *cur =
+          new RiscvFloatReg(new Register(Register::Float, FloatRegID));
+      setPositionReg(val, cur);
+    }
+  } else
+    return curReg[val];
+
+  // ! Though all registers are considered unsafe, there is no way
+  // ! to writeback registers properly in findReg() for now.
+  // ! Therefore unsafe part below is not being executed for now.
+  // ! Maybe should consider using writeback() instead.
+  // For now, all registers are considered unsafe thus registers should always
+  // load from memory before using and save to memory after using.
   auto mem_addr = findMem(val, bb, instr); // Value's memory address
   if (load) {
     auto current_reg = curReg[val]; // Value's current register
     auto load_type = getStoreTypeFromRegType(current_reg);
+
+    // Load before usage.
     if (mem_addr != nullptr)
       bb->addInstrBefore(
           new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
     else if (val->is_constant()) {
+      // If value is a int constant, create a LI instruction.
       auto cval = dynamic_cast<ConstantInt *>(val);
       if (cval != nullptr)
         bb->addInstrBefore(new MoveRiscvInst(current_reg, cval->value_, bb),
@@ -85,6 +96,12 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                   << std::endl;
       }
     }
+
+    // Save after usage. (not being executed for now.)
+
+    // if (mem_addr != nullptr)
+    //   bb->addInstrAfter(
+    //       new StoreRiscvInst(load_type, current_reg, mem_addr, bb), instr);
   }
 
   return curReg[val];
@@ -97,6 +114,7 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
               << ")'s memory map not found." << std::endl;
   }
+  // Always loading global variable's address into t5 when execute findMem().
   if (isGVar) {
     if (bb == nullptr) {
       std::cerr << "[Fatal Error] Trying to add global var addressing "

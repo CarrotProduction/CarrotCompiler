@@ -93,9 +93,8 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
 
   // If both operands are imm value, caculate the result directly and save to
   // binaryInstr value.
-  if (binaryInstr->operands_[0]->name_[0] ==
-          binaryInstr->operands_[1]->name_[0] &&
-      binaryInstr->operands_[0]->name_[0] == 0) {
+  if (binaryInstr->operands_[0]->is_constant() &&
+      binaryInstr->operands_[1]->is_constant()) {
     int value[] = {
         static_cast<ConstantInt *>(binaryInstr->operands_[0])->value_,
         static_cast<ConstantInt *>(binaryInstr->operands_[1])->value_};
@@ -124,15 +123,6 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
                           value_result, rbb));
     return nullptr;
   }
-
-  for (int i = 0; i < 2; i++) {
-    if (binaryInstr->operands_[i]->name_[0] == 0) {
-      // Temporarily find a register for immediate value
-      rbb->addInstrBack(new MoveRiscvInst(
-          regAlloca->findReg(binaryInstr->operands_[i], rbb, nullptr, 1),
-          dynamic_cast<ConstantInt *>(binaryInstr->operands_[i])->value_, rbb));
-    }
-  }
   BinaryRiscvInst *instr = new BinaryRiscvInst(
       id, regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(binaryInstr->operands_[1], rbb, nullptr, 1),
@@ -158,7 +148,8 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
   if (testConstInt != nullptr) {
     // 整数部分可以直接li指令
     std::vector<RiscvInstr *> ans;
-    auto regPos = regAlloca->findReg(storeInstr->operands_[1], rbb, nullptr, 0, 0);
+    auto regPos =
+        regAlloca->findReg(storeInstr->operands_[1], rbb, nullptr, 0, 0);
     ans.push_back(
         new MoveRiscvInst(regPos, new RiscvConst(testConstInt->value_), rbb));
     ans.push_back(new StoreRiscvInst(
@@ -548,7 +539,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
                                           new RiscvIntPhiReg("sp"), rbb));
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
-          static_cast<RiscvOperand *>(new RiscvConst(-foo->querySP() + SPShift)),
+          static_cast<RiscvOperand *>(
+              new RiscvConst(-foo->querySP() + SPShift)),
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       break;
     }

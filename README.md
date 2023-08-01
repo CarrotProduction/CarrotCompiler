@@ -16,7 +16,8 @@ Windows 用户请自行查找方案，如使用 WSL 等。
 
 如果需要运行 RISC-V 汇编测试，则还需要以下依赖项：
 
-`qemu-user` `riscv64-linux-gnu-gcc`
+* Arch 用户：`qemu-user` `riscv64-linux-gnu-gcc`
+* Ubuntu 用户：`qemu-user` `crossbuild-essential-riscv64`
 
 之后在项目根目录下执行如下指令进行项目构建：
 

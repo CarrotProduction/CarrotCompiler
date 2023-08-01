@@ -170,7 +170,8 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
                                RiscvBasicBlock *bb, RiscvInstr *instr) {
-  writeback(riscvReg, bb, instr);
+  if (regPos.find(riscvReg) != regPos.end() && regPos[riscvReg] != val)
+    writeback(riscvReg, bb, instr);
   setPositionReg(val, riscvReg);
 }
 

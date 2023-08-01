@@ -345,4 +345,6 @@ public:
     globalVariable_.push_back(g);
   }
 };
+
+Type *findPtrType(Type *ty);
 #endif // !RISCVH

@@ -25,7 +25,7 @@ public:
    * Merge DSU's node u to v.
    * @param u child
    * @param v father
-  */
+   */
   void merge(T u, T v) {
     u = query(u), v = query(v);
     assert(u != nullptr && v != nullptr);
@@ -119,6 +119,8 @@ public:
   void setPositionReg(Value *val, RiscvOperand *riscvReg, RiscvBasicBlock *bb,
                       RiscvInstr *instr = nullptr);
   void setPositionReg(Value *val, RiscvOperand *riscvReg);
+  // 建立指针指向的内存地址映射
+  void setPointerPos(Value *val, RiscvOperand *PointerMem);
 
   /**
    * 将寄存器内容写回到内存地址中，并移除该寄存器在pos中映射的地址。
@@ -143,10 +145,13 @@ public:
   // Initialize savedRegister
   RegAlloca();
 
+  std::map<Value *, RiscvOperand *> ptrPos; // 指针所指向的内存地址
+  Value *getRegPosition(RiscvOperand *reg);
+  RiscvOperand *findPtr(Value *val, RiscvBasicBlock *bb,
+                        RiscvInstr *instr = nullptr);
+
 private:
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;
-
-  Value *getRegPosition(RiscvOperand *reg);
 };
 #endif // !REGALLOCH

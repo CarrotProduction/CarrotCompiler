@@ -38,3 +38,15 @@ extern int LabelCount;
 RiscvOperand::OpTy RiscvOperand::getType() { return tid_; }
 
 bool RiscvOperand::isRegister() { return tid_ == FloatReg || tid_ == IntReg; }
+
+
+Type *findPtrType(Type *ty) {
+  while (ty->tid_ == Type::PointerTyID) {
+    ty = static_cast<PointerType *>(ty)->contained_;
+  }
+  while (ty->tid_ == Type::ArrayTyID) {
+    ty = static_cast<ArrayType *>(ty)->contained_;
+  }
+  assert(ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID);
+  return ty;
+}

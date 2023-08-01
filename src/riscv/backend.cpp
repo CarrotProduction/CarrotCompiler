@@ -143,9 +143,15 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
         regAlloca->findReg(storeInstr->operands_[1], rbb, nullptr, 0, 0);
     ans.push_back(
         new MoveRiscvInst(regPos, new RiscvConst(testConstInt->value_), rbb));
-    ans.push_back(new StoreRiscvInst(
-        storeInstr->operands_[0]->type_, regPos,
-        regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr), rbb));
+    // 指针类型找ptr
+    if (storeInstr->operands_[1]->type_->tid_ == Type::TypeID::PointerTyID)
+      ans.push_back(new StoreRiscvInst(
+          storeInstr->operands_[0]->type_, regPos,
+          regAlloca->findPtr(storeInstr->operands_[1], rbb, nullptr), rbb));
+    else
+      ans.push_back(new StoreRiscvInst(
+          storeInstr->operands_[0]->type_, regPos,
+          regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr), rbb));
     return ans;
   }
   // 真正的store：第二操作数为一个指针类型
@@ -154,7 +160,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
     StoreRiscvInst *instr = new StoreRiscvInst(
         curType->contained_,
         regAlloca->findReg(storeInstr->operands_[0], rbb, nullptr, 1),
-        regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr), rbb);
+        regAlloca->findPtr(storeInstr->operands_[1], rbb, nullptr), rbb);
     return {instr};
   }
   // 下面为整型或浮点的mov
@@ -182,7 +188,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
         regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);
     ans.push_back(new LoadRiscvInst(
         curType->contained_, regPos,
-        regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr), rbb));
+        regAlloca->findPtr(loadInstr->operands_[0], rbb, nullptr), rbb));
     ans.push_back(new StoreRiscvInst(
         curType->contained_, regPos,
         regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
@@ -321,8 +327,10 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
   Value *op0 = instr->get_operand(0);
   RiscvOperand *dest = regAlloca->findReg(instr, rbb);
   std::vector<RiscvInstr *> ans;
+  bool isConst = 1; // 能否用确定的形如 -12(sp)访问
   if (dynamic_cast<GlobalVariable *>(op0) != nullptr) {
     // 全局变量：使用la指令取基础地址
+    isConst = 0;
     ans.push_back(new LoadAddressRiscvInstr(dest, op0->name_, rbb));
   } else if (auto oi = dynamic_cast<Instruction *>(op0)) {
     // 指令是在栈上分配的临时地址，则dest=当前的sp+现在分配的变量的偏移地址
@@ -351,8 +359,8 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
       indexVal = ci->value_;
       totalOffset += indexVal * curTypeSize;
     } else {
-      // assert(dynamic_cast<Instruction *>(opi) || dynamic_cast<Argument
-      // *>(opi));
+      // 存在变量参与偏移量计算
+      isConst = 0;
       assert(opi->type_->tid_ == Type::IntegerTyID);
       RiscvOperand *mulTempReg = new RiscvIntReg(NamefindReg("t6"));
       // 先把常量塞进x31寄存器，然后做乘法dest=dest*x31
@@ -364,11 +372,13 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
   if (totalOffset > 0)
     ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
                                       new RiscvConst(totalOffset), dest, rbb));
+  regAlloca->setPointerPos(static_cast<Value *>(instr), dest);
   return ans;
 }
 
 RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
                                                        RiscvFunction *foo) {
+  int translationCount = 0;
   RiscvBasicBlock *rbb = createRiscvBasicBlock(bb);
   Instruction *forward = nullptr; // 前置指令，用于icmp、fcmp和branch指令合并
   for (Instruction *instr : bb->instr_list_) {
@@ -430,7 +440,6 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     case Instruction::Alloca:
       break;
-    // 找偏移量，待完成
     case Instruction::GetElementPtr: {
       std::vector<RiscvInstr *> instrSet = this->solveGetElementPtr(
           foo->regAlloca, static_cast<GetElementPtrInst *>(instr), rbb);
@@ -519,7 +528,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // ra的保护由caller去做
       rbb->addInstrBack(new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID),
                                            new RiscvIntReg(NamefindReg("ra")),
-                                           new RiscvIntPhiReg("sp"), rbb));
+                                           new RiscvIntPhiReg(NamefindReg("sp")), rbb));
       // 第二步：进行函数调用，告知callee的regAlloca分配单元。
       rbb->addInstrBack(
           this->createCallInstr(calleeFoo->regAlloca, curInstr, rbb));
@@ -527,7 +536,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 首先恢复ra
       rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),
                                           new RiscvIntReg(NamefindReg("ra")),
-                                          new RiscvIntPhiReg("sp"), rbb));
+                                          new RiscvIntPhiReg(NamefindReg("sp")), rbb));
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
           static_cast<RiscvOperand *>(
@@ -542,10 +551,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     }
     }
+    // std::cout << "FINISH TRANSFER " << ++translationCount << "Codes\n";
   }
-  // std::cout << "END A BASIC BLOCK\n";
-  // std::cout << rbb->print() << "\n";
-  // std::cout << "FINISH PRINT\n";
   return rbb;
 }
 
@@ -557,7 +564,6 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   if (m->global_list_.size()) {
     for (GlobalVariable *gb : m->global_list_) {
       auto curType = static_cast<PointerType *>(gb->type_)->contained_;
-      // std::cout << "GB START:" << gb->name_ << "\n";
       RiscvGlobalVariable *curGB = nullptr;
       Type *containedType = nullptr;
       switch (curType->tid_) {
@@ -745,19 +751,12 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           // 分配指针，并且将指针地址也同步保存
           auto curInstr = static_cast<AllocaInst *>(instr);
           int curTypeSize = this->calcTypeSize(curInstr->alloca_ty_);
-          RiscvOperand *ptrPos =
-              rfoo->regAlloca->findMem(static_cast<Value *>(instr));
           rfoo->storeArray(curTypeSize);
           int curSP = rfoo->querySP();
-          initBlock->addInstrBack(new BinaryRiscvInst(
-              RiscvInstr::InstrType::ADDI, getRegOperand("sp"),
-              new RiscvConst(curSP), getRegOperand("t5"), initBlock));
-          initBlock->addInstrBack(
-              new StoreRiscvInst(new Type(Type::IntegerTyID),
-                                 getRegOperand("t5"), ptrPos, initBlock));
+          RiscvOperand *ptrPos = new RiscvIntPhiReg(NamefindReg("sp"), curSP);
+          rfoo->regAlloca->setPointerPos(static_cast<Value *>(instr), ptrPos);
         }
     rfoo->addBlock(initBlock);
-    // std::cout << "FINISH ALLOCA AND MERGE\n";
 
     for (BasicBlock *bb : foo->basic_blocks_)
       rfoo->addBlock(this->transferRiscvBasicBlock(bb, rfoo));

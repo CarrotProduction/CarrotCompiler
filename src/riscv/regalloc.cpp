@@ -62,12 +62,14 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
       if (IntRegID > 29)
         IntRegID = 8;
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
+      writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);
     } else {
       assert(val->type_->tid_ == Type::TypeID::FloatTyID);
       ++FloatRegID;
       RiscvFloatReg *cur =
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
+      writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);
     }
   } else
@@ -127,7 +129,7 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
       std::terminate();
     }
     bb->addInstrBefore(new LoadAddressRiscvInstr(pos[val], "t5", bb), instr);
-    return new RiscvIntPhiReg("t5", 0);
+    return new RiscvIntPhiReg(NamefindReg("t5"), 0);
   }
   // assert(pos.count(val) == 1);
   if (pos.find(val) == pos.end())
@@ -159,8 +161,6 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
                                          RiscvBasicBlock *bb,
                                          RiscvInstr *instr) {
   val = this->DSU_for_Variable.query(val);
-  val = this->DSU_for_Variable.query(val);
-  // assert(memPos != nullptr);
   Register *reg = NamefindReg(RegName);
   RiscvOperand *retOperand = nullptr;
 
@@ -175,7 +175,7 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
                                RiscvBasicBlock *bb, RiscvInstr *instr) {
-  Value * old_val = getRegPosition(riscvReg);
+  Value *old_val = getRegPosition(riscvReg);
   if (old_val != nullptr && old_val != val)
     writeback(riscvReg, bb, instr);
   setPositionReg(val, riscvReg);
@@ -231,4 +231,46 @@ Value *RegAlloca::getRegPosition(RiscvOperand *reg) {
   if (regPos.find(reg) == regPos.end())
     return nullptr;
   return DSU_for_Variable.query(regPos[reg]);
+}
+
+RiscvOperand *RegAlloca::findPtr(Value *val, RiscvBasicBlock *bb,
+                                 RiscvInstr *instr) {
+  val = this->DSU_for_Variable.query(val);
+  if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
+    bb->addInstrBack(new LoadAddressRiscvInstr(new RiscvIntReg(NamefindReg("t5")), val->name_, bb));
+    return new RiscvIntPhiReg(NamefindReg("t5"));
+  }
+  // std::cout << val->name_ << "\n";
+  assert(ptrPos.count(val));
+  RiscvOperand *PointerTo = ptrPos[val];
+  // std::cout << PointerTo->print() << "\n";
+  if (dynamic_cast<RiscvIntPhiReg *>(PointerTo) != nullptr) {
+    // 栈上确定地址
+    // std::cout << "TYPE:INT\n";
+    // std::cout << dynamic_cast<RiscvIntPhiReg *>(PointerTo)->base_->print() << "\n";
+    if (dynamic_cast<RiscvIntPhiReg *>(PointerTo)->base_->print() == "sp")
+      return PointerTo;
+  } else if (dynamic_cast<RiscvFloatPhiReg *>(PointerTo) != nullptr) {
+    if (dynamic_cast<RiscvFloatPhiReg *>(PointerTo)->base_->print() == "sp")
+      return PointerTo;
+  }
+
+  // 不确定地址，或者由寄存器保护的地址
+  // 认为必须从内存取该指针
+  bb->addInstrBack(new LoadRiscvInst(new Type(Type::IntegerTyID),
+                                     getRegOperand("t5"), this->findMem(val), 
+                                     bb));
+  auto containedType = findPtrType(val->type_);
+  if (containedType->tid_ == Type::FloatTyID)
+    return new RiscvFloatPhiReg(NamefindReg("t5"));
+  else
+    return new RiscvIntPhiReg(NamefindReg("t5"));
+}
+
+void RegAlloca::setPointerPos(Value *val, RiscvOperand *PointerMem) {
+  val = this->DSU_for_Variable.query(val);
+  assert(val->type_->tid_ == Type::TypeID::PointerTyID ||
+         val->type_->tid_ == Type::TypeID::ArrayTyID);
+  // std::cout << "SET POINTER: " << val->name_ << "!" << PointerMem->print() << "\n";
+  this->ptrPos[val] = PointerMem;
 }

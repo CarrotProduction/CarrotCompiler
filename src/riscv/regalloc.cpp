@@ -47,24 +47,27 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
 }
 
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
-                                 RiscvInstr *instr, int inReg, int load) {
+                                 RiscvInstr *instr, int inReg, int load,
+                                 RiscvOperand *specified) {
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
 
   // If there is no register allocated for value then get a new one
-  if (curReg.find(val) == curReg.end()) {
+  if (specified != nullptr)
+    setPositionReg(val, specified, bb, instr);
+  else if (curReg.find(val) == curReg.end()) {
     if (val->type_->tid_ == Type::IntegerTyID ||
         val->type_->tid_ == Type::PointerTyID) {
       ++IntRegID;
       if (IntRegID > 29)
         IntRegID = 8;
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
-      setPositionReg(val, cur);
+      setPositionReg(val, cur, bb, instr);
     } else {
       assert(val->type_->tid_ == Type::TypeID::FloatTyID);
       ++FloatRegID;
       RiscvFloatReg *cur =
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
-      setPositionReg(val, cur);
+      setPositionReg(val, cur, bb, instr);
     }
   } else
     return curReg[val];
@@ -76,10 +79,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   // For now, all registers are considered unsafe thus registers should always
   // load from memory before using and save to memory after using.
   auto mem_addr = findMem(val, bb, instr); // Value's memory address
+  auto current_reg = curReg[val];          // Value's current register
+  auto load_type = getStoreTypeFromRegType(current_reg);
   if (load) {
-    auto current_reg = curReg[val]; // Value's current register
-    auto load_type = getStoreTypeFromRegType(current_reg);
-
     // Load before usage.
     if (mem_addr != nullptr)
       bb->addInstrBefore(
@@ -104,13 +106,13 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     //       new StoreRiscvInst(load_type, current_reg, mem_addr, bb), instr);
   }
 
-  return curReg[val];
+  return current_reg;
 }
 
 RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr) {
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
-  if (pos.count(val) == 0 && val->name_[0] != 0) {
+  if (pos.count(val) == 0 && !val->is_constant()) {
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
               << ")'s memory map not found." << std::endl;
   }
@@ -154,10 +156,6 @@ void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
 RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
                                          RiscvBasicBlock *bb,
                                          RiscvInstr *instr) {
-  if (curReg.find(val) != curReg.end())
-    writeback(curReg[val], bb, instr);
-  auto memPos = findMem(val);
-
   Register *reg = NamefindReg(RegName);
   RiscvOperand *retOperand = nullptr;
 
@@ -167,8 +165,13 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
     retOperand = new RiscvFloatReg(reg);
   else
     throw "Unknown register type in findSpecificReg().";
-  bb->addInstrBack(new LoadRiscvInst(val->type_, retOperand, memPos, bb));
-  return retOperand;
+  return findReg(val, bb, instr, 0, 1, retOperand);
+}
+
+void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
+                               RiscvBasicBlock *bb, RiscvInstr *instr) {
+  writeback(riscvReg, bb, instr);
+  setPositionReg(val, riscvReg);
 }
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
@@ -177,7 +180,6 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
               << " to not a register operand." << std::endl;
     std::terminate();
   }
-
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;
 }

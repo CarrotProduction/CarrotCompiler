@@ -61,7 +61,7 @@ public:
   // load: 是否将值对应的内存地址读取到寄存器中
   RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr, int inReg = 0,
-                        int load = 1);
+                        int load = 1, RiscvOperand *specified = nullptr);
 
   // 找到IR的value的内存地址（用于IR级别的store和load指令）
   // 如果regalloca中没有存储它的内存地址（没有被setPosition过），assert报错
@@ -84,6 +84,8 @@ public:
   void setPosition(Value *val, RiscvOperand *riscvVal);
 
   // 建立IR中变量到实际寄存器（用riscvReg指针表示）的映射
+  void setPositionReg(Value *val, RiscvOperand *riscvReg, RiscvBasicBlock *bb,
+                      RiscvInstr *instr = nullptr);
   void setPositionReg(Value *val, RiscvOperand *riscvReg);
 
   /**

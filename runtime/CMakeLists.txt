@@ -5,7 +5,7 @@ project(SysYRuntime VERSION 1.0
   LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_COMPILER "clang")
+set(CMAKE_C_COMPILER "riscv64-linux-gnu-gcc")
 
 set(INCLUDE_DIRECTORY "${PROJECT_SOURCE_DIR}/include")
 include_directories(${INCLUDE_DIRECTORY})

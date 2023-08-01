@@ -27,7 +27,8 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
 const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},
     {ICmpInst::ICmpOp::ICMP_UGE, "BGEU"}, {ICmpInst::ICmpOp::ICMP_ULT, "BLTU"},
-    {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"}};
+    {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"},
+    {ICmpInst::ICmpOp::ICMP_SLE, "BLE"}};
 const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpName = {
     {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
     {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
@@ -87,7 +88,7 @@ std::string UnaryRiscvInst::print() {
 }
 
 std::string CallRiscvInst::print() {
-  std::string riscv_instr = "\t\tJAL\tra, ";
+  std::string riscv_instr = "\t\tCALL\t";
   riscv_instr += static_cast<RiscvFunction *>(this->operand_[0])->name_;
   riscv_instr += "\n";
   return riscv_instr;
@@ -137,9 +138,8 @@ std::string ICmpRiscvInstr::print() {
   riscv_instr += static_cast<RiscvBasicBlock *>(this->operand_[2])->name_;
   riscv_instr += "\n";
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
-  // 不连续则假链也要跳转
-  if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
-    riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
+  // Force Jump
+  riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
   return riscv_instr;
 }
 
@@ -171,9 +171,8 @@ std::string FCmpRiscvInstr::print() {
                  static_cast<RiscvBasicBlock *>(this->operand_[3])->name_ +
                  "\n";
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[4]);
-  // 不连续则假链也要跳转
-  if (this->parent_->blockInd_ + 1 != falseLink->blockInd_)
-    riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
+  // Force Jump
+  riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
   return riscv_instr;
 }
 

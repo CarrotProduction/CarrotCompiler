@@ -299,6 +299,11 @@ public:
       : RiscvInstr(InstrType::LW, 2, bb), shift_(shift), type(ty->tid_) {
     setOperand(0, dest);
     setOperand(1, target);
+    if (target == nullptr) {
+      std::cerr << "[Fatal Error] Load Instruction's target is nullptr."
+                << std::endl;
+      std::terminate();
+    }
     this->parent_ = bb;
   }
   std::string print() override;

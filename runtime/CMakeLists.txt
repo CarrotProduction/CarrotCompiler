@@ -5,22 +5,24 @@ project(SysYRuntime VERSION 1.0
   LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_COMPILER "clang")
+set(CMAKE_C_COMPILER "riscv64-linux-gnu-gcc")
 
 set(INCLUDE_DIRECTORY "${PROJECT_SOURCE_DIR}/include")
 include_directories(${INCLUDE_DIRECTORY})
 
 set(SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/sylib.c")
 
-add_custom_target(sysy-ir ALL
-  COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS}
-  -I ${INCLUDE_DIRECTORY}
-  -S -emit-llvm
-  ${SOURCE_FILES}
-  -o ${CMAKE_CURRENT_BINARY_DIR}/sysy.ll
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  COMMENT "Compiling SysY Runtime Library to LLVM-IR"
-  SOURCES ${SOURCE_FILES})
+if(BUILD_IR_TESTING)
+  add_custom_target(sysy-ir ALL
+    COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS}
+    -I ${INCLUDE_DIRECTORY}
+    -S -emit-llvm
+    ${SOURCE_FILES}
+    -o ${CMAKE_CURRENT_BINARY_DIR}/sysy.ll
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMENT "Compiling SysY Runtime Library to LLVM-IR"
+    SOURCES ${SOURCE_FILES})
+endif(BUILD_IR_TESTING)
 
 add_library(sysy STATIC ${SOURCE_FILES})
 

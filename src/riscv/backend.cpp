@@ -289,9 +289,10 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
   else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
     reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
   auto instr = regAlloca->writeback(reg_to_save, rbb);
-  rbb->addInstrAfter(
-      new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb), rbb),
-      instr);
+  rbb->addInstrAfter(new MoveRiscvInst(reg_to_save,
+                                       regAlloca->findReg(operand, rbb, instr),
+                                       rbb),
+                     instr);
   return new ReturnRiscvInst(rbb);
 }
 
@@ -532,6 +533,12 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           static_cast<RiscvOperand *>(
               new RiscvConst(-foo->querySP() + SPShift)),
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
+      // At last, save return value (a0) to target value.
+      if (curInstr->type_->tid_ != curInstr->type_->VoidTyID) {
+        rbb->addInstrBack(
+            new StoreRiscvInst(new IntegerType(32), getRegOperand("a0"),
+                               foo->regAlloca->findMem(curInstr), rbb));
+      }
       break;
     }
     }
@@ -613,13 +620,14 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       for (Instruction *instr : bb->instr_list_)
         if (instr->op_id_ == Instruction::OpID::PHI) {
           for (auto *operand : instr->operands_)
-            rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr), operand);
+            rfoo->regAlloca->DSU_for_Variable.merge(
+                operand, static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::ZExt) {
-          rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
-                                       instr->operands_[0]);
+          rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
+                                                  static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::BitCast) {
-          rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
-                                       instr->operands_[0]);
+          rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
+                                                  static_cast<Value *>(instr));
         }
     // 将该函数内的浮点常量全部处理出来并告知寄存器分配单元
     for (BasicBlock *bb : foo->basic_blocks_)

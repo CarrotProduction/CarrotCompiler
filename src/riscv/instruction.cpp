@@ -27,7 +27,8 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
 const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},
     {ICmpInst::ICmpOp::ICMP_UGE, "BGEU"}, {ICmpInst::ICmpOp::ICMP_ULT, "BLTU"},
-    {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"}};
+    {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"},
+    {ICmpInst::ICmpOp::ICMP_SLE, "BLE"}};
 const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpName = {
     {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
     {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},

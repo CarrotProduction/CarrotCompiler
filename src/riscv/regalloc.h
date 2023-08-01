@@ -20,6 +20,12 @@ public:
     else
       return getfather(id);
   }
+
+  /**
+   * Merge DSU's node u to v.
+   * @param u child
+   * @param v father
+  */
   void merge(T u, T v) {
     u = query(u), v = query(v);
     assert(u != nullptr && v != nullptr);
@@ -140,5 +146,7 @@ public:
 private:
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;
+
+  Value *getRegPosition(RiscvOperand *reg);
 };
 #endif // !REGALLOCH

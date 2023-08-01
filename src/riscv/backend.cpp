@@ -620,14 +620,14 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       for (Instruction *instr : bb->instr_list_)
         if (instr->op_id_ == Instruction::OpID::PHI) {
           for (auto *operand : instr->operands_)
-            rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
-                                                    operand);
+            rfoo->regAlloca->DSU_for_Variable.merge(
+                operand, static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::ZExt) {
-          rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
-                                                  instr->operands_[0]);
+          rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
+                                                  static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::BitCast) {
-          rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
-                                                  instr->operands_[0]);
+          rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
+                                                  static_cast<Value *>(instr));
         }
     // 将该函数内的浮点常量全部处理出来并告知寄存器分配单元
     for (BasicBlock *bb : foo->basic_blocks_)

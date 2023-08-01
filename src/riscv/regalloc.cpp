@@ -173,7 +173,8 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
                                RiscvBasicBlock *bb, RiscvInstr *instr) {
-  if (regPos.find(riscvReg) != regPos.end() && regPos[riscvReg] != val)
+  Value * old_val = getRegPosition(riscvReg);
+  if (old_val != nullptr && old_val != val)
     writeback(riscvReg, bb, instr);
   setPositionReg(val, riscvReg);
 }
@@ -222,4 +223,10 @@ Value *RegAlloca::findRegVal(RiscvOperand *riscvReg) {
 
 RegAlloca::RegAlloca() {
   // savedRegister.push_back(getRegOperand("ra"));
+}
+
+Value *RegAlloca::getRegPosition(RiscvOperand *reg) {
+  if (regPos.find(reg) == regPos.end())
+    return nullptr;
+  return DSU_for_Variable.query(regPos[reg]);
 }

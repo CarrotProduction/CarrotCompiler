@@ -316,16 +316,21 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
                                               ReturnInst *returnInstr,
                                               RiscvBasicBlock *rbb) {
   RiscvOperand *reg_to_save = nullptr;
-  auto &operand = returnInstr->operands_[0];
-  if (operand->type_->tid_ == Type::TypeID::IntegerTyID)
-    reg_to_save = regAlloca->findSpecificReg(operand, "a0", rbb);
-  else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
-    reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
-  auto instr = regAlloca->writeback(reg_to_save, rbb);
-  rbb->addInstrAfter(new MoveRiscvInst(reg_to_save,
-                                       regAlloca->findReg(operand, rbb, instr),
-                                       rbb),
-                     instr);
+
+  // If ret i32 %4
+  if (returnInstr->num_ops_ > 0) {
+    auto &operand = returnInstr->operands_[0];
+    if (operand->type_->tid_ == Type::TypeID::IntegerTyID)
+      reg_to_save = regAlloca->findSpecificReg(operand, "a0", rbb);
+    else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
+      reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
+    auto instr = regAlloca->writeback(reg_to_save, rbb);
+    rbb->addInstrAfter(
+        new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb, instr),
+                          rbb),
+        instr);
+  }
+  
   return new ReturnRiscvInst(rbb);
 }
 

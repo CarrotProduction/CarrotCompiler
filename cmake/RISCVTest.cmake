@@ -90,7 +90,7 @@ if(TEST_OUT_CONTENT)
   endif()
 endif(TEST_OUT_CONTENT)
 
-set(TEST_OUT_CONTENT "${TEST_OUT_CONTENT}${TEST_RET}\n")
+set(TEST_OUT_CONTENT "${TEST_OUT_CONTENT}\n${TEST_RET}\n")
 file(WRITE "${TEST_OUT}" "${TEST_OUT_CONTENT}")
 
 execute_process(

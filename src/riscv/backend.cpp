@@ -695,18 +695,17 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         // 整型参数
         if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
             (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
-          IntParaCount++;
           if (IntParaCount < 8)
             rfoo->regAlloca->setPositionReg(
                 *val, new RiscvIntReg(
                           NamefindReg("a" + std::to_string(IntParaCount))));
           rfoo->regAlloca->setPosition(
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+          IntParaCount++;
         }
         // 浮点参数
         else {
           assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
-          FloatParaCount++;
           // 寄存器有
           if (FloatParaCount < 8) {
             rfoo->regAlloca->setPositionReg(
@@ -715,6 +714,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           }
           rfoo->regAlloca->setPositionReg(
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+          FloatParaCount++;
         }
         ParaShift += 4;
       }

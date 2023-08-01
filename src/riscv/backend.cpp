@@ -301,9 +301,10 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
   else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
     reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
   auto instr = regAlloca->writeback(reg_to_save, rbb);
-  rbb->addInstrAfter(
-      new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb, instr), rbb),
-      instr);
+  rbb->addInstrAfter(new MoveRiscvInst(reg_to_save,
+                                       regAlloca->findReg(operand, rbb, instr),
+                                       rbb),
+                     instr);
   return new ReturnRiscvInst(rbb);
 }
 
@@ -535,6 +536,12 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 第二步：进行函数调用，告知callee的regAlloca分配单元。
       rbb->addInstrBack(
           this->createCallInstr(calleeFoo->regAlloca, curInstr, rbb));
+      // Then save return value (a0) to target value.
+      if (curInstr->type_->tid_ != curInstr->type_->VoidTyID) {
+        rbb->addInstrBack(
+            new StoreRiscvInst(new IntegerType(32), getRegOperand("a0"),
+                               foo->regAlloca->findMem(curInstr), rbb));
+      }
       // 第三步：caller恢复栈帧，清除所有的函数参数
       // 首先恢复ra
       rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),

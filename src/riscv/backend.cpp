@@ -73,18 +73,6 @@ RiscvFunction *createRiscvFunction(Function *foo) {
   return functionLabel[foo];
 }
 
-// 全部合流
-void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
-  int n = instr->operands_.size();
-  for (int i = 0; i < n; i++)
-    DSU_for_Variable.merge(static_cast<Value *>(instr), instr->operands_[i]);
-}
-
-// ZExt翻译：执行零扩展，等效于合流
-void RiscvBuilder::solveZExtInstr(ZextInst *instr) {
-  DSU_for_Variable.merge(instr->operands_[0], static_cast<Value *>(instr));
-}
-
 BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
                                                  BinaryInst *binaryInstr,
                                                  RiscvBasicBlock *rbb) {
@@ -435,7 +423,6 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     // 直接删除的指令
     case Instruction::BitCast:
-      assert(false);
       break;
     case Instruction::ZExt:
       // 等价一条合流语句操作
@@ -549,6 +536,9 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     }
     }
   }
+  // std::cout << "END A BASIC BLOCK\n";
+  // std::cout << rbb->print() << "\n";
+  // std::cout << "FINISH PRINT\n";
   return rbb;
 }
 
@@ -614,18 +604,23 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   std::string code = ".section .text\n";
   // 函数体
   // 预处理：首先合并所有的合流语句操作，然后在分配单元（storeOnStack）部分使用DSU合并
-  for (Function *foo : m->function_list_)
-    for (BasicBlock *bb : foo->basic_blocks_)
-      for (Instruction *instr : bb->instr_list_)
-        if (instr->op_id_ == Instruction::OpID::PHI)
-          this->solvePhiInstr(static_cast<PhiInst *>(instr));
-        else if (instr->op_id_ == Instruction::OpID::ZExt)
-          this->solvePhiInstr(static_cast<PhiInst *>(instr));
   for (Function *foo : m->function_list_) {
     auto rfoo = createRiscvFunction(foo);
     rm->addFunction(rfoo);
     if (rfoo->is_libfunc())
       continue;
+    for (BasicBlock *bb : foo->basic_blocks_)
+      for (Instruction *instr : bb->instr_list_)
+        if (instr->op_id_ == Instruction::OpID::PHI) {
+          for (auto *operand : instr->operands_)
+            rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr), operand);
+        } else if (instr->op_id_ == Instruction::OpID::ZExt) {
+          rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
+                                       instr->operands_[0]);
+        } else if (instr->op_id_ == Instruction::OpID::BitCast) {
+          rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
+                                       instr->operands_[0]);
+        }
     // 将该函数内的浮点常量全部处理出来并告知寄存器分配单元
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_)
@@ -651,7 +646,6 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     auto storeOnStack = [&](Value **val) {
       if (val == nullptr)
         return;
-      *val = this->DSU_for_Variable.query(*val);
       assert(*val != nullptr);
       if (haveAllocated.count(*val))
         return;
@@ -695,7 +689,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
                 *val, new RiscvIntReg(
                           NamefindReg("a" + std::to_string(IntParaCount))));
           rfoo->regAlloca->setPosition(
-              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+              *val, new RiscvIntPhiReg(NamefindReg("sp"), ParaShift));
           IntParaCount++;
         }
         // 浮点参数
@@ -725,17 +719,38 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     };
 
     for (BasicBlock *bb : foo->basic_blocks_)
-      for (Instruction *instr : bb->instr_list_) {
-        // 所有的函数局部变量都要压入栈
-        Value *tempPtr = static_cast<Value *>(instr);
-        storeOnStack(&tempPtr);
-        for (auto *val : instr->operands_) {
-          tempPtr = static_cast<Value *>(val);
+      for (Instruction *instr : bb->instr_list_)
+        if (instr->op_id_ != Instruction::OpID::PHI &&
+            instr->op_id_ != Instruction::OpID::ZExt &&
+            instr->op_id_ != Instruction::OpID::Alloca) {
+          // 所有的函数局部变量都要压入栈
+          Value *tempPtr = static_cast<Value *>(instr);
           storeOnStack(&tempPtr);
+          for (auto *val : instr->operands_) {
+            tempPtr = static_cast<Value *>(val);
+            storeOnStack(&tempPtr);
+          }
         }
-      }
-    // std::cout << "ALL ALLOCA END\n";
+    for (BasicBlock *bb : foo->basic_blocks_)
+      for (Instruction *instr : bb->instr_list_)
+        if (instr->op_id_ == Instruction::OpID::Alloca) {
+          // 分配指针，并且将指针地址也同步保存
+          auto curInstr = static_cast<AllocaInst *>(instr);
+          int curTypeSize = this->calcTypeSize(curInstr->alloca_ty_);
+          RiscvOperand *ptrPos =
+              rfoo->regAlloca->findMem(static_cast<Value *>(instr));
+          rfoo->storeArray(curTypeSize);
+          int curSP = rfoo->querySP();
+          initBlock->addInstrBack(new BinaryRiscvInst(
+              RiscvInstr::InstrType::ADDI, getRegOperand("sp"),
+              new RiscvConst(curSP), getRegOperand("t5"), initBlock));
+          initBlock->addInstrBack(
+              new StoreRiscvInst(new Type(Type::IntegerTyID),
+                                 getRegOperand("t5"), ptrPos, initBlock));
+        }
     rfoo->addBlock(initBlock);
+    // std::cout << "FINISH ALLOCA AND MERGE\n";
+
     for (BasicBlock *bb : foo->basic_blocks_)
       rfoo->addBlock(this->transferRiscvBasicBlock(bb, rfoo));
     // 分配完成寄存器后，考虑将需要保护的寄存器进行保护

@@ -4,6 +4,31 @@
 #include "riscv.h"
 #include <cassert>
 
+template <typename T> class DSU {
+
+  std::map<T, T> father;
+  T getfather(T x) {
+    return father[x] == x ? x : (father[x] = getfather(father[x]));
+  }
+
+public:
+  DSU() = default;
+  T query(T id) {
+    // 不存在变量初值为自己
+    if (father.find(id) == father.end())
+      return father[id] = id;
+    else
+      return getfather(id);
+  }
+  void merge(T u, T v) {
+    u = query(u), v = query(v);
+    assert(u != nullptr && v != nullptr);
+    if (u == v)
+      return;
+    father[u] = v;
+  }
+};
+
 // 关于额外发射指令问题说明
 // 举例：如果当前需要使用特定寄存器（以a0为例）以存取返回值
 // 1. 如果当前变量在内存：a)
@@ -49,6 +74,7 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg);
 // 当存在需要寄存器保护的时候，直接找回原地址去进行
 class RegAlloca {
 public:
+  DSU<Value *> DSU_for_Variable;
   // 如果所有寄存器均被分配，则需要额外发射lw和sw指令
   // inReg 参数如果为1，则要求必须返回寄存器；否则可以返回内存或栈上地址
   // instr 表示需要插入到哪条指令的前面，默认为最后面

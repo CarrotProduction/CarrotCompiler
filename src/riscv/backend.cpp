@@ -77,7 +77,7 @@ RiscvFunction *createRiscvFunction(Function *foo) {
 void RiscvBuilder::solvePhiInstr(PhiInst *instr) {
   int n = instr->operands_.size();
   for (int i = 0; i < n; i++)
-    DSU_for_Variable.merge(static_cast<Value *>(instr), instr->operands_[0]);
+    DSU_for_Variable.merge(static_cast<Value *>(instr), instr->operands_[i]);
 }
 
 // ZExt翻译：执行零扩展，等效于合流
@@ -111,6 +111,9 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
       break;
     case Instruction::OpID::SDiv:
       value_result = value[0] / value[1];
+      break;
+    case Instruction::OpID::SRem:
+      value_result = value[0] % value[1];
       break;
     default:
       std::cerr << "[Fatal Error] Binary instruction immediate caculation not "
@@ -648,8 +651,8 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     auto storeOnStack = [&](Value **val) {
       if (val == nullptr)
         return;
-      assert(*val != nullptr);
       *val = this->DSU_for_Variable.query(*val);
+      assert(*val != nullptr);
       if (haveAllocated.count(*val))
         return;
       // 几种特殊类型，不需要分栈空间

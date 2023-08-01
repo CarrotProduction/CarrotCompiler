@@ -11,20 +11,21 @@ template <typename T> class DSU {
 
   std::map<T, T> father;
   T getfather(T x) {
-    return father[x] == x ? x : father[x] = getfather(father[x]);
+    return father[x] == x ? x : (father[x] = getfather(father[x]));
   }
 
 public:
   DSU() = default;
   T query(T id) {
     // 不存在变量初值为自己
-    if (father.count(id) == 0)
+    if (father.find(id) == father.end())
       return father[id] = id;
     else
       return getfather(id);
   }
   void merge(T u, T v) {
-    u = getfather(u), v = getfather(v);
+    u = query(u), v = query(v);
+    assert(u != nullptr && v != nullptr);
     if (u == v)
       return;
     father[u] = v;

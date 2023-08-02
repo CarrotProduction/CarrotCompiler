@@ -6,7 +6,8 @@ const int REG_NUMBER = 32;
 
 RiscvFunction::RiscvFunction(std::string name, int num_args,
                              OpTy Ty) // 返回值，无返回使用void类型
-    : RiscvLabel(Function, name), num_args_(num_args), resType_(Ty), base_(-4) {
+    : RiscvLabel(Function, name), num_args_(num_args), resType_(Ty),
+      base_(-VARIABLE_ALIGN_BYTE) {
   regAlloca = new RegAlloca();
 }
 // 输出函数对应的全部riscv语句序列
@@ -39,7 +40,6 @@ RiscvOperand::OpTy RiscvOperand::getType() { return tid_; }
 
 bool RiscvOperand::isRegister() { return tid_ == FloatReg || tid_ == IntReg; }
 
-
 Type *findPtrType(Type *ty) {
   while (ty->tid_ == Type::PointerTyID) {
     ty = static_cast<PointerType *>(ty)->contained_;
@@ -51,21 +51,94 @@ Type *findPtrType(Type *ty) {
   return ty;
 }
 
-RiscvFunction* createSyslibFunc(Function *foo) {
+std::string RiscvGlobalVariable::print(bool print_name, Constant *initVal) {
+  std::string code = "";
+  // 如果在调用的第一层，初始化 initVal
+  if (print_name) {
+    code += this->name_ + ":\n";
+    initVal = initValue_;
+  }
+  // 如果无初始值，或初始值为0（IR中有ConstZero类），则直接用zero命令
+  if (initVal == nullptr || dynamic_cast<ConstantZero *>(initVal) != nullptr) {
+    code += ".zero\t" + std::to_string(calcTypeSize(initVal->type_)) + "\n";
+    return code;
+  }
+
+  // 下面是非零的处理
+  // 整型
+  if (initVal->type_->tid_ == Type::TypeID::IntegerTyID)
+    code += ".word\t";
+  // 浮点
+  else if (initVal->type_->tid_ == Type::TypeID::FloatTyID)
+    code += ".word\t";
+  else if (initVal->type_->tid_ == Type::TypeID::ArrayTyID) {
+    ConstantArray *const_arr = dynamic_cast<ConstantArray *>(initVal);
+    assert(const_arr != nullptr);
+    for (auto elements : const_arr->const_array)
+      code += print(false, elements);
+  } else {
+    std::cerr
+        << "[Fatal Error] Unknown RiscvGlobalVariable::print() initValue type."
+        << std::endl;
+    std::terminate();
+  }
+
+  int zeroNumber = this->elementNum_;
+  if (initVal == nullptr) {
+    if (zeroNumber == 1)
+      code += "0";
+    // else
+    //   code += "[" + std::to_string(zeroNumber) + " dup(0)]";
+  } else {
+    if (typeid(*initVal) == typeid(ConstantArray)) {
+      zeroNumber -= static_cast<ArrayType *>(initVal->type_)->num_elements_;
+      if (code.back() == '\n')
+        code.pop_back();
+      // 补充冗余0
+      // if (zeroNumber > 0)
+      // code += "[" + std::to_string(zeroNumber) + " dup(0)]";
+    } else {
+      code += initVal->print();
+    }
+  }
+  code += "\n";
+  if (print_name) {
+    code += ".size\t";
+    code += name_;
+    code += ", ";
+    code += std::to_string(calcTypeSize(initVal->type_));
+    code += "\n";
+  }
+  return code;
+}
+
+std::string RiscvGlobalVariable::print() { return print(true, nullptr); }
+RiscvFunction *createSyslibFunc(Function *foo) {
   if (foo->name_ == "__aeabi_memclr4") {
     auto *rfoo = createRiscvFunction(foo);
     // 预处理块
     auto *bb1 = createRiscvBasicBlock();
-    bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t5")), getRegOperand("a0"), bb1));
-    bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::SHLI, getRegOperand("a1"), new RiscvConst(2), getRegOperand("t6"), bb1));
-    bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, getRegOperand("a0"), getRegOperand("t6"), getRegOperand("t6"), bb1));
-    bb1->addInstrBack(new MoveRiscvInst(getRegOperand("a0"), new RiscvConst(0), bb1));
+    bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t5")),
+                                        getRegOperand("a0"), bb1));
+    bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t6")),
+                                        getRegOperand("a1"), bb1));
+    bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, getRegOperand("a0"),
+                                          getRegOperand("t6"),
+                                          getRegOperand("t6"), bb1));
+    bb1->addInstrBack(
+        new MoveRiscvInst(getRegOperand("a0"), new RiscvConst(0), bb1));
     auto *bb2 = createRiscvBasicBlock();
     // 循环块
     // 默认clear为全0
-    bb2->addInstrBack(new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID), getRegOperand("a0"), new RiscvIntPhiReg(NamefindReg("t5")), bb2));
-    bb2->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADDI, getRegOperand("t5"), new RiscvConst(4), getRegOperand("t5"), bb1));
-    bb2->addInstrBack(new ICmpRiscvInstr(ICmpInst::ICMP_SLT, getRegOperand("t5"), getRegOperand("t6"), bb2, bb2));
+    bb2->addInstrBack(new StoreRiscvInst(
+        new Type(Type::TypeID::IntegerTyID), getRegOperand("zero"),
+        new RiscvIntPhiReg(NamefindReg("t5")), bb2));
+    bb2->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADDI, getRegOperand("t5"),
+                                          new RiscvConst(4),
+                                          getRegOperand("t5"), bb1));
+    bb2->addInstrBack(new ICmpRiscvInstr(ICmpInst::ICMP_SLT,
+                                         getRegOperand("t5"),
+                                         getRegOperand("t6"), bb2, bb2));
     bb2->addInstrBack(new ReturnRiscvInst(bb2));
     rfoo->addBlock(bb1);
     rfoo->addBlock(bb2);

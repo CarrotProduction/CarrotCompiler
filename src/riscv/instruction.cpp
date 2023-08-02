@@ -234,8 +234,14 @@ std::string StoreRiscvInst::print() {
   std::string riscv_instr = "\t\t";
   if (this->type.tid_ == Type::FloatTyID)
     riscv_instr += "FSW\t";
-  else
+  else if (this->type.tid_ == Type::IntegerTyID)
     riscv_instr += "SW\t";
+  else if (this->type.tid_ == Type::PointerTyID)
+    riscv_instr += "SD\t";
+  else {
+    std::cerr << "[Error] Unknown store instruction type." << std::endl;
+    std::terminate();
+  }
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -250,8 +256,14 @@ std::string LoadRiscvInst::print() {
   std::string riscv_instr = "\t\t";
   if (this->type.tid_ == Type::FloatTyID)
     riscv_instr += "FLW\t";
-  else
+  else if (this->type.tid_ == Type::IntegerTyID)
     riscv_instr += "LW\t";
+  else if (this->type.tid_ == Type::PointerTyID)
+    riscv_instr += "LD\t";
+  else {
+    std::cerr << "[Error] Unknown load instruction type." << std::endl;
+    std::terminate();
+  }
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   assert(this->operand_[1] != nullptr);

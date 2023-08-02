@@ -8,6 +8,7 @@ class RegAlloca;
 class Register;
 class RiscvOperand;
 
+const int VARIABLE_ALIGN_BYTE = 8;
 #include "ir.h"
 #include "regalloc.h"
 #include "string.h"
@@ -52,8 +53,21 @@ public:
   int rid_; // 寄存器编号
   Register(RegType regtype, int rid) : regtype_(regtype), rid_(rid) {}
   std::string print() {
-    if (this->regtype_ == Float)
-      return "f" + std::to_string(rid_);
+    using std::to_string;
+    if (this->regtype_ == Float) {
+      if (this->rid_ <= 7)
+        return "ft" + to_string(rid_);
+      else if (this->rid_ <= 9)
+        return "fs" + to_string(rid_ - 8);
+      else if (this->rid_ <= 17)
+        return "fa" + to_string(rid_ - 10);
+      else if (this->rid_ <= 27)
+        return "fs" + to_string(rid_ - 18 + 2);
+      else if (this->rid_ <= 31)
+        return "ft" + to_string(rid_ - 28 + 8);
+      else
+        return "wtf";
+    }
     // 整型各类输出
     switch (this->rid_) {
     case 0:
@@ -69,17 +83,17 @@ public:
     case 5:
     case 6:
     case 7:
-      return "t" + std::to_string(this->rid_ - 5);
+      return "t" + to_string(this->rid_ - 5);
     case 8:
       return "fp"; // another name: s0
     case 9:
       return "s1";
     }
     if (this->rid_ >= 10 && this->rid_ <= 17)
-      return "a" + std::to_string(this->rid_ - 10);
+      return "a" + to_string(this->rid_ - 10);
     if (this->rid_ >= 18 && this->rid_ <= 27)
-      return "s" + std::to_string(this->rid_ - 16);
-    return "t" + std::to_string(this->rid_ - 25);
+      return "s" + to_string(this->rid_ - 16);
+    return "t" + to_string(this->rid_ - 25);
   }
 };
 
@@ -217,45 +231,8 @@ public:
   // 输出全局变量定义
   // 根据ir中全局变量定义转化
   // 问题在于全局变量如果是数组有初值如何处理
-  std::string print() {
-    std::string code = this->name_ + ":\t";
-    // 如果无初始值，或初始值为0（IR中有ConstZero类），则直接用zero命令
-    if (initValue_ == nullptr ||
-        dynamic_cast<ConstantZero *>(initValue_) != nullptr) {
-      code += ".zero\t" + std::to_string(4 * elementNum_) + "\n";
-      return code;
-    }
-
-    // 下面是非零的处理
-    // 整型
-    if (initValue_->type_->tid_ == Type::TypeID::IntegerTyID)
-      code += ".word ";
-    // 浮点
-    else
-      code += ".float ";
-    int zeroNumber = this->elementNum_;
-    if (initValue_ == nullptr) {
-      if (zeroNumber == 1)
-        code += "0";
-      else
-        code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-    } else {
-      if (typeid(*initValue_) == typeid(ConstantArray)) {
-        zeroNumber -=
-            static_cast<ArrayType *>(initValue_->type_)->num_elements_;
-        code += initValue_->print();
-        if (code.back() == '\n')
-          code.pop_back();
-        // 补充冗余0
-        if (zeroNumber > 0)
-          code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-      } else {
-        code += initValue_->print();
-      }
-    }
-    code += "\n";
-    return code;
-  }
+  std::string print();
+  std::string print(bool print_name, Constant *initVal);
 };
 
 // 用标号标识函数
@@ -299,15 +276,15 @@ public:
   void addArgs(RiscvOperand *val) { // 在栈上新增操作数映射
     if (argsOffset.count(val) == 0) {
       argsOffset[val] = base_;
-      base_ -= 4;
+      base_ -= VARIABLE_ALIGN_BYTE;
     }
   }
   int querySP() { return base_; }
   void addTempVar(RiscvOperand *val) {
     addArgs(val);
-    tempRange += 4;
+    tempRange += VARIABLE_ALIGN_BYTE;
   }
-  void storeArray(int elementNum) { base_ -= 4 * elementNum; }
+  void storeArray(int elementNum) { base_ -= VARIABLE_ALIGN_BYTE * elementNum; }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
   // 默认所有寄存器不保护
   // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复
@@ -315,7 +292,7 @@ public:
   void saveOperand(RiscvOperand *val) {
     storedEnvironment[val] = base_;
     argsOffset[val] = base_;
-    base_ -= 4;
+    base_ -= VARIABLE_ALIGN_BYTE;
   }
   int findArgs(RiscvOperand *val) { // 查询栈上位置
     if (argsOffset.count(val) == 0)
@@ -348,5 +325,5 @@ public:
 
 Type *findPtrType(Type *ty);
 
-RiscvFunction* createSyslibFunc(Function *foo);
+RiscvFunction *createSyslibFunc(Function *foo);
 #endif // !RISCVH

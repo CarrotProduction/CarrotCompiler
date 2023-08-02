@@ -220,6 +220,13 @@ public:
   RiscvOperand *findPtr(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr);
 
+  /**
+   * 写回所有与内存存在关联的寄存器并删除关联。
+   * @param bb 被插入基本块
+   * @param instr 在特定指令前插入
+   */
+  void writeback_all(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
+
 private:
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;

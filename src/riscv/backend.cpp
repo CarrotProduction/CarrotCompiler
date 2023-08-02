@@ -372,17 +372,23 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
     isConst = 0;
     ans.push_back(new LoadAddressRiscvInstr(dest, op0->name_, rbb));
   } else if (auto oi = dynamic_cast<Instruction *>(op0)) {
-    // 指令是在栈上分配的临时地址，则dest=当前的sp+现在分配的变量的偏移地址
+    // 获取指针指向的地址
     int varOffset = 0;
-    if (op0->type_->tid_ == Type::TypeID::FloatTyID)
-      varOffset =
-          static_cast<RiscvFloatPhiReg *>(regAlloca->findPtr(op0, rbb))->shift_;
-    else
-      varOffset =
-          static_cast<RiscvIntPhiReg *>(regAlloca->findPtr(op0, rbb))->shift_;
-    ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
-                                      getRegOperand("sp"),
-                                      new RiscvConst(varOffset), dest, rbb));
+
+    ans.push_back(new MoveRiscvInst(
+        dest, regAlloca->findReg(op0, rbb, nullptr, 1, 1), rbb));
+
+    // if (op0->type_->tid_ == Type::TypeID::FloatTyID)
+    //   varOffset =
+    //       static_cast<RiscvFloatPhiReg *>(regAlloca->findPtr(op0,
+    //       rbb))->shift_;
+    // else
+    //   varOffset =
+    //       static_cast<RiscvIntPhiReg *>(regAlloca->findPtr(op0,
+    //       rbb))->shift_;
+    // ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
+    //                                   getRegOperand("sp"),
+    //                                   new RiscvConst(varOffset), dest, rbb));
     finalOffset += varOffset;
   }
   int curTypeSize = 0;
@@ -411,16 +417,19 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
                                         dest, dest, rbb));
     }
   }
-  if (totalOffset > 0)
-    ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
-                                      new RiscvConst(totalOffset), dest, rbb));
+  // if (totalOffset > 0)
+  ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
+                                    new RiscvConst(totalOffset), dest, rbb));
+  ans.push_back(
+      new StoreRiscvInst(instr->type_, dest, regAlloca->findMem(instr), rbb));
   finalOffset += totalOffset;
   // Set relative memory map.
   if (isConst) {
-    if (op0->type_->tid_ == Type::TypeID::FloatTyID)
-      regAlloca->setPointerPos(instr, new RiscvFloatPhiReg("sp", finalOffset));
-    else
-      regAlloca->setPointerPos(instr, new RiscvIntPhiReg("sp", finalOffset));
+    // if (op0->type_->tid_ == Type::TypeID::FloatTyID)
+    //   regAlloca->setPointerPos(instr, new RiscvFloatPhiReg("sp",
+    //   finalOffset));
+    // else
+    //   regAlloca->setPointerPos(instr, new RiscvIntPhiReg("sp", finalOffset));
   }
   return ans;
 }
@@ -494,7 +503,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           foo->regAlloca, static_cast<GetElementPtrInst *>(instr), rbb);
       for (auto *x : instrSet)
         rbb->addInstrBack(x);
-      foo->regAlloca->writeback(foo->regAlloca->findReg(instr, rbb), rbb);
+      // foo->regAlloca->writeback(foo->regAlloca->findReg(instr, rbb, nullptr,
+      // 1, 0), rbb);
       break;
     }
     case Instruction::FPtoSI:
@@ -571,6 +581,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
               curInstr->operands_[i], name, rbb, nullptr, false));
         }
       }
+      // Writeback all unsafe registers.
+      // foo->regAlloca->writeback_all(rbb);
       // 存放参数造成的额外开销。每个函数参数都放到了栈上，前8+8个参数也在寄存器中有备份
       int SPShift = parameters.size() * 4 + 4;
       reverse(parameters.begin(), parameters.end());

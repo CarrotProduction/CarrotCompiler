@@ -2,6 +2,7 @@
 #include "instruction.h"
 
 int IntRegID = 9, FloatRegID = 0; // 测试阶段使用
+
 // 寄存器堆分配工作
 
 // 根据输入的寄存器的名字`reg`返回相应的寄存器类指针。
@@ -75,7 +76,8 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
       writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);
     }
-  } else if (!val->is_constant())
+  } else if (!(val->is_constant() ||
+               val->type_->tid_ == val->type_->PointerTyID))
     return curReg[val];
 
   // ! Though all registers are considered unsafe, there is no way
@@ -87,7 +89,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   auto mem_addr =
       findMem(val, bb, instr, direct); // Value's direct memory address
   auto current_reg = curReg[val];      // Value's current register
-  auto load_type = getStoreTypeFromRegType(current_reg);
+  auto load_type = val->type_;
   bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
   if (load) {
     // Load before usage.
@@ -143,10 +145,10 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
   // Always loading global variable's address into t5 when execute findMem().
   if (isGVar) {
     if (bb == nullptr) {
-      std::cerr << "[Fatal Error] Trying to add global var addressing "
+      std::cerr << "[Warning] Trying to add global var addressing "
                    "instruction, but basic block pointer is null."
                 << std::endl;
-      std::terminate();
+      return nullptr;
     }
     bb->addInstrBefore(
         new LoadAddressRiscvInstr(getRegOperand("t5"), pos[val]->print(), bb),
@@ -157,10 +159,10 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
   // Ignore alloca due to the instruction only being dealt by findReg()
   if (isPointer && !isAlloca && !direct) {
     if (bb == nullptr) {
-      std::cerr << "[Fatal Error] Trying to add indirect pointer addressing "
+      std::cerr << "[Warning] Trying to add indirect pointer addressing "
                    "instruction, but basic block pointer is null."
                 << std::endl;
-      std::terminate();
+      return nullptr;
     }
 
     bb->addInstrBefore(new LoadRiscvInst(new Type(Type::PointerTyID),
@@ -226,6 +228,10 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
               << " to not a register operand." << std::endl;
     std::terminate();
   }
+  // Remove original links on value.
+  if (curReg.find(val) != curReg.end())
+    regPos.erase(curReg[val]);
+
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;
 }
@@ -240,7 +246,7 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
     return nullptr; // Maybe an immediate value
 
   auto store_type = value->type_;
-  auto store_instr = new StoreRiscvInst(store_type, riscvReg, mem_addr, bb);
+  auto store_instr = new StoreRiscvInst(value->type_, riscvReg, mem_addr, bb);
 
   // Write store instruction
   if (instr != nullptr)
@@ -274,6 +280,14 @@ RiscvOperand *RegAlloca::findPtr(Value *val, RiscvBasicBlock *bb,
     std::terminate();
   }
   return ptrPos[val];
+}
+
+void RegAlloca::writeback_all(RiscvBasicBlock *bb, RiscvInstr *instr) {
+  std::vector<RiscvOperand *> regs_to_writeback;
+  for (auto p : regPos)
+    regs_to_writeback.push_back(p.first);
+  for (auto r : regs_to_writeback)
+    writeback(r, bb, instr);
 }
 
 void RegAlloca::setPointerPos(Value *val, RiscvOperand *PointerMem) {

@@ -99,7 +99,6 @@ std::string RiscvGlobalVariable::print(bool print_name, Constant *initVal) {
 
 std::string RiscvGlobalVariable::print() { return print(true, nullptr); }
 
-std::string RiscvGlobalVariable::print() { return print(true, nullptr); }
 RiscvFunction *createSyslibFunc(Function *foo) {
   if (foo->name_ == "__aeabi_memclr4") {
     auto *rfoo = createRiscvFunction(foo);

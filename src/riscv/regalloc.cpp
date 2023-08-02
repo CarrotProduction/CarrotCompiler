@@ -63,11 +63,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 29)
-<<<<<<< HEAD
-        IntRegID = 5;
-=======
         IntRegID = 9;
->>>>>>> 076ecd3db6f59089cdaf4f2972f3218bae469122
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
       writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);

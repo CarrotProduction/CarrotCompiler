@@ -188,7 +188,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
         regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);
     ans.push_back(new LoadRiscvInst(
         curType->contained_, regPos,
-        regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr), rbb));
+        regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr, false), rbb));
     ans.push_back(new StoreRiscvInst(
         curType->contained_, regPos,
         regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
@@ -401,12 +401,14 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
     } else {
       // 存在变量参与偏移量计算
       isConst = 0;
-      assert(opi->type_->tid_ == Type::IntegerTyID);
+      // 考虑目标数是int还是float
       RiscvOperand *mulTempReg = new RiscvIntReg(NamefindReg("t6"));
-      // 先把常量塞进x31寄存器，然后做乘法dest=dest*x31
       ans.push_back(new MoveRiscvInst(mulTempReg, curTypeSize, rbb));
-      ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::MUL, dest,
-                                        mulTempReg, dest, rbb));
+      ans.push_back(new BinaryRiscvInst(
+          RiscvInstr::InstrType::MUL, regAlloca->findReg(opi, rbb, nullptr, 1),
+          mulTempReg, mulTempReg, rbb));
+      ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADD, mulTempReg,
+                                        dest, dest, rbb));
     }
   }
   if (totalOffset > 0)
@@ -414,7 +416,7 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
                                       new RiscvConst(totalOffset), dest, rbb));
   finalOffset += totalOffset;
   // Set relative memory map.
-  if(isConst) {
+  if (isConst) {
     if (op0->type_->tid_ == Type::TypeID::FloatTyID)
       regAlloca->setPointerPos(instr, new RiscvFloatPhiReg("sp", finalOffset));
     else

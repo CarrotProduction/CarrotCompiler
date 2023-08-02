@@ -13,7 +13,7 @@ Register *NamefindReg(std::string reg) {
                         10 + std::atoi(reg.substr(1).c_str())); // a0 is x10
   } else if (reg.substr(0, 2) == "fa") {
     return new Register(Register::RegType::Float,
-                        std::atoi(reg.substr(2).c_str()) + 10);
+                        10 + std::atoi(reg.substr(2).c_str()));
   } else if (reg == "sp") {
     return new Register(Register::RegType::Int, 2); // sp is x2
   } else if (reg == "ra") {

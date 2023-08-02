@@ -539,8 +539,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       int intRegCount = 0, floatRegCount = 0;
       for (int i = 0; i < curInstr->operands_.size() - 1; i++) {
         std::string name = "";
-        if (curInstr->operands_[i]->type_->tid_ == Type::IntegerTyID ||
-            curInstr->operands_[i]->type_->tid_ == Type::PointerTyID) {
+        if (curInstr->operands_[i]->type_->tid_ != Type::FloatTyID) {
           if (intRegCount < 8)
             name = "a" + std::to_string(intRegCount);
           intRegCount++;

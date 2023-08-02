@@ -72,7 +72,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
       writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);
     }
-  } else
+  } else if (!val->is_constant())
     return curReg[val];
 
   // ! Though all registers are considered unsafe, there is no way

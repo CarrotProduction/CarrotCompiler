@@ -87,10 +87,10 @@ public:
    * 未关联寄存器，则分配寄存器并进行关联，并处理相关的数据载入与写回。
    * @param val 需要查找寄存器的 Value
    * @param bb 插入指令需要提供的基本块
-   * @param instr 插入指令需要提供的指令，所有指令将在 instr 之前插入
-   * @param inReg 是否一定返回一个寄存器操作数，若为 true 则是（目前不生效）
+   * @param instr 在 instr 之前插入指令（可选）
+   * @param inReg 是否一定返回一个寄存器操作数，若为 true 则是
    * @param load 是否将 Value 所对应的物理地址内容载入到寄存器中，若为 true 则是
-   * @param specified 是否指定一个寄存器，若为 nullptr
+   * @param specified 是否指定关联的寄存器，若为 nullptr
    * 则不指定，若为一个寄存器操作数则在任何情况下都将 Value
    * 与指定的寄存器进行强制关联。
    * @param direct 仅在 Value 为指针时生效，用于在载入物理地址时传递参数给
@@ -98,6 +98,8 @@ public:
    * @return 返回一个 IntegerReg* 或 FloatReg* 类型的操作数 rs 。
    * @attention 该函数将在 Value 为 Alloca 指令时进行特殊处理，在 load=1 时将
    * Alloca 指针所指向的地址载入到分配的寄存器中。
+   * @attention 该函数将在 Value 为常量时进行特殊处理，在 load=1 时将常量通过 LI
+   * 指令载入到分配的寄存器中。
    * @attention 目前不应使用 direct 参数。
    */
   RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
@@ -109,7 +111,7 @@ public:
    * 对传递过来的 Value 返回其所处的物理地址操作数 offset(rs) 。
    * @param val 需要查找物理地址的 Value
    * @param bb 插入指令需要提供的基本块
-   * @param instr 插入指令需要提供的指令，所有指令将在 instr 之前插入
+   * @param instr 在 instr 之前插入指令（可选）
    * @param direct 当 direct 为 false 时将使用间接寻址。若使用间接寻址且
    * Value 为指针 (getElementInstr) ，则 findMem()
    * 将会将指针所指向的地址载入临时寄存器 t5，并返回操作数 0(t5) 。
@@ -133,7 +135,7 @@ public:
    * @param val 需要查找寄存器的 Value
    * @param RegName 需要强制关联的寄存器接口名称
    * @param bb 插入指令需要提供的基本块
-   * @param instr 插入指令需要提供的指令，所有指令将在 instr 之前插入
+   * @param instr 在 instr 之前插入指令（可选）
    * @param direct 仅在 Value 为指针时生效，用于在载入物理地址时传递参数给
    * findMem
    * @return 返回强制关联的寄存器操作数 rs 。
@@ -195,24 +197,24 @@ public:
 
   /**
    * 返回寄存器 reg 所对应的 Value 。
-  */
+   */
   Value *getRegPosition(RiscvOperand *reg);
 
   /**
    * 保护的寄存器对象数组。
-  */
+   */
   std::vector<RiscvOperand *> savedRegister;
 
   // Initialize savedRegister
   RegAlloca();
 
   // 指针所指向的内存地址
-  std::map<Value *, RiscvOperand *> ptrPos; 
-  
+  std::map<Value *, RiscvOperand *> ptrPos;
+
   /**
    * 返回指针类型的 Value 所指向的常量相对物理地址操作数 offset(sp) 。
    * @attention 参数 bb, instr 目前不被使用。
-  */
+   */
   RiscvOperand *findPtr(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr);
 

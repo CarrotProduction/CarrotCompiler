@@ -60,8 +60,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   if (specified != nullptr)
     setPositionReg(val, specified, bb, instr);
   else if (curReg.find(val) == curReg.end()) {
-    if (val->type_->tid_ == Type::IntegerTyID ||
-        val->type_->tid_ == Type::PointerTyID) {
+    if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 29)
         IntRegID = 9;

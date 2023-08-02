@@ -127,7 +127,7 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
                 << std::endl;
       std::terminate();
     }
-    bb->addInstrBefore(new LoadAddressRiscvInstr(pos[val], "t5", bb), instr);
+    bb->addInstrBefore(new LoadAddressRiscvInstr(getRegOperand("t5"), pos[val]->print(), bb), instr);
     return new RiscvIntPhiReg(NamefindReg("t5"), 0);
   }
   // assert(pos.count(val) == 1);

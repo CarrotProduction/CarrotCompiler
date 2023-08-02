@@ -93,11 +93,13 @@ public:
   // load: 是否将值对应的内存地址读取到寄存器中
   RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr, int inReg = 0,
-                        int load = 1, RiscvOperand *specified = nullptr);
+                        int load = 1, RiscvOperand *specified = nullptr,
+                        bool direct = true);
 
   // 找到IR的value的内存地址（用于IR级别的store和load指令）
   // 如果regalloca中没有存储它的内存地址（没有被setPosition过），assert报错
-  RiscvOperand *findMem(Value *val, RiscvBasicBlock *bb, RiscvInstr *instr, bool direct);
+  RiscvOperand *findMem(Value *val, RiscvBasicBlock *bb, RiscvInstr *instr,
+                        bool direct);
   RiscvOperand *findMem(Value *val);
 
   // TODO:2 findNonuse
@@ -110,7 +112,8 @@ public:
   // instr是当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
   RiscvOperand *findSpecificReg(Value *val, std::string RegName,
                                 RiscvBasicBlock *bb,
-                                RiscvInstr *instr = nullptr);
+                                RiscvInstr *instr = nullptr,
+                                bool direct = true);
 
   // 建立IR中变量到实际变量（内存固定地址空间，用riscvVal指针表示）或寄存器的映射
   void setPosition(Value *val, RiscvOperand *riscvVal);

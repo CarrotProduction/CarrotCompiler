@@ -52,8 +52,21 @@ public:
   int rid_; // 寄存器编号
   Register(RegType regtype, int rid) : regtype_(regtype), rid_(rid) {}
   std::string print() {
-    if (this->regtype_ == Float)
-      return "f" + std::to_string(rid_);
+    using std::to_string;
+    if (this->regtype_ == Float) {
+      if (this->rid_ <= 7)
+        return "ft" + to_string(rid_);
+      else if (this->rid_ <= 9)
+        return "fs" + to_string(rid_ - 8);
+      else if (this->rid_ <= 17)
+        return "fa" + to_string(rid_ - 10);
+      else if (this->rid_ <= 27)
+        return "fs" + to_string(rid_ - 18 + 2);
+      else if (this->rid_ <= 31)
+        return "ft" + to_string(rid_ - 28 + 8);
+      else
+        return "wtf";
+    }
     // 整型各类输出
     switch (this->rid_) {
     case 0:
@@ -69,17 +82,17 @@ public:
     case 5:
     case 6:
     case 7:
-      return "t" + std::to_string(this->rid_ - 5);
+      return "t" + to_string(this->rid_ - 5);
     case 8:
       return "fp"; // another name: s0
     case 9:
       return "s1";
     }
     if (this->rid_ >= 10 && this->rid_ <= 17)
-      return "a" + std::to_string(this->rid_ - 10);
+      return "a" + to_string(this->rid_ - 10);
     if (this->rid_ >= 18 && this->rid_ <= 27)
-      return "s" + std::to_string(this->rid_ - 16);
-    return "t" + std::to_string(this->rid_ - 25);
+      return "s" + to_string(this->rid_ - 16);
+    return "t" + to_string(this->rid_ - 25);
   }
 };
 

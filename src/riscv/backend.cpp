@@ -219,6 +219,39 @@ ICmpRiscvInstr *RiscvBuilder::createICMPInstr(RegAlloca *regAlloca,
   return instr;
 }
 
+ICmpRiscvInstr *RiscvBuilder::createICMPSInstr(RegAlloca *regAlloca,
+                                               ICmpInst *icmpInstr,
+                                               RiscvBasicBlock *rbb) {
+  bool swap = ICmpSRiscvInstr::ICmpOpSName.count(icmpInstr->icmp_op_) == 0;
+  if (swap) {
+    std::swap(icmpInstr->operands_[0], icmpInstr->operands_[1]);
+    icmpInstr->icmp_op_ =
+        ICmpRiscvInstr::ICmpOpEquiv.find(icmpInstr->icmp_op_)->second;
+  }
+  bool inv = false;
+  switch (icmpInstr->icmp_op_) {
+  case ICmpInst::ICMP_SGE:
+  case ICmpInst::ICMP_SLE:
+  case ICmpInst::ICMP_UGE:
+  case ICmpInst::ICMP_ULE:
+    inv = true;
+  default:
+    break;
+  }
+  ICmpSRiscvInstr *instr = new ICmpSRiscvInstr(
+      icmpInstr->icmp_op_,
+      regAlloca->findReg(icmpInstr->operands_[0], rbb, nullptr, 1),
+      regAlloca->findReg(icmpInstr->operands_[1], rbb, nullptr, 1),
+      regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0));
+  rbb->addInstrBack(instr);
+  if (inv) {
+    auto instr_reg = regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0);
+    rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::XORI, instr_reg,
+                                          new RiscvConst(1), instr_reg, rbb));
+  }
+  return instr;
+}
+
 // FCMP处理上和ICMP类似，但是在最后生成语句的时候是输出两句
 FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(RegAlloca *regAlloca,
                                               FCmpInst *fcmpInstr,
@@ -289,16 +322,21 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
                                               ReturnInst *returnInstr,
                                               RiscvBasicBlock *rbb) {
   RiscvOperand *reg_to_save = nullptr;
-  auto &operand = returnInstr->operands_[0];
-  if (operand->type_->tid_ == Type::TypeID::IntegerTyID)
-    reg_to_save = regAlloca->findSpecificReg(operand, "a0", rbb);
-  else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
-    reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
-  auto instr = regAlloca->writeback(reg_to_save, rbb);
-  rbb->addInstrAfter(new MoveRiscvInst(reg_to_save,
-                                       regAlloca->findReg(operand, rbb, instr),
-                                       rbb),
-                     instr);
+
+  // If ret i32 %4
+  if (returnInstr->num_ops_ > 0) {
+    auto &operand = returnInstr->operands_[0];
+    if (operand->type_->tid_ == Type::TypeID::IntegerTyID)
+      reg_to_save = regAlloca->findSpecificReg(operand, "a0", rbb);
+    else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
+      reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
+    auto instr = regAlloca->writeback(reg_to_save, rbb);
+    rbb->addInstrAfter(
+        new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb, instr),
+                          rbb),
+        instr);
+  }
+  
   return new ReturnRiscvInst(rbb);
 }
 
@@ -470,6 +508,9 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     }
     case Instruction::ICmp:
+      createICMPSInstr(foo->regAlloca, static_cast<ICmpInst *>(instr), rbb);
+      forward = instr;
+      break;
     case Instruction::FCmp:
       forward = instr;
       break;

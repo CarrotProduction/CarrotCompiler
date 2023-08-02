@@ -29,6 +29,15 @@ const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_UGE, "BGEU"}, {ICmpInst::ICmpOp::ICMP_ULT, "BLTU"},
     {ICmpInst::ICmpOp::ICMP_SGE, "BGE"},  {ICmpInst::ICmpOp::ICMP_SLT, "BLT"},
     {ICmpInst::ICmpOp::ICMP_SLE, "BLE"}};
+const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpSName = {
+    {ICmpInst::ICmpOp::ICMP_EQ, "SEQZ"},  {ICmpInst::ICmpOp::ICMP_NE, "SNEZ"},
+    {ICmpInst::ICmpOp::ICMP_UGE, "SLTU"}, {ICmpInst::ICmpOp::ICMP_ULT, "SLTU"},
+    {ICmpInst::ICmpOp::ICMP_SGE, "SLT"},  {ICmpInst::ICmpOp::ICMP_SLT, "SLT"}};
+const std::map<ICmpInst::ICmpOp, ICmpInst::ICmpOp> ICmpRiscvInstr::ICmpOpEquiv =
+    {{ICmpInst::ICmpOp::ICMP_ULE, ICmpInst::ICmpOp::ICMP_UGE},
+     {ICmpInst::ICmpOp::ICMP_UGT, ICmpInst::ICmpOp::ICMP_ULT},
+     {ICmpInst::ICmpOp::ICMP_SLE, ICmpInst::ICmpOp::ICMP_SGE},
+     {ICmpInst::ICmpOp::ICMP_SGT, ICmpInst::ICmpOp::ICMP_SLT}};
 const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpName = {
     {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
     {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
@@ -128,7 +137,7 @@ std::string ICmpRiscvInstr::print() {
   // 注意：由于RISCV不支持全部的比较运算，因而需要根据比较条件对式子进行等价变换
   if (ICmpOpName.count(this->icmp_op_) == 0) {
     std::swap(this->operand_[0], this->operand_[1]);
-    this->icmp_op_ = static_cast<ICmpInst::ICmpOp>((int)this->icmp_op_ ^ 2);
+    this->icmp_op_ = ICmpRiscvInstr::ICmpOpEquiv.find(this->icmp_op_)->second;
   }
   riscv_instr += ICmpOpName.at(this->icmp_op_) + "\t";
   riscv_instr += this->operand_[0]->print();
@@ -140,6 +149,43 @@ std::string ICmpRiscvInstr::print() {
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
   // Force Jump
   riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
+  return riscv_instr;
+}
+
+std::string ICmpSRiscvInstr::print() {
+  std::string riscv_instr = "\t\t";
+
+  // If equal or nequal instruction
+  bool eorne = false;
+  switch (icmp_op_) {
+  case ICmpInst::ICMP_EQ:
+  case ICmpInst::ICMP_NE:
+    eorne = true;
+  default:
+    break;
+  }
+
+  if (eorne) {
+    riscv_instr += "SUB\t";
+    riscv_instr += "t5";
+    riscv_instr += ", ";
+    riscv_instr += operand_[0]->print();
+    riscv_instr += ", ";
+    riscv_instr += operand_[1]->print();
+    riscv_instr += "\n\t\t";
+  }
+
+  riscv_instr += ICmpOpSName.at(this->icmp_op_) + "\t";
+  riscv_instr += this->result_->print();
+  riscv_instr += ", ";
+  if (!eorne) {
+    riscv_instr += this->operand_[0]->print();
+    riscv_instr += ", ";
+    riscv_instr += this->operand_[1]->print();
+    riscv_instr += "\n";
+  } else {
+    riscv_instr += "t5\n";
+  }
   return riscv_instr;
 }
 

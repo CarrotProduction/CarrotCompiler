@@ -203,6 +203,11 @@ public:
   Value *getRegPosition(RiscvOperand *reg);
 
   /**
+   * 返回 Value 所对应的寄存器 reg 。
+   */
+  RiscvOperand *getPositionReg(Value *val);
+
+  /**
    * 保护的寄存器对象数组。
    */
   std::vector<RiscvOperand *> savedRegister;

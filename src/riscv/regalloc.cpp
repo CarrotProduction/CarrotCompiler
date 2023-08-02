@@ -1,5 +1,6 @@
 #include "regalloc.h"
 #include "instruction.h"
+#include "riscv.h"
 
 int IntRegID = 9, FloatRegID = 0; // 测试阶段使用
 
@@ -215,9 +216,13 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
                                RiscvBasicBlock *bb, RiscvInstr *instr) {
+  val = DSU_for_Variable.query(val);
   Value *old_val = getRegPosition(riscvReg);
+  RiscvOperand *old_reg = getPositionReg(val);
   if (old_val != nullptr && old_val != val)
     writeback(riscvReg, bb, instr);
+  if (old_reg != nullptr && old_reg != riscvReg)
+    writeback(old_reg, bb, instr);
   setPositionReg(val, riscvReg);
 }
 
@@ -228,6 +233,10 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
               << " to not a register operand." << std::endl;
     std::terminate();
   }
+
+  std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
+            << val->print() << ">\n";
+
   // Remove original links on value.
   if (curReg.find(val) != curReg.end())
     regPos.erase(curReg[val]);
@@ -269,6 +278,13 @@ Value *RegAlloca::getRegPosition(RiscvOperand *reg) {
   if (regPos.find(reg) == regPos.end())
     return nullptr;
   return DSU_for_Variable.query(regPos[reg]);
+}
+
+RiscvOperand *RegAlloca::getPositionReg(Value *val) {
+  val = DSU_for_Variable.query(val);
+  if (curReg.find(val) == curReg.end())
+    return nullptr;
+  return curReg[val];
 }
 
 RiscvOperand *RegAlloca::findPtr(Value *val, RiscvBasicBlock *bb,

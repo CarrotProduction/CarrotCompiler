@@ -113,9 +113,9 @@ std::string PushRiscvInst::print() {
   std::string riscv_instr = "";
   int shift = this->basicShift_;
   for (auto x : this->operand_) {
-    shift -= 4;
+    shift -= VARIABLE_ALIGN_BYTE;
     riscv_instr +=
-        "\t\tSW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
+        "\t\tSD\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
   }
   return riscv_instr;
 }
@@ -124,9 +124,9 @@ std::string PopRiscvInst::print() {
   std::string riscv_instr = "";
   int shift = this->basicShift_;
   for (auto x : this->operand_) {
-    shift -= 4;
+    shift -= VARIABLE_ALIGN_BYTE;
     riscv_instr +=
-        "\t\tLW\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
+        "\t\tLD\t" + x->print() + ", " + std::to_string(shift) + "(sp)\n";
   }
   riscv_instr += "\t\tADDI\tsp, " + std::to_string(-shift) + "\n";
   return riscv_instr;

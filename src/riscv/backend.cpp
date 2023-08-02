@@ -147,11 +147,11 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
     if (storeInstr->operands_[1]->type_->tid_ == Type::TypeID::PointerTyID)
       ans.push_back(new StoreRiscvInst(
           storeInstr->operands_[0]->type_, regPos,
-          regAlloca->findPtr(storeInstr->operands_[1], rbb, nullptr), rbb));
+          regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr, 0), rbb));
     else
       ans.push_back(new StoreRiscvInst(
           storeInstr->operands_[0]->type_, regPos,
-          regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr), rbb));
+          regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr, 0), rbb));
     return ans;
   }
   // 真正的store：第二操作数为一个指针类型
@@ -160,7 +160,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
     StoreRiscvInst *instr = new StoreRiscvInst(
         curType->contained_,
         regAlloca->findReg(storeInstr->operands_[0], rbb, nullptr, 1),
-        regAlloca->findPtr(storeInstr->operands_[1], rbb, nullptr), rbb);
+        regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr, 0), rbb);
     return {instr};
   }
   // 下面为整型或浮点的mov
@@ -188,7 +188,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
         regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);
     ans.push_back(new LoadRiscvInst(
         curType->contained_, regPos,
-        regAlloca->findPtr(loadInstr->operands_[0], rbb, nullptr), rbb));
+        regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr, 0), rbb));
     ans.push_back(new StoreRiscvInst(
         curType->contained_, regPos,
         regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
@@ -363,7 +363,7 @@ std::vector<RiscvInstr *>
 RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
                                  RiscvBasicBlock *rbb) {
   Value *op0 = instr->get_operand(0);
-  RiscvOperand *dest = regAlloca->findReg(instr, rbb);
+  RiscvOperand *dest = regAlloca->findReg(instr, rbb, nullptr, 0, 0);
   std::vector<RiscvInstr *> ans;
   bool isConst = 1; // 能否用确定的形如 -12(sp)访问
   if (dynamic_cast<GlobalVariable *>(op0) != nullptr) {
@@ -410,7 +410,6 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
   if (totalOffset > 0)
     ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
                                       new RiscvConst(totalOffset), dest, rbb));
-  regAlloca->setPointerPos(static_cast<Value *>(instr), dest);
   return ans;
 }
 
@@ -483,6 +482,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           foo->regAlloca, static_cast<GetElementPtrInst *>(instr), rbb);
       for (auto *x : instrSet)
         rbb->addInstrBack(x);
+      foo->regAlloca->writeback(foo->regAlloca->findReg(instr, rbb), rbb);
       break;
     }
     case Instruction::FPtoSI:
@@ -701,7 +701,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     // 首先检查所有的alloca指令，加入一个基本块进行寄存器保护以及栈空间分配
     RiscvBasicBlock *initBlock = createRiscvBasicBlock();
     std::map<Value *, int> haveAllocated;
-    int IntParaCount = 0, FloatParaCount = 0, ParaShift = -4;
+    int IntParaCount = 0, FloatParaCount = 0, ParaShift = -8;
 
     // 函数起始栈帧就从-4开始，在riscvFunction提前修订base的值
     auto storeOnStack = [&](Value **val) {
@@ -752,6 +752,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->setPosition(
               *val, new RiscvIntPhiReg(NamefindReg("sp"), ParaShift));
           IntParaCount++;
+          // Pointer type's size is set to 8 byte.
+          if ((*val)->type_->tid_ == Type::TypeID::PointerTyID)
+            ParaShift += 4;
         }
         // 浮点参数
         else {
@@ -762,7 +765,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
                 *val, new RiscvFloatReg(
                           NamefindReg("fa" + std::to_string(FloatParaCount))));
           }
-          rfoo->regAlloca->setPositionReg(
+          rfoo->regAlloca->setPosition(
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
           FloatParaCount++;
         }
@@ -864,6 +867,9 @@ int calcTypeSize(Type *ty) {
   }
   assert(ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID ||
          ty->tid_ == Type::PointerTyID);
-  totalsize *= 4;
+  if(ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID)
+    totalsize *= 4;
+  else if(ty->tid_ == Type::PointerTyID)
+    totalsize *= 8;
   return totalsize;
 }

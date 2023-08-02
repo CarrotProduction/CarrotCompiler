@@ -8,6 +8,7 @@ class RegAlloca;
 class Register;
 class RiscvOperand;
 
+const int VARIABLE_ALIGN_BYTE = 8;
 #include "ir.h"
 #include "regalloc.h"
 #include "string.h"
@@ -275,15 +276,15 @@ public:
   void addArgs(RiscvOperand *val) { // 在栈上新增操作数映射
     if (argsOffset.count(val) == 0) {
       argsOffset[val] = base_;
-      base_ -= 4;
+      base_ -= VARIABLE_ALIGN_BYTE;
     }
   }
   int querySP() { return base_; }
   void addTempVar(RiscvOperand *val) {
     addArgs(val);
-    tempRange += 4;
+    tempRange += VARIABLE_ALIGN_BYTE;
   }
-  void storeArray(int elementNum) { base_ -= 4 * elementNum; }
+  void storeArray(int elementNum) { base_ -= VARIABLE_ALIGN_BYTE * elementNum; }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
   // 默认所有寄存器不保护
   // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复
@@ -291,7 +292,7 @@ public:
   void saveOperand(RiscvOperand *val) {
     storedEnvironment[val] = base_;
     argsOffset[val] = base_;
-    base_ -= 4;
+    base_ -= VARIABLE_ALIGN_BYTE;
   }
   int findArgs(RiscvOperand *val) { // 查询栈上位置
     if (argsOffset.count(val) == 0)
@@ -324,5 +325,5 @@ public:
 
 Type *findPtrType(Type *ty);
 
-RiscvFunction* createSyslibFunc(Function *foo);
+RiscvFunction *createSyslibFunc(Function *foo);
 #endif // !RISCVH

@@ -325,9 +325,5 @@ public:
 
 Type *findPtrType(Type *ty);
 
-<<<<<<< HEAD
 RiscvFunction* createSyslibFunc(Function *foo);
-=======
-RiscvFunction *createSyslibFunc(Function *foo);
->>>>>>> 076ecd3db6f59089cdaf4f2972f3218bae469122
 #endif // !RISCVH

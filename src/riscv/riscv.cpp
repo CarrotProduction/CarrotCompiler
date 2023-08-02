@@ -58,58 +58,43 @@ std::string RiscvGlobalVariable::print(bool print_name, Constant *initVal) {
     code += this->name_ + ":\n";
     initVal = initValue_;
   }
+
+  if (initVal == nullptr)
+    return "\t.zero\t" + std::to_string(this->elementNum_ * 4) + "\n";;
+
   // 如果无初始值，或初始值为0（IR中有ConstZero类），则直接用zero命令
-  if (initVal == nullptr || dynamic_cast<ConstantZero *>(initVal) != nullptr) {
-    code += ".zero\t" + std::to_string(calcTypeSize(initVal->type_)) + "\n";
+  if (dynamic_cast<ConstantZero *>(initVal) != nullptr) {
+    code += "\t.zero\t" + std::to_string(calcTypeSize(initVal->type_)) + "\n";
     return code;
   }
-
   // 下面是非零的处理
   // 整型
-  if (initVal->type_->tid_ == Type::TypeID::IntegerTyID)
-    code += ".word\t";
+  if (initVal->type_->tid_ == Type::TypeID::IntegerTyID) {
+    code += "\t.word\t" + std::to_string(dynamic_cast<ConstantInt *>(initVal)->value_) + "\n";
+    return code;
+  }
   // 浮点
-  else if (initVal->type_->tid_ == Type::TypeID::FloatTyID)
-    code += ".word\t";
+  else if (initVal->type_->tid_ == Type::TypeID::FloatTyID) {
+    code += "\t.word\t" + std::to_string(dynamic_cast<ConstantFloat *>(initVal)->value_) + "\n";
+    return code;
+  }
   else if (initVal->type_->tid_ == Type::TypeID::ArrayTyID) {
     ConstantArray *const_arr = dynamic_cast<ConstantArray *>(initVal);
     assert(const_arr != nullptr);
-    for (auto elements : const_arr->const_array)
+    int zeroSpace = calcTypeSize(initVal->type_);
+    for (auto elements : const_arr->const_array) {
       code += print(false, elements);
+      zeroSpace -= 4;
+    }
+    if (zeroSpace)
+      code += "\t.zero\t" + std::to_string(zeroSpace) + "\n";
+    return code;  
   } else {
     std::cerr
         << "[Fatal Error] Unknown RiscvGlobalVariable::print() initValue type."
         << std::endl;
     std::terminate();
   }
-
-  int zeroNumber = this->elementNum_;
-  if (initVal == nullptr) {
-    if (zeroNumber == 1)
-      code += "0";
-    // else
-    //   code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-  } else {
-    if (typeid(*initVal) == typeid(ConstantArray)) {
-      zeroNumber -= static_cast<ArrayType *>(initVal->type_)->num_elements_;
-      if (code.back() == '\n')
-        code.pop_back();
-      // 补充冗余0
-      // if (zeroNumber > 0)
-      // code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-    } else {
-      code += initVal->print();
-    }
-  }
-  code += "\n";
-  if (print_name) {
-    code += ".size\t";
-    code += name_;
-    code += ", ";
-    code += std::to_string(calcTypeSize(initVal->type_));
-    code += "\n";
-  }
-  return code;
 }
 
 std::string RiscvGlobalVariable::print() { return print(true, nullptr); }

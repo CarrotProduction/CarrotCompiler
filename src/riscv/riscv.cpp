@@ -120,9 +120,8 @@ RiscvFunction *createSyslibFunc(Function *foo) {
     auto *bb1 = createRiscvBasicBlock();
     bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t5")),
                                         getRegOperand("a0"), bb1));
-    bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::SHLI, getRegOperand("a1"),
-                                          new RiscvConst(2),
-                                          getRegOperand("t6"), bb1));
+    bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t6")),
+                                        getRegOperand("a1"), bb1));
     bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, getRegOperand("a0"),
                                           getRegOperand("t6"),
                                           getRegOperand("t6"), bb1));
@@ -132,7 +131,7 @@ RiscvFunction *createSyslibFunc(Function *foo) {
     // 循环块
     // 默认clear为全0
     bb2->addInstrBack(new StoreRiscvInst(
-        new Type(Type::TypeID::IntegerTyID), getRegOperand("a0"),
+        new Type(Type::TypeID::IntegerTyID), getRegOperand("zero"),
         new RiscvIntPhiReg(NamefindReg("t5")), bb2));
     bb2->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADDI, getRegOperand("t5"),
                                           new RiscvConst(4),

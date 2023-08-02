@@ -13,7 +13,7 @@ Register *NamefindReg(std::string reg) {
                         10 + std::atoi(reg.substr(1).c_str())); // a0 is x10
   } else if (reg.substr(0, 2) == "fa") {
     return new Register(Register::RegType::Float,
-                        std::atoi(reg.substr(2).c_str()));
+                        10 + std::atoi(reg.substr(2).c_str()));
   } else if (reg == "sp") {
     return new Register(Register::RegType::Int, 2); // sp is x2
   } else if (reg == "ra") {
@@ -237,7 +237,8 @@ RiscvOperand *RegAlloca::findPtr(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr) {
   val = this->DSU_for_Variable.query(val);
   if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
-    bb->addInstrBack(new LoadAddressRiscvInstr(new RiscvIntReg(NamefindReg("t5")), val->name_, bb));
+    bb->addInstrBack(new LoadAddressRiscvInstr(
+        new RiscvIntReg(NamefindReg("t5")), val->name_, bb));
     return new RiscvIntPhiReg(NamefindReg("t5"));
   }
   // std::cout << val->name_ << "\n";
@@ -247,7 +248,8 @@ RiscvOperand *RegAlloca::findPtr(Value *val, RiscvBasicBlock *bb,
   if (dynamic_cast<RiscvIntPhiReg *>(PointerTo) != nullptr) {
     // 栈上确定地址
     // std::cout << "TYPE:INT\n";
-    // std::cout << dynamic_cast<RiscvIntPhiReg *>(PointerTo)->base_->print() << "\n";
+    // std::cout << dynamic_cast<RiscvIntPhiReg *>(PointerTo)->base_->print() <<
+    // "\n";
     if (dynamic_cast<RiscvIntPhiReg *>(PointerTo)->base_->print() == "sp")
       return PointerTo;
   } else if (dynamic_cast<RiscvFloatPhiReg *>(PointerTo) != nullptr) {
@@ -258,7 +260,7 @@ RiscvOperand *RegAlloca::findPtr(Value *val, RiscvBasicBlock *bb,
   // 不确定地址，或者由寄存器保护的地址
   // 认为必须从内存取该指针
   bb->addInstrBack(new LoadRiscvInst(new Type(Type::IntegerTyID),
-                                     getRegOperand("t5"), this->findMem(val), 
+                                     getRegOperand("t5"), this->findMem(val),
                                      bb));
   auto containedType = findPtrType(val->type_);
   if (containedType->tid_ == Type::FloatTyID)
@@ -271,6 +273,7 @@ void RegAlloca::setPointerPos(Value *val, RiscvOperand *PointerMem) {
   val = this->DSU_for_Variable.query(val);
   assert(val->type_->tid_ == Type::TypeID::PointerTyID ||
          val->type_->tid_ == Type::TypeID::ArrayTyID);
-  // std::cout << "SET POINTER: " << val->name_ << "!" << PointerMem->print() << "\n";
+  // std::cout << "SET POINTER: " << val->name_ << "!" << PointerMem->print() <<
+  // "\n";
   this->ptrPos[val] = PointerMem;
 }

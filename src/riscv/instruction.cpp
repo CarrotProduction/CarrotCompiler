@@ -148,7 +148,8 @@ std::string ICmpRiscvInstr::print() {
   riscv_instr += "\n";
   auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[3]);
   // Force Jump
-  riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
+  if (falseLink != nullptr)
+    riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
   return riscv_instr;
 }
 

@@ -20,6 +20,9 @@ Register *NamefindReg(std::string reg) {
     return new Register(Register::RegType::Int, 1); // ra is x1
   } else if (reg == "t5") {
     return new Register(Register::RegType::Int, 30);
+  }
+  else if (reg == "t6") {
+    return new Register(Register::RegType::Int, 31);
   } else {
     std::cout << "FAIL REG " << reg << "\n";
     assert(false);

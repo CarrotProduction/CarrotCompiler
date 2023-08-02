@@ -665,8 +665,12 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   for (Function *foo : m->function_list_) {
     auto rfoo = createRiscvFunction(foo);
     rm->addFunction(rfoo);
-    if (rfoo->is_libfunc())
+    if (rfoo->is_libfunc()) {
+      auto *libFunc = createSyslibFunc(foo);
+      if (libFunc != nullptr)
+        code += libFunc->print();
       continue;
+    }
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_)
         if (instr->op_id_ == Instruction::OpID::PHI) {

@@ -50,3 +50,26 @@ Type *findPtrType(Type *ty) {
   assert(ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID);
   return ty;
 }
+
+RiscvFunction* createSyslibFunc(Function *foo) {
+  if (foo->name_ == "__aeabi_memclr4") {
+    auto *rfoo = createRiscvFunction(foo);
+    // 预处理块
+    auto *bb1 = createRiscvBasicBlock();
+    bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t5")), getRegOperand("a0"), bb1));
+    bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::SHLI, getRegOperand("a1"), new RiscvConst(2), getRegOperand("t6"), bb1));
+    bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, getRegOperand("a0"), getRegOperand("t6"), getRegOperand("t6"), bb1));
+    bb1->addInstrBack(new MoveRiscvInst(getRegOperand("a0"), new RiscvConst(0), bb1));
+    auto *bb2 = createRiscvBasicBlock();
+    // 循环块
+    // 默认clear为全0
+    bb2->addInstrBack(new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID), getRegOperand("a0"), new RiscvIntPhiReg(NamefindReg("t5")), bb2));
+    bb2->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADDI, getRegOperand("t5"), new RiscvConst(4), getRegOperand("t5"), bb1));
+    bb2->addInstrBack(new ICmpRiscvInstr(ICmpInst::ICMP_SLT, getRegOperand("t5"), getRegOperand("t6"), bb2, bb2));
+    bb2->addInstrBack(new ReturnRiscvInst(bb2));
+    rfoo->addBlock(bb1);
+    rfoo->addBlock(bb2);
+    return rfoo;
+  }
+  return nullptr;
+}

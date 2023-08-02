@@ -19,6 +19,7 @@ extern std::map<Function *, RiscvFunction *> functionLabel;
 RiscvBasicBlock *createRiscvBasicBlock(BasicBlock *bb = nullptr);
 RiscvFunction *createRiscvFunction(Function *foo = nullptr);
 std::string toLabel(int ind);
+int calcTypeSize(Type *ty);
 
 // 总控程序
 class RiscvBuilder {
@@ -69,7 +70,6 @@ public:
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
   ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca, ReturnInst *returnInstr,
                                   RiscvBasicBlock *rbb);
-  int calcTypeSize(Type *ty);
   std::vector<RiscvInstr *> solveGetElementPtr(RegAlloca *regAlloca,
                                                GetElementPtrInst *instr,
                                                RiscvBasicBlock *rbb);

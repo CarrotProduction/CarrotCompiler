@@ -336,7 +336,7 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
                           rbb),
         instr);
   }
-  
+
   return new ReturnRiscvInst(rbb);
 }
 
@@ -627,7 +627,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
                                           calcTypeSize(curType) / 4);
           rm->addGlobalVariable(curGB);
           data += curGB->print();
-        } else {
+        } else if (containedType->tid_ == Type::FloatTyID) {
           curGB = new RiscvGlobalVariable(RiscvOperand::FloatImm, gb->name_,
                                           gb->is_const_, gb->init_val_,
                                           calcTypeSize(curType) / 4);
@@ -793,7 +793,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         if (instr->op_id_ == Instruction::OpID::Alloca) {
           // 分配指针，并且将指针地址也同步保存
           auto curInstr = static_cast<AllocaInst *>(instr);
-          int curTypeSize = this->calcTypeSize(curInstr->alloca_ty_);
+          int curTypeSize = calcTypeSize(curInstr->alloca_ty_);
           rfoo->storeArray(curTypeSize);
           int curSP = rfoo->querySP();
           RiscvOperand *ptrPos = new RiscvIntPhiReg(NamefindReg("sp"), curSP);
@@ -847,7 +847,12 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
   return data + code;
 }
 
-int RiscvBuilder::calcTypeSize(Type *ty) {
+/**
+ * 辅助函数，计算一个类型的字节大小。
+ * @param ty 将要计算的类型 `ty` 。
+ * @return 返回类型的字节大小。
+ */
+int calcTypeSize(Type *ty) {
   int totalsize = 1;
   while (ty->tid_ == Type::ArrayTyID) {
     totalsize *= static_cast<ArrayType *>(ty)->num_elements_;

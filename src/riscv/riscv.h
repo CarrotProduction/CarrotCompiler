@@ -230,45 +230,8 @@ public:
   // 输出全局变量定义
   // 根据ir中全局变量定义转化
   // 问题在于全局变量如果是数组有初值如何处理
-  std::string print() {
-    std::string code = this->name_ + ":\t";
-    // 如果无初始值，或初始值为0（IR中有ConstZero类），则直接用zero命令
-    if (initValue_ == nullptr ||
-        dynamic_cast<ConstantZero *>(initValue_) != nullptr) {
-      code += ".zero\t" + std::to_string(4 * elementNum_) + "\n";
-      return code;
-    }
-
-    // 下面是非零的处理
-    // 整型
-    if (initValue_->type_->tid_ == Type::TypeID::IntegerTyID)
-      code += ".word ";
-    // 浮点
-    else
-      code += ".float ";
-    int zeroNumber = this->elementNum_;
-    if (initValue_ == nullptr) {
-      if (zeroNumber == 1)
-        code += "0";
-      else
-        code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-    } else {
-      if (typeid(*initValue_) == typeid(ConstantArray)) {
-        zeroNumber -=
-            static_cast<ArrayType *>(initValue_->type_)->num_elements_;
-        code += initValue_->print();
-        if (code.back() == '\n')
-          code.pop_back();
-        // 补充冗余0
-        if (zeroNumber > 0)
-          code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-      } else {
-        code += initValue_->print();
-      }
-    }
-    code += "\n";
-    return code;
-  }
+  std::string print();
+  std::string print(bool print_name, Constant *initVal);
 };
 
 // 用标号标识函数

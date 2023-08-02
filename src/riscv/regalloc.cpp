@@ -236,7 +236,7 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
 
 RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
                                  RiscvInstr *instr) {
-  Value *value = findRegVal(riscvReg);
+  Value *value = getRegPosition(riscvReg);
   if (value == nullptr)
     return nullptr; // Value not found in map
   RiscvOperand *mem_addr = findMem(value);
@@ -257,12 +257,6 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   curReg.erase(value);
 
   return store_instr;
-}
-
-Value *RegAlloca::findRegVal(RiscvOperand *riscvReg) {
-  if (regPos.find(riscvReg) == regPos.end())
-    return nullptr;
-  return regPos[riscvReg];
 }
 
 RegAlloca::RegAlloca() {

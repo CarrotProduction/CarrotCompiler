@@ -81,48 +81,108 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg);
 class RegAlloca {
 public:
   DSU<Value *> DSU_for_Variable;
-  // 如果所有寄存器均被分配，则需要额外发射lw和sw指令
-  // inReg 参数如果为1，则要求必须返回寄存器；否则可以返回内存或栈上地址
-  // instr 表示需要插入到哪条指令的前面，默认为最后面
 
-  // TODO:1 find函数
-  // 实现一个find——对于IR的一个给定值value*，找到一个寄存器（RiscvOperand*，返回值）以存放该值
-  // bb是当前访问该变量的IR语句所在的RISCVBasicBlock块，如果当需要发射lw和sw指令时，使用该bb调用
-  // instr是当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
-  // inReg参数表示该分配地址是否必须是寄存器。如果为0则可以为内存或栈地址
-  // load: 是否将值对应的内存地址读取到寄存器中
+  /**
+   * 返回 Value 所关联的寄存器操作数。若 Value
+   * 未关联寄存器，则分配寄存器并进行关联，并处理相关的数据载入与写回。
+   * @param val 需要查找寄存器的 Value
+   * @param bb 插入指令需要提供的基本块
+   * @param instr 在 instr 之前插入指令（可选）
+   * @param inReg 是否一定返回一个寄存器操作数，若为 true 则是
+   * @param load 是否将 Value 所对应的物理地址内容载入到寄存器中，若为 true 则是
+   * @param specified 是否指定关联的寄存器，若为 nullptr
+   * 则不指定，若为一个寄存器操作数则在任何情况下都将 Value
+   * 与指定的寄存器进行强制关联。
+   * @param direct 仅在 Value 为指针时生效，用于在载入物理地址时传递参数给
+   * findMem
+   * @return 返回一个 IntegerReg* 或 FloatReg* 类型的操作数 rs 。
+   * @attention 该函数将在 Value 为 Alloca 指令时进行特殊处理，在 load=1 时将
+   * Alloca 指针所指向的地址载入到分配的寄存器中。
+   * @attention 该函数将在 Value 为常量时进行特殊处理，在 load=1 时将常量通过 LI
+   * 指令载入到分配的寄存器中。
+   * @attention 目前不应使用 direct 参数。
+   */
   RiscvOperand *findReg(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr, int inReg = 0,
                         int load = 1, RiscvOperand *specified = nullptr,
                         bool direct = true);
 
-  // 找到IR的value的内存地址（用于IR级别的store和load指令）
-  // 如果regalloca中没有存储它的内存地址（没有被setPosition过），assert报错
+  /**
+   * 对传递过来的 Value 返回其所处的物理地址操作数 offset(rs) 。
+   * @param val 需要查找物理地址的 Value
+   * @param bb 插入指令需要提供的基本块
+   * @param instr 在 instr 之前插入指令（可选）
+   * @param direct 当 direct 为 false 时将使用间接寻址。若使用间接寻址且
+   * Value 为指针 (getElementInstr) ，则 findMem()
+   * 将会将指针所指向的地址载入临时寄存器 t5，并返回操作数 0(t5) 。
+   * @return 返回一个 IntegerPhiReg* 或 FloatPhiReg* 类型的操作数 offset(rs) 。
+   */
   RiscvOperand *findMem(Value *val, RiscvBasicBlock *bb, RiscvInstr *instr,
                         bool direct);
+  /**
+   * 对传递过来的 Value 返回其所处的物理地址操作数 offset(rs) 。
+   * @attention 这是一个重载形式的函数，其不支持间接寻址。
+   * @param val 需要查找物理地址的 Value
+   */
   RiscvOperand *findMem(Value *val);
 
   // TODO:2 findNonuse
   // 实现一个函数，以找到一个当前尚未使用的寄存器以存放某个值。
   RiscvOperand *findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
 
-  // TODO:5 findSpecificReg
-  // 将一个IR的value*找到一个特定的寄存器（以RegName标识）进行分配
-  // bb是当前访问该变量的IR语句所在的RISCVBasicBlock块，如果当需要发射lw和sw指令时，使用该bb调用
-  // instr是当前需要在哪一条指令**前面**插入lw和sw指令，默认为nullptr表示插入到bb最后
+  /**
+   * 将 Value 与指定的寄存器强制关联并返回寄存器操作数。
+   * @param val 需要查找寄存器的 Value
+   * @param RegName 需要强制关联的寄存器接口名称
+   * @param bb 插入指令需要提供的基本块
+   * @param instr 在 instr 之前插入指令（可选）
+   * @param direct 仅在 Value 为指针时生效，用于在载入物理地址时传递参数给
+   * findMem
+   * @return 返回强制关联的寄存器操作数 rs 。
+   * @attention 该函数将在 Value 为 Alloca 指令时进行特殊处理，在 load=1 时将
+   * Alloca 指针所指向的地址载入到分配的寄存器中。
+   * @attention 目前不应使用 direct 参数。
+   */
   RiscvOperand *findSpecificReg(Value *val, std::string RegName,
                                 RiscvBasicBlock *bb,
                                 RiscvInstr *instr = nullptr,
                                 bool direct = true);
 
-  // 建立IR中变量到实际变量（内存固定地址空间，用riscvVal指针表示）或寄存器的映射
+  /**
+   * 将 Value 与指定的物理地址操作数 offset(rs) 相关联。
+   * @param val 需要关联的 Value
+   * @param riscvVal 被关联的物理地址操作数 offset(rs)
+   * @attention 该函数也被用于关联 Alloca 指针与其指向的地址。
+   */
   void setPosition(Value *val, RiscvOperand *riscvVal);
 
-  // 建立IR中变量到实际寄存器（用riscvReg指针表示）的映射
+  /**
+   * 将 Value 与指定的寄存器 rs 相关联。若寄存器内已有值，则将值写回。
+   * @param val 需要关联的 Value
+   * @param riscvReg 被关联的寄存器 rs
+   * @param bb 用于插入的基本块
+   * @param instr 在 instr 之前插入指令（可选）
+   * @attention 在大多数情况下你不应直接使用此函数。作为替代，你应该使用 findReg
+   * 与 findSpecificReg 函数来进行关联。
+   */
   void setPositionReg(Value *val, RiscvOperand *riscvReg, RiscvBasicBlock *bb,
                       RiscvInstr *instr = nullptr);
+  /**
+   * 将 Value 与指定的寄存器 rs 相关联。若寄存器内已有值，则将值写回。
+   * @param val 需要关联的 Value
+   * @param riscvReg 被关联的寄存器 rs
+   * @attention 在大多数情况下你不应直接使用此函数。作为替代，你应该使用 findReg
+   * 与 findSpecificReg 函数来进行关联。
+   */
   void setPositionReg(Value *val, RiscvOperand *riscvReg);
-  // 建立指针指向的内存地址映射
+
+  /**
+   * 记录 getElementPtr 类型的 Value 所指向的常量相对物理地址操作数 offset(sp)
+   * 。
+   * @param val 指针类型的 Value
+   * @param PointerMem 被关联的操作数 offset(sp)
+   * @attention offset 只能为一常量。
+   */
   void setPointerPos(Value *val, RiscvOperand *PointerMem);
 
   /**
@@ -135,21 +195,26 @@ public:
   RiscvInstr *writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr);
 
-  // 返回 riscvReg 所对应的 Value
-  Value *findRegVal(RiscvOperand *riscvReg);
+  /**
+   * 返回寄存器 reg 所对应的 Value 。
+   */
+  Value *getRegPosition(RiscvOperand *reg);
 
-  // 根据返回值是浮点型还是整型决定使用什么寄存器
-  // RiscvOperand *storeRet(Value *val);
-  // TODO:6
-  // 使用到的callee保存寄存器，使用这个vector存储。具体为x8-x9,x18-x27（整型）；f8-f9,f18-f27（浮点）
-  // 这些寄存器会在函数开始的时候压入栈中，return时会恢复
+  /**
+   * 保护的寄存器对象数组。
+   */
   std::vector<RiscvOperand *> savedRegister;
 
   // Initialize savedRegister
   RegAlloca();
 
-  std::map<Value *, RiscvOperand *> ptrPos; // 指针所指向的内存地址
-  Value *getRegPosition(RiscvOperand *reg);
+  // 指针所指向的内存地址
+  std::map<Value *, RiscvOperand *> ptrPos;
+
+  /**
+   * 返回指针类型的 Value 所指向的常量相对物理地址操作数 offset(sp) 。
+   * @attention 参数 bb, instr 目前不被使用。
+   */
   RiscvOperand *findPtr(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr);
 

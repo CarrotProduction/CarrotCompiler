@@ -188,7 +188,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
         regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);
     ans.push_back(new LoadRiscvInst(
         curType->contained_, regPos,
-        regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr, 0), rbb));
+        regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr), rbb));
     ans.push_back(new StoreRiscvInst(
         curType->contained_, regPos,
         regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));

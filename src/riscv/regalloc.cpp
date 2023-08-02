@@ -8,25 +8,26 @@ int IntRegID = 8, FloatRegID = 0; // 测试阶段使用
 // TODO:
 // 需要涉及sp、fp、a0-a7（整数函数参数）、fa0-fa7（浮点函数参数）等寄存器。
 Register *NamefindReg(std::string reg) {
-  if (reg[0] == 'a') {
-    return new Register(Register::RegType::Int,
-                        10 + std::atoi(reg.substr(1).c_str())); // a0 is x10
-  } else if (reg.substr(0, 2) == "fa") {
-    return new Register(Register::RegType::Float,
-                        10 + std::atoi(reg.substr(2).c_str()));
-  } else if (reg == "sp") {
-    return new Register(Register::RegType::Int, 2); // sp is x2
-  } else if (reg == "ra") {
-    return new Register(Register::RegType::Int, 1); // ra is x1
-  } else if (reg == "t5") {
-    return new Register(Register::RegType::Int, 30);
+  Register *reg_to_ret = new Register(Register::Int, 0);
+
+  // Check if int registers
+  for (int i = 0; i < 32; i++) {
+    reg_to_ret->rid_ = i;
+    if (reg_to_ret->print() == reg)
+      return reg_to_ret;
   }
-  else if (reg == "t6") {
-    return new Register(Register::RegType::Int, 31);
-  } else {
-    std::cout << "FAIL REG " << reg << "\n";
-    assert(false);
+
+  // Else then float registers
+  reg_to_ret->regtype_ = reg_to_ret->Float;
+  for (int i = 0; i < 32; i++) {
+    reg_to_ret->rid_ = i;
+    if (reg_to_ret->print() == reg)
+      return reg_to_ret;
   }
+  std::cerr << "[Fatal error] Register <" << reg << "> not exists."
+            << std::endl;
+  std::terminate();
+  return nullptr;
 }
 
 RiscvOperand *getRegOperand(std::string reg) {
@@ -130,7 +131,9 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
                 << std::endl;
       std::terminate();
     }
-    bb->addInstrBefore(new LoadAddressRiscvInstr(getRegOperand("t5"), pos[val]->print(), bb), instr);
+    bb->addInstrBefore(
+        new LoadAddressRiscvInstr(getRegOperand("t5"), pos[val]->print(), bb),
+        instr);
     return new RiscvIntPhiReg(NamefindReg("t5"), 0);
   }
   // assert(pos.count(val) == 1);

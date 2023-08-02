@@ -1,7 +1,7 @@
 #include "regalloc.h"
 #include "instruction.h"
 
-int IntRegID = 8, FloatRegID = 0; // 测试阶段使用
+int IntRegID = 9, FloatRegID = 0; // 测试阶段使用
 // 寄存器堆分配工作
 
 // 根据输入的寄存器的名字`reg`返回相应的寄存器类指针。
@@ -63,7 +63,11 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 29)
+<<<<<<< HEAD
         IntRegID = 5;
+=======
+        IntRegID = 9;
+>>>>>>> 076ecd3db6f59089cdaf4f2972f3218bae469122
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
       writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);
@@ -84,8 +88,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   // ! Maybe should consider using writeback() instead.
   // For now, all registers are considered unsafe thus registers should always
   // load from memory before using and save to memory after using.
-  auto mem_addr = findMem(val, bb, instr); // Value's memory address
-  auto current_reg = curReg[val];          // Value's current register
+  auto mem_addr =
+      findMem(val, bb, instr, true); // Value's direct memory address
+  auto current_reg = curReg[val];    // Value's current register
   auto load_type = getStoreTypeFromRegType(current_reg);
   if (load) {
     // Load before usage.
@@ -116,9 +121,12 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
 }
 
 RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
-                                 RiscvInstr *instr) {
+                                 RiscvInstr *instr, bool direct) {
   val = this->DSU_for_Variable.query(val);
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
+  bool isPointer = val->type_->tid_ == val->type_->PointerTyID;
+  // Ignore AllocaInst (which uses direct addressing)
+  isPointer = isPointer && dynamic_cast<AllocaInst *>(val) == nullptr;
   if (pos.count(val) == 0 && !val->is_constant()) {
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
               << ")'s memory map not found." << std::endl;
@@ -134,7 +142,20 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
     bb->addInstrBefore(
         new LoadAddressRiscvInstr(getRegOperand("t5"), pos[val]->print(), bb),
         instr);
-    return new RiscvIntPhiReg(NamefindReg("t5"), 0);
+    return new RiscvIntPhiReg("t5");
+  }
+  // If not loading pointer's address directly, then use indirect addressing.
+  if (isPointer && !direct) {
+    if (bb == nullptr) {
+      std::cerr << "[Fatal Error] Trying to add indirect pointer addressing "
+                   "instruction, but basic block pointer is null."
+                << std::endl;
+      std::terminate();
+    }
+    bb->addInstrBefore(new LoadRiscvInst(new Type(Type::PointerTyID),
+                                         getRegOperand("t5"), pos[val], bb),
+                       instr);
+    return new RiscvIntPhiReg("t5");
   }
   // assert(pos.count(val) == 1);
   if (pos.find(val) == pos.end())
@@ -143,7 +164,7 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
 }
 
 RiscvOperand *RegAlloca::findMem(Value *val) {
-  return findMem(val, nullptr, nullptr);
+  return findMem(val, nullptr, nullptr, true);
 }
 
 RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
@@ -206,7 +227,7 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   if (mem_addr == nullptr)
     return nullptr; // Maybe an immediate value
 
-  auto store_type = getStoreTypeFromRegType(riscvReg);
+  auto store_type = value->type_;
   auto store_instr = new StoreRiscvInst(store_type, riscvReg, mem_addr, bb);
 
   // Write store instruction

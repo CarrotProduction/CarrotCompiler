@@ -8,6 +8,7 @@ class RegAlloca;
 class Register;
 class RiscvOperand;
 
+const int VARIABLE_ALIGN_BYTE = 8;
 #include "ir.h"
 #include "regalloc.h"
 #include "string.h"
@@ -230,45 +231,8 @@ public:
   // 输出全局变量定义
   // 根据ir中全局变量定义转化
   // 问题在于全局变量如果是数组有初值如何处理
-  std::string print() {
-    std::string code = this->name_ + ":\t";
-    // 如果无初始值，或初始值为0（IR中有ConstZero类），则直接用zero命令
-    if (initValue_ == nullptr ||
-        dynamic_cast<ConstantZero *>(initValue_) != nullptr) {
-      code += ".zero\t" + std::to_string(4 * elementNum_) + "\n";
-      return code;
-    }
-
-    // 下面是非零的处理
-    // 整型
-    if (initValue_->type_->tid_ == Type::TypeID::IntegerTyID)
-      code += ".word ";
-    // 浮点
-    else
-      code += ".float ";
-    int zeroNumber = this->elementNum_;
-    if (initValue_ == nullptr) {
-      if (zeroNumber == 1)
-        code += "0";
-      else
-        code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-    } else {
-      if (typeid(*initValue_) == typeid(ConstantArray)) {
-        zeroNumber -=
-            static_cast<ArrayType *>(initValue_->type_)->num_elements_;
-        code += initValue_->print();
-        if (code.back() == '\n')
-          code.pop_back();
-        // 补充冗余0
-        if (zeroNumber > 0)
-          code += "[" + std::to_string(zeroNumber) + " dup(0)]";
-      } else {
-        code += initValue_->print();
-      }
-    }
-    code += "\n";
-    return code;
-  }
+  std::string print();
+  std::string print(bool print_name, Constant *initVal);
 };
 
 // 用标号标识函数
@@ -312,15 +276,15 @@ public:
   void addArgs(RiscvOperand *val) { // 在栈上新增操作数映射
     if (argsOffset.count(val) == 0) {
       argsOffset[val] = base_;
-      base_ -= 4;
+      base_ -= VARIABLE_ALIGN_BYTE;
     }
   }
   int querySP() { return base_; }
   void addTempVar(RiscvOperand *val) {
     addArgs(val);
-    tempRange += 4;
+    tempRange += VARIABLE_ALIGN_BYTE;
   }
-  void storeArray(int elementNum) { base_ -= 4 * elementNum; }
+  void storeArray(int elementNum) { base_ -= VARIABLE_ALIGN_BYTE * elementNum; }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
   // 默认所有寄存器不保护
   // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复
@@ -328,7 +292,7 @@ public:
   void saveOperand(RiscvOperand *val) {
     storedEnvironment[val] = base_;
     argsOffset[val] = base_;
-    base_ -= 4;
+    base_ -= VARIABLE_ALIGN_BYTE;
   }
   int findArgs(RiscvOperand *val) { // 查询栈上位置
     if (argsOffset.count(val) == 0)
@@ -361,5 +325,9 @@ public:
 
 Type *findPtrType(Type *ty);
 
+<<<<<<< HEAD
 RiscvFunction* createSyslibFunc(Function *foo);
+=======
+RiscvFunction *createSyslibFunc(Function *foo);
+>>>>>>> 076ecd3db6f59089cdaf4f2972f3218bae469122
 #endif // !RISCVH

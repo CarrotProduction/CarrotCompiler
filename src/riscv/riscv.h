@@ -148,7 +148,7 @@ public:
   std::string MemBaseName;
   RiscvIntPhiReg(Register *base, int shift = 0, int isGVar = false)
       : RiscvOperand(IntMem), base_(base), shift_(shift),
-        isGlobalVariable(isGVar) {}
+        isGlobalVariable(isGVar), MemBaseName(base_->print()) {}
   // 内存以全局形式存在的变量（常量）
   RiscvIntPhiReg(std::string s, int shift = 0, int isGVar = false)
       : RiscvOperand(IntMem), base_(nullptr), shift_(shift), MemBaseName(s),
@@ -167,6 +167,10 @@ public:
       ans = std::to_string(shift_) + ans;
     return ans;
   }
+  /**
+   * Return if shift value overflows.
+   */
+  bool overflow() { return std::abs(shift_) >= 1024; }
 };
 
 // 需间接寻址得到的数据，浮点
@@ -179,7 +183,7 @@ public:
   int isGlobalVariable;
   RiscvFloatPhiReg(Register *base, int shift = 0, int isGVar = false)
       : RiscvOperand(FloatMem), base_(base), shift_(shift),
-        isGlobalVariable(isGVar) {}
+        isGlobalVariable(isGVar), MemBaseName(base_->print()) {}
   // 内存以全局形式存在的变量（常量）
   RiscvFloatPhiReg(std::string s, int shift = 0, int isGVar = false)
       : RiscvOperand(FloatMem), base_(nullptr), shift_(shift), MemBaseName(s),
@@ -198,6 +202,10 @@ public:
       ans = std::to_string(shift_) + ans;
     return ans;
   }
+  /**
+   * Return if shift value overflows.
+   */
+  bool overflow() { return std::abs(shift_) >= 1024; }
 };
 
 class RiscvLabel : public RiscvOperand {

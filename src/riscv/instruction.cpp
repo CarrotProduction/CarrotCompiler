@@ -73,13 +73,27 @@ std::string BinaryRiscvInst::print() {
   // 这里需要将每个参数根据当前需要进行upcasting
   assert(this->operand_.size() == 2);
   std::string riscv_instr = "\t\t";
+
+  bool overflow = false;
+  if (type_ == ADDI &&
+      std::abs(static_cast<RiscvConst *>(operand_[1])->intval) >= 1024) {
+    overflow = true;
+    type_ = ADD;
+    riscv_instr += "LI t5, " + operand_[1]->print();
+    riscv_instr += "\n\t\t";
+  }
+
   riscv_instr += instrTy2Riscv.at(this->type_);
   riscv_instr += "\t";
   riscv_instr += this->result_->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
-  riscv_instr += this->operand_[1]->print();
+  if (overflow) {
+    riscv_instr += "t5";
+  } else {
+    riscv_instr += this->operand_[1]->print();
+  }
   riscv_instr += "\n";
   return riscv_instr;
 }
@@ -232,6 +246,17 @@ std::string JumpRiscvInstr::print() {
 
 std::string StoreRiscvInst::print() {
   std::string riscv_instr = "\t\t";
+
+  auto mem_addr = static_cast<RiscvIntPhiReg *>(operand_[1]);
+  bool overflow = mem_addr->overflow();
+
+  if (overflow) {
+    riscv_instr += "LI t5, " + std::to_string(mem_addr->shift_);
+    riscv_instr += "\n\t\t";
+    riscv_instr += "ADD t5, t5, " + mem_addr->MemBaseName;
+    riscv_instr += "\n\t\t";
+  }
+
   if (this->type.tid_ == Type::FloatTyID)
     riscv_instr += "FSW\t";
   else if (this->type.tid_ == Type::IntegerTyID)
@@ -244,7 +269,12 @@ std::string StoreRiscvInst::print() {
   }
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
-  riscv_instr += this->operand_[1]->print();
+
+  if (overflow) {
+    riscv_instr += "(t5)";
+  } else {
+    riscv_instr += this->operand_[1]->print();
+  }
   riscv_instr += "\n";
   return riscv_instr;
 }

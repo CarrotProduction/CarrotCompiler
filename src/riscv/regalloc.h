@@ -115,7 +115,8 @@ public:
    * @param direct 当 direct 为 false 时将使用间接寻址。若使用间接寻址且
    * Value 为指针 (getElementInstr) ，则 findMem()
    * 将会将指针所指向的地址载入临时寄存器 t5，并返回操作数 0(t5) 。
-   * @return 返回一个 IntegerPhiReg* 或 FloatPhiReg* 类型的操作数 offset(rs) 。
+   * @return 返回一个 IntegerPhiReg* 或 FloatPhiReg* 类型的操作数 offset(rs)
+   * 。若操作数偏移量溢出，则将会计算返回操作数所指代的地址 (t5)。
    */
   RiscvOperand *findMem(Value *val, RiscvBasicBlock *bb, RiscvInstr *instr,
                         bool direct);

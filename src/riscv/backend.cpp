@@ -586,7 +586,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       int SPShift =
           parameters.size() * VARIABLE_ALIGN_BYTE + VARIABLE_ALIGN_BYTE;
       reverse(parameters.begin(), parameters.end());
-      rbb->addInstrBack(new PushRiscvInst(parameters, rbb, foo->querySP()));
+      // rbb->addInstrBack(new PushRiscvInst(parameters, rbb, foo->querySP()));
       // 调整到新栈空间
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),

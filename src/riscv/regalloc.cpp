@@ -13,7 +13,7 @@ Register *NamefindReg(std::string reg) {
                         10 + std::atoi(reg.substr(1).c_str())); // a0 is x10
   } else if (reg.substr(0, 2) == "fa") {
     return new Register(Register::RegType::Float,
-                        std::atoi(reg.substr(2).c_str()));
+                        std::atoi(reg.substr(2).c_str()) + 10);
   } else if (reg == "sp") {
     return new Register(Register::RegType::Int, 2); // sp is x2
   } else if (reg == "ra") {
@@ -56,11 +56,10 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   if (specified != nullptr)
     setPositionReg(val, specified, bb, instr);
   else if (curReg.find(val) == curReg.end()) {
-    if (val->type_->tid_ == Type::IntegerTyID ||
-        val->type_->tid_ == Type::PointerTyID) {
+    if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 29)
-        IntRegID = 8;
+        IntRegID = 5;
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
       writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);

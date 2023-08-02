@@ -487,20 +487,23 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           curInstr->type_->tid_ == Type::TypeID::PointerTyID)
         foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
                                        new RiscvIntReg(NamefindReg("a0")));
-      else if (curInstr->type_->tid_ != Type::TypeID::FloatTyID)
+      else if (curInstr->type_->tid_ == Type::TypeID::FloatTyID)
         foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
                                        new RiscvIntReg(NamefindReg("fa0")));
       // 第一步：函数参数压栈，对于函数f(a0,a1,...,a7)，a7在高地址（24(sp)），a0在低地址（0(sp)）
       // 注意：该步中并未约定一定要求是函数寄存器a0-a7
+
+      // 这里问题很大！函数调用参数可能是常数
       std::vector<RiscvOperand *> parameters;
       int intRegCount = 0, floatRegCount = 0;
       for (int i = 0; i < curInstr->operands_.size() - 1; i++) {
         std::string name = "";
-        if (curInstr->operands_[i]->type_->tid_ == Type::IntegerTyID) {
+        if (curInstr->operands_[i]->type_->tid_ == Type::IntegerTyID ||
+            curInstr->operands_[i]->type_->tid_ == Type::PointerTyID) {
           if (intRegCount < 8)
             name = "a" + std::to_string(intRegCount);
           intRegCount++;
-        } else {
+        } else if (curInstr->operands_[i]->type_->tid_ == Type::FloatTyID) {
           if (floatRegCount < 8)
             name = "fa" + std::to_string(floatRegCount);
           floatRegCount++;
@@ -526,9 +529,10 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           static_cast<RiscvOperand *>(new RiscvConst(foo->querySP() - SPShift)),
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       // ra的保护由caller去做
-      rbb->addInstrBack(new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID),
-                                           new RiscvIntReg(NamefindReg("ra")),
-                                           new RiscvIntPhiReg(NamefindReg("sp")), rbb));
+      rbb->addInstrBack(
+          new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID),
+                             new RiscvIntReg(NamefindReg("ra")),
+                             new RiscvIntPhiReg(NamefindReg("sp")), rbb));
       // 第二步：进行函数调用，告知callee的regAlloca分配单元。
       rbb->addInstrBack(
           this->createCallInstr(calleeFoo->regAlloca, curInstr, rbb));
@@ -536,7 +540,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 首先恢复ra
       rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),
                                           new RiscvIntReg(NamefindReg("ra")),
-                                          new RiscvIntPhiReg(NamefindReg("sp")), rbb));
+                                          new RiscvIntPhiReg(NamefindReg("sp")),
+                                          rbb));
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
           static_cast<RiscvOperand *>(

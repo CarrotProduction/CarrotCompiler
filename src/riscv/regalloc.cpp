@@ -52,7 +52,7 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg) {
 
 RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr, int inReg, int load,
-                                 RiscvOperand *specified) {
+                                 RiscvOperand *specified, bool direct) {
   val = this->DSU_for_Variable.query(val);
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
 
@@ -89,15 +89,26 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   // For now, all registers are considered unsafe thus registers should always
   // load from memory before using and save to memory after using.
   auto mem_addr =
-      findMem(val, bb, instr, true); // Value's direct memory address
-  auto current_reg = curReg[val];    // Value's current register
+      findMem(val, bb, instr, direct); // Value's direct memory address
+  auto current_reg = curReg[val];      // Value's current register
   auto load_type = getStoreTypeFromRegType(current_reg);
+  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
   if (load) {
     // Load before usage.
-    if (mem_addr != nullptr)
-      bb->addInstrBefore(
-          new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
-    else if (val->is_constant()) {
+    if (mem_addr != nullptr) {
+      if (isAlloca) {
+        bb->addInstrBefore(
+            new BinaryRiscvInst(
+                BinaryRiscvInst::ADDI, getRegOperand("sp"),
+                new RiscvConst(
+                    dynamic_cast<RiscvIntPhiReg *>(pos[val])->shift_),
+                current_reg, bb),
+            instr);
+      } else {
+        bb->addInstrBefore(
+            new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
+      }
+    } else if (val->is_constant()) {
       // If value is a int constant, create a LI instruction.
       auto cval = dynamic_cast<ConstantInt *>(val);
       if (cval != nullptr)
@@ -108,6 +119,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                      "constant value which is not implemented for now."
                   << std::endl;
       }
+    } else {
+      std::cerr << "[Error] Unknown error in findReg()." << std::endl;
+      std::terminate();
     }
 
     // Save after usage. (not being executed for now.)
@@ -125,8 +139,7 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
   val = this->DSU_for_Variable.query(val);
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
   bool isPointer = val->type_->tid_ == val->type_->PointerTyID;
-  // Ignore AllocaInst (which uses direct addressing)
-  isPointer = isPointer && dynamic_cast<AllocaInst *>(val) == nullptr;
+  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
   if (pos.count(val) == 0 && !val->is_constant()) {
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
               << ")'s memory map not found." << std::endl;
@@ -145,13 +158,15 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
     return new RiscvIntPhiReg("t5");
   }
   // If not loading pointer's address directly, then use indirect addressing.
-  if (isPointer && !direct) {
+  // Ignore alloca due to the instruction only being dealt by findReg()
+  if (isPointer && !isAlloca && !direct) {
     if (bb == nullptr) {
       std::cerr << "[Fatal Error] Trying to add indirect pointer addressing "
                    "instruction, but basic block pointer is null."
                 << std::endl;
       std::terminate();
     }
+
     bb->addInstrBefore(new LoadRiscvInst(new Type(Type::PointerTyID),
                                          getRegOperand("t5"), pos[val], bb),
                        instr);
@@ -176,16 +191,17 @@ RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   if (pos.find(val) != pos.end()) {
     std::cerr << "[Warning] Trying overwriting memory address map of value "
-              << std::hex << val << " (" << val->name_ << ") [" << riscvVal
-              << " -> " << pos[val] << "]" << std::endl;
+              << std::hex << val << " (" << val->name_ << ") ["
+              << riscvVal->print() << " -> " << pos[val]->print() << "]"
+              << std::endl;
     // std::terminate();
   }
   pos[val] = riscvVal;
 }
 
 RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
-                                         RiscvBasicBlock *bb,
-                                         RiscvInstr *instr) {
+                                         RiscvBasicBlock *bb, RiscvInstr *instr,
+                                         bool direct) {
   val = this->DSU_for_Variable.query(val);
   Register *reg = NamefindReg(RegName);
   RiscvOperand *retOperand = nullptr;
@@ -196,7 +212,7 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
     retOperand = new RiscvFloatReg(reg);
   else
     throw "Unknown register type in findSpecificReg().";
-  return findReg(val, bb, instr, 0, 1, retOperand);
+  return findReg(val, bb, instr, 0, 1, retOperand, direct);
 }
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
@@ -262,44 +278,19 @@ Value *RegAlloca::getRegPosition(RiscvOperand *reg) {
 RiscvOperand *RegAlloca::findPtr(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr) {
   val = this->DSU_for_Variable.query(val);
-  if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
-    bb->addInstrBack(new LoadAddressRiscvInstr(
-        new RiscvIntReg(NamefindReg("t5")), val->name_, bb));
-    return new RiscvIntPhiReg(NamefindReg("t5"));
+  if (ptrPos.find(val) == ptrPos.end()) {
+    std::cerr << "[Fatal Error] Value's pointer position not found."
+              << std::endl;
+    std::terminate();
   }
-  // std::cout << val->name_ << "\n";
-  assert(ptrPos.count(val));
-  RiscvOperand *PointerTo = ptrPos[val];
-  // std::cout << PointerTo->print() << "\n";
-  if (dynamic_cast<RiscvIntPhiReg *>(PointerTo) != nullptr) {
-    // 栈上确定地址
-    // std::cout << "TYPE:INT\n";
-    // std::cout << dynamic_cast<RiscvIntPhiReg *>(PointerTo)->base_->print() <<
-    // "\n";
-    if (dynamic_cast<RiscvIntPhiReg *>(PointerTo)->base_->print() == "sp")
-      return PointerTo;
-  } else if (dynamic_cast<RiscvFloatPhiReg *>(PointerTo) != nullptr) {
-    if (dynamic_cast<RiscvFloatPhiReg *>(PointerTo)->base_->print() == "sp")
-      return PointerTo;
-  }
-
-  // 不确定地址，或者由寄存器保护的地址
-  // 认为必须从内存取该指针
-  bb->addInstrBack(new LoadRiscvInst(new Type(Type::IntegerTyID),
-                                     getRegOperand("t5"), this->findMem(val),
-                                     bb));
-  auto containedType = findPtrType(val->type_);
-  if (containedType->tid_ == Type::FloatTyID)
-    return new RiscvFloatPhiReg(NamefindReg("t5"));
-  else
-    return new RiscvIntPhiReg(NamefindReg("t5"));
+  return ptrPos[val];
 }
 
 void RegAlloca::setPointerPos(Value *val, RiscvOperand *PointerMem) {
   val = this->DSU_for_Variable.query(val);
   assert(val->type_->tid_ == Type::TypeID::PointerTyID ||
          val->type_->tid_ == Type::TypeID::ArrayTyID);
-  // std::cout << "SET POINTER: " << val->name_ << "!" << PointerMem->print() <<
-  // "\n";
+  std::cerr << "SET POINTER: " << val->name_ << "!" << PointerMem->print()
+            << "\n";
   this->ptrPos[val] = PointerMem;
 }

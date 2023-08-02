@@ -366,6 +366,7 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
   RiscvOperand *dest = regAlloca->findReg(instr, rbb, nullptr, 0, 0);
   std::vector<RiscvInstr *> ans;
   bool isConst = 1; // 能否用确定的形如 -12(sp)访问
+  int finalOffset = 0;
   if (dynamic_cast<GlobalVariable *>(op0) != nullptr) {
     // 全局变量：使用la指令取基础地址
     isConst = 0;
@@ -375,13 +376,14 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
     int varOffset = 0;
     if (op0->type_->tid_ == Type::TypeID::FloatTyID)
       varOffset =
-          static_cast<RiscvFloatPhiReg *>(regAlloca->findMem(op0))->shift_;
+          static_cast<RiscvFloatPhiReg *>(regAlloca->findPtr(op0, rbb))->shift_;
     else
       varOffset =
-          static_cast<RiscvIntPhiReg *>(regAlloca->findMem(op0))->shift_;
+          static_cast<RiscvIntPhiReg *>(regAlloca->findPtr(op0, rbb))->shift_;
     ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
                                       getRegOperand("sp"),
                                       new RiscvConst(varOffset), dest, rbb));
+    finalOffset += varOffset;
   }
   int curTypeSize = 0;
   unsigned int num_operands = instr->num_ops_;
@@ -410,6 +412,14 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
   if (totalOffset > 0)
     ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
                                       new RiscvConst(totalOffset), dest, rbb));
+  finalOffset += totalOffset;
+  // Set relative memory map.
+  if(isConst) {
+    if (op0->type_->tid_ == Type::TypeID::FloatTyID)
+      regAlloca->setPointerPos(instr, new RiscvFloatPhiReg("sp", finalOffset));
+    else
+      regAlloca->setPointerPos(instr, new RiscvIntPhiReg("sp", finalOffset));
+  }
   return ans;
 }
 
@@ -550,13 +560,13 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
         }
         // 如果寄存器超过数额，由caller放入栈中
         if (name.empty())
-          parameters.push_back(
-              foo->regAlloca->findReg(curInstr->operands_[i], rbb, nullptr, 1));
+          parameters.push_back(foo->regAlloca->findReg(
+              curInstr->operands_[i], rbb, nullptr, 1, 1, nullptr, false));
         // 否则由caller的regAlloca，放到指定寄存器a0-a7 fa0-fa7。
         // 此处为了防止运算过程中可能没地方放，因而还是进行了栈空间的分配
         else {
           parameters.push_back(foo->regAlloca->findSpecificReg(
-              curInstr->operands_[i], name, rbb));
+              curInstr->operands_[i], name, rbb, nullptr, false));
         }
       }
       // 存放参数造成的额外开销。每个函数参数都放到了栈上，前8+8个参数也在寄存器中有备份
@@ -681,8 +691,8 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
                                                   static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::BitCast) {
-          rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
-                                                  static_cast<Value *>(instr));
+          rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
+                                                  instr->operands_[0]);
         }
     // 将该函数内的浮点常量全部处理出来并告知寄存器分配单元
     for (BasicBlock *bb : foo->basic_blocks_)
@@ -806,6 +816,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->storeArray(curTypeSize);
           int curSP = rfoo->querySP();
           RiscvOperand *ptrPos = new RiscvIntPhiReg(NamefindReg("sp"), curSP);
+          rfoo->regAlloca->setPosition(static_cast<Value *>(instr), ptrPos);
           rfoo->regAlloca->setPointerPos(static_cast<Value *>(instr), ptrPos);
         }
     rfoo->addBlock(initBlock);
@@ -831,11 +842,11 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     +-----------+ <-
     caller和callee分界线。新函数栈帧从这里开始向下扩展，以此为基准 |
     分配变量。新函数栈帧从这里开始为0，向上为正，向下为负
-    +-----------+
+    +------------+
     | 新局部变量 |
-    +-----------+
+    +------------+
     | 保护寄存器 |
-    +-----------+
+    +------------+
     不需要为sp保存寄存器，只需要时刻维护即可
     */
     // 然后再考虑把这些寄存器进行保护生成对应的代码
@@ -869,9 +880,9 @@ int calcTypeSize(Type *ty) {
   }
   assert(ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID ||
          ty->tid_ == Type::PointerTyID);
-  if(ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID)
+  if (ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::FloatTyID)
     totalsize *= 4;
-  else if(ty->tid_ == Type::PointerTyID)
+  else if (ty->tid_ == Type::PointerTyID)
     totalsize *= 8;
   return totalsize;
 }

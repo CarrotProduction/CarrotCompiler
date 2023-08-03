@@ -284,6 +284,17 @@ std::string LoadRiscvInst::print() {
   if (this->operand_[0] == nullptr || this->operand_[1] == nullptr)
     return "";
   std::string riscv_instr = "\t\t";
+
+  auto mem_addr = static_cast<RiscvIntPhiReg *>(operand_[1]);
+  bool overflow = mem_addr->overflow();
+
+  if (overflow) {
+    riscv_instr += "LI t5, " + std::to_string(mem_addr->shift_);
+    riscv_instr += "\n\t\t";
+    riscv_instr += "ADD t5, t5, " + mem_addr->MemBaseName;
+    riscv_instr += "\n\t\t";
+  }
+
   if (this->type.tid_ == Type::FloatTyID)
     riscv_instr += "FLW\t";
   else if (this->type.tid_ == Type::IntegerTyID)
@@ -296,8 +307,11 @@ std::string LoadRiscvInst::print() {
   }
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
-  assert(this->operand_[1] != nullptr);
-  riscv_instr += this->operand_[1]->print();
+  if (overflow) {
+    riscv_instr += "(t5)";
+  } else {
+    riscv_instr += this->operand_[1]->print();
+  }
   riscv_instr += "\n";
   return riscv_instr;
 }

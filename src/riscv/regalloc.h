@@ -5,7 +5,7 @@
 #include <cassert>
 
 template <typename T> class DSU {
-
+private:
   std::map<T, T> father;
   T getfather(T x) {
     return father[x] == x ? x : (father[x] = getfather(father[x]));
@@ -15,10 +15,15 @@ public:
   DSU() = default;
   T query(T id) {
     // 不存在变量初值为自己
-    if (father.find(id) == father.end())
+    if (father.find(id) == father.end()) {
+      // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] New value " << id
+      //           << std::endl;
       return father[id] = id;
-    else
+    } else {
+      // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Find value " << id
+      //           << std::endl;
       return getfather(id);
+    }
   }
 
   /**
@@ -31,6 +36,8 @@ public:
     assert(u != nullptr && v != nullptr);
     if (u == v)
       return;
+    std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Merge " << u
+              << " to " << v << std::endl;
     father[u] = v;
   }
 };

@@ -284,6 +284,17 @@ std::string LoadRiscvInst::print() {
   if (this->operand_[0] == nullptr || this->operand_[1] == nullptr)
     return "";
   std::string riscv_instr = "\t\t";
+
+  auto mem_addr = static_cast<RiscvIntPhiReg *>(operand_[1]);
+  bool overflow = mem_addr->overflow();
+
+  if (overflow) {
+    riscv_instr += "LI t5, " + std::to_string(mem_addr->shift_);
+    riscv_instr += "\n\t\t";
+    riscv_instr += "ADD t5, t5, " + mem_addr->MemBaseName;
+    riscv_instr += "\n\t\t";
+  }
+
   if (this->type.tid_ == Type::FloatTyID)
     riscv_instr += "FLW\t";
   else if (this->type.tid_ == Type::IntegerTyID)
@@ -296,20 +307,12 @@ std::string LoadRiscvInst::print() {
   }
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
-  assert(this->operand_[1] != nullptr);
-  int shift = 0;
-  if (dynamic_cast<RiscvFloatPhiReg *>(this->operand_[1]) != nullptr)
-    shift = dynamic_cast<RiscvFloatPhiReg *>(this->operand_[1])->shift_;
-  else if (dynamic_cast<RiscvIntPhiReg *>(this->operand_[1]) != nullptr)
-    shift += dynamic_cast<RiscvIntPhiReg *>(this->operand_[1])->shift_;
-  if (shift < -2048 || shift > 2047) {
-    std::string preprocess = "";
-    preprocess += "\t\tLI\tt5, " + std::to_string(shift) + "\n";
-    preprocess += "\t\tADD\tt5, sp, t5\n";
-    riscv_instr = preprocess + riscv_instr + "(t5)\n";
+  if (overflow) {
+    riscv_instr += "(t5)";
+  } else {
+    riscv_instr += this->operand_[1]->print();
   }
-  else
-    riscv_instr += this->operand_[1]->print() + "\n";
+  riscv_instr += "\n";
   return riscv_instr;
 }
 

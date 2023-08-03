@@ -107,7 +107,8 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
         bb->addInstrBefore(new MoveRiscvInst(current_reg, cval->value_, bb),
                            instr);
       else if (dynamic_cast<ConstantFloat *>(val) != nullptr)
-        bb->addInstrBefore(new MoveRiscvInst(current_reg, this->findMem(val), bb), instr);
+        bb->addInstrBefore(
+            new MoveRiscvInst(current_reg, this->findMem(val), bb), instr);
       else {
         std::cerr << "[Warning] Trying to find a register for unknown type of "
                      "constant value which is not implemented for now."
@@ -188,25 +189,23 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
 }
 
 RiscvOperand *RegAlloca::findMem(Value *val) {
-  // std::cerr << "[Warning] [RegAlloca] You're using an unsafe function "
-  //              "overload. Use findMem(val, bb, instr, dicret) instead."
-  //           << std::endl;
   return findMem(val, nullptr, nullptr, true);
 }
 
-RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb, RiscvInstr *instr) {
+RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb,
+                                    RiscvInstr *instr) {
   if (ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::PointerTyID) {
     ++IntRegID;
     if (IntRegID > 27)
       IntRegID = 9;
     RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
     return cur;
-  }
-  else {
+  } else {
     ++FloatRegID;
     if (FloatRegID >= 32)
       FloatRegID = 0;
-    RiscvFloatReg *cur = new RiscvFloatReg(new Register(Register::Float, FloatRegID));
+    RiscvFloatReg *cur =
+        new RiscvFloatReg(new Register(Register::Float, FloatRegID));
     return cur;
   }
 }
@@ -214,10 +213,10 @@ RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb, RiscvInstr *i
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   val = this->DSU_for_Variable.query(val);
   if (pos.find(val) != pos.end()) {
-    // std::cerr << "[Warning] Trying overwriting memory address map of value "
-    //           << std::hex << val << " (" << val->name_ << ") ["
-    //           << riscvVal->print() << " -> " << pos[val]->print() << "]"
-    //           << std::endl;
+    std::cerr << "[Warning] Trying overwriting memory address map of value "
+              << std::hex << val << " (" << val->name_ << ") ["
+              << riscvVal->print() << " -> " << pos[val]->print() << "]"
+              << std::endl;
     // std::terminate();
   }
 
@@ -263,7 +262,8 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
     std::terminate();
   }
 
-  // std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <" << val->print() << ">\n";
+  std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
+            << val->print() << ">\n";
 
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;

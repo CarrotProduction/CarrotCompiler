@@ -119,7 +119,9 @@ public:
     SHLI = 52,
     LSHRI,
     ASHRI,
-    LA
+    LA,
+    ADDIW,
+    BGT
   };
   const static std::map<InstrType, std::string> RiscvName;
 
@@ -413,6 +415,28 @@ public:
                         RiscvBasicBlock *bb)
       : RiscvInstr(LA, 1, bb), name_(name) {
     setOperand(0, dest);
+  }
+  virtual std::string print() override;
+};
+
+/**
+ * 分支指令类。
+ * BEQ rs1, zero, label1
+ * J label2
+ */
+class BranchRiscvInstr : public RiscvInstr {
+public:
+  
+  /// @brief 生成分支指令类。
+  /// @param rs1 存储布尔值的寄存器
+  /// @param trueLink 真值跳转基本块
+  /// @param falseLink 假值跳转基本块
+  BranchRiscvInstr(RiscvOperand *rs1, RiscvBasicBlock *trueLink,
+                 RiscvBasicBlock *falseLink, RiscvBasicBlock *bb)
+      : RiscvInstr(BGT, 3, bb) {
+    setOperand(0, rs1);
+    setOperand(1, trueLink);
+    setOperand(2, falseLink);
   }
   virtual std::string print() override;
 };

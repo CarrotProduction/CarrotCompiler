@@ -5,23 +5,24 @@
 // IR的指令转变到RISV的指令
 std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::ADD, "ADD"},         {RiscvInstr::ADDI, "ADDI"},
-    {RiscvInstr::SUB, "SUB"},         {RiscvInstr::SUBI, "SUBI"},
-    {RiscvInstr::FADD, "FADD.S"},     {RiscvInstr::FSUB, "FSUB.S"},
-    {RiscvInstr::FMUL, "FMUL.S"},     {RiscvInstr::FDIV, "FDIV.S"},
-    {RiscvInstr::MUL, "MUL"},         {RiscvInstr::DIV, "DIV"},
-    {RiscvInstr::REM, "REM"},         {RiscvInstr::AND, "AND"},
-    {RiscvInstr::OR, "OR"},           {RiscvInstr::ANDI, "ANDI"},
-    {RiscvInstr::ORI, "ORI"},         {RiscvInstr::XOR, "XOR"},
-    {RiscvInstr::XORI, "XORI"},       {RiscvInstr::RET, "RET"},
-    {RiscvInstr::FPTOSI, "FCVT.W.S"}, {RiscvInstr::SITOFP, "FCVT.S.W"},
-    {RiscvInstr::FMV, "FMV.S"},       {RiscvInstr::CALL, "CALL"},
-    {RiscvInstr::LI, "LI"},           {RiscvInstr::MOV, "MV"},
-    {RiscvInstr::PUSH, "PUSH"},       {RiscvInstr::POP, "POP"},
-    {RiscvInstr::SW, "SW"},           {RiscvInstr::LW, "LW"},
-    {RiscvInstr::FSW, "FSW"},         {RiscvInstr::FLW, "FLW"},
-    {RiscvInstr::SHL, "SLL"},         {RiscvInstr::ASHR, "SRA"},
-    {RiscvInstr::SHLI, "SLLI"},       {RiscvInstr::LSHR, "SRL"},
-    {RiscvInstr::ASHRI, "SRAI"},      {RiscvInstr::LSHRI, "SRLI"},
+    {RiscvInstr::ADDIW, "ADDIW"},     {RiscvInstr::SUB, "SUB"},
+    {RiscvInstr::SUBI, "SUBI"},       {RiscvInstr::FADD, "FADD.S"},
+    {RiscvInstr::FSUB, "FSUB.S"},     {RiscvInstr::FMUL, "FMUL.S"},
+    {RiscvInstr::FDIV, "FDIV.S"},     {RiscvInstr::MUL, "MUL"},
+    {RiscvInstr::DIV, "DIV"},         {RiscvInstr::REM, "REM"},
+    {RiscvInstr::AND, "AND"},         {RiscvInstr::OR, "OR"},
+    {RiscvInstr::ANDI, "ANDI"},       {RiscvInstr::ORI, "ORI"},
+    {RiscvInstr::XOR, "XOR"},         {RiscvInstr::XORI, "XORI"},
+    {RiscvInstr::RET, "RET"},         {RiscvInstr::FPTOSI, "FCVT.W.S"},
+    {RiscvInstr::SITOFP, "FCVT.S.W"}, {RiscvInstr::FMV, "FMV.S"},
+    {RiscvInstr::CALL, "CALL"},       {RiscvInstr::LI, "LI"},
+    {RiscvInstr::MOV, "MV"},          {RiscvInstr::PUSH, "PUSH"},
+    {RiscvInstr::POP, "POP"},         {RiscvInstr::SW, "SW"},
+    {RiscvInstr::LW, "LW"},           {RiscvInstr::FSW, "FSW"},
+    {RiscvInstr::FLW, "FLW"},         {RiscvInstr::SHL, "SLL"},
+    {RiscvInstr::ASHR, "SRA"},        {RiscvInstr::SHLI, "SLLI"},
+    {RiscvInstr::LSHR, "SRL"},        {RiscvInstr::ASHRI, "SRAI"},
+    {RiscvInstr::LSHRI, "SRLI"},
 };
 // Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
@@ -355,5 +356,21 @@ std::string FpToSiRiscvInstr::print() {
 std::string LoadAddressRiscvInstr::print() {
   std::string riscv_instr =
       "\t\tLA\t" + this->operand_[0]->print() + ", " + this->name_ + "\n";
+  return riscv_instr;
+}
+
+std::string BranchRiscvInstr::print() {
+  std::string riscv_instr = "\t\t";
+  // If single label operand then force jump
+  if (operand_[0] != nullptr) {
+    riscv_instr += "BGTZ\t";
+    riscv_instr += operand_[0]->print();
+    riscv_instr += ", ";
+    riscv_instr += static_cast<RiscvBasicBlock *>(operand_[1])->name_;
+    riscv_instr += "\n\t\t";
+  }
+  riscv_instr += "J\t";
+  riscv_instr += static_cast<RiscvBasicBlock *>(operand_[2])->name_;
+  riscv_instr += "\n";
   return riscv_instr;
 }

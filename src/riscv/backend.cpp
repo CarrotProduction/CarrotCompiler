@@ -190,9 +190,9 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
     ans.push_back(new LoadRiscvInst(
         curType->contained_, regPos,
         regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr, false), rbb));
-    ans.push_back(new StoreRiscvInst(
-        curType->contained_, regPos,
-        regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
+    // ans.push_back(new StoreRiscvInst(
+    //     curType->contained_, regPos,
+    //     regAlloca->findMem(static_cast<Value *>(loadInstr)), rbb));
     return ans;
   }
   // 否则是mov。其实可能不存在这一类
@@ -300,19 +300,37 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
 
   // If ret i32 %4
   if (returnInstr->num_ops_ > 0) {
-    auto &operand = returnInstr->operands_[0];
+    auto operand = returnInstr->operands_[0];
     if (operand->type_->tid_ == Type::TypeID::IntegerTyID)
       reg_to_save = regAlloca->findSpecificReg(operand, "a0", rbb);
     else if (operand->type_->tid_ == Type::TypeID::FloatTyID)
       reg_to_save = regAlloca->findSpecificReg(operand, "fa0", rbb);
-    auto instr = regAlloca->writeback(reg_to_save, rbb);
-    rbb->addInstrAfter(
-        new MoveRiscvInst(reg_to_save, regAlloca->findReg(operand, rbb, instr),
-                          rbb),
-        instr);
+    // auto instr = regAlloca->writeback(reg_to_save, rbb);
+    rbb->addInstrBack(new MoveRiscvInst(
+        reg_to_save, regAlloca->findReg(operand, rbb, nullptr), rbb));
   }
 
   return new ReturnRiscvInst(rbb);
+}
+
+BranchRiscvInstr *RiscvBuilder::createBrInstr(RegAlloca *regAlloca,
+                                              BranchInst *brInstr,
+                                              RiscvBasicBlock *rbb) {
+
+  BranchRiscvInstr *instr;
+  if (brInstr->num_ops_ == 1) {
+    instr = new BranchRiscvInstr(
+        nullptr, nullptr,
+        createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[0])),
+        rbb);
+  } else {
+    instr = new BranchRiscvInstr(
+        regAlloca->findReg(brInstr->operands_[0], rbb, nullptr, 1),
+        createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[1])),
+        createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[2])),
+        rbb);
+  }
+  return instr;
 }
 
 SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(RegAlloca *regAlloca,
@@ -334,23 +352,22 @@ FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(RegAlloca *regAlloca,
 }
 
 // 固定采用x30作为偏移量，x31作为乘法的LI指令地址
-std::vector<RiscvInstr *>
-RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
-                                 RiscvBasicBlock *rbb) {
+RiscvInstr *RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca,
+                                             GetElementPtrInst *instr,
+                                             RiscvBasicBlock *rbb) {
   Value *op0 = instr->get_operand(0);
-  RiscvOperand *dest = regAlloca->findReg(instr, rbb, nullptr, 0, 0);
-  std::vector<RiscvInstr *> ans;
+  RiscvOperand *dest = getRegOperand("t2");
   bool isConst = 1; // 能否用确定的形如 -12(sp)访问
   int finalOffset = 0;
   if (dynamic_cast<GlobalVariable *>(op0) != nullptr) {
     // 全局变量：使用la指令取基础地址
     isConst = 0;
-    ans.push_back(new LoadAddressRiscvInstr(dest, op0->name_, rbb));
+    rbb->addInstrBack(new LoadAddressRiscvInstr(dest, op0->name_, rbb));
   } else if (auto oi = dynamic_cast<Instruction *>(op0)) {
     // 获取指针指向的地址
     int varOffset = 0;
 
-    ans.push_back(new MoveRiscvInst(
+    rbb->addInstrBack(new MoveRiscvInst(
         dest, regAlloca->findReg(op0, rbb, nullptr, 1, 1), rbb));
 
     finalOffset += varOffset;
@@ -373,20 +390,21 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
       isConst = 0;
       // 考虑目标数是int还是float
       RiscvOperand *mulTempReg = new RiscvIntReg(NamefindReg("t6"));
-      ans.push_back(new MoveRiscvInst(mulTempReg, curTypeSize, rbb));
-      ans.push_back(new BinaryRiscvInst(
+      rbb->addInstrBack(new MoveRiscvInst(mulTempReg, curTypeSize, rbb));
+      rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::InstrType::MUL, regAlloca->findReg(opi, rbb, nullptr, 1),
           mulTempReg, mulTempReg, rbb));
-      ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADD, mulTempReg,
-                                        dest, dest, rbb));
+      rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::InstrType::ADD,
+                                            mulTempReg, dest, dest, rbb));
     }
   }
   // if (totalOffset > 0)
-  ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
-                                    new RiscvConst(totalOffset), dest, rbb));
-  ans.push_back(
+  rbb->addInstrBack(new BinaryRiscvInst(
+      RiscvInstr::InstrType::ADDI, dest, new RiscvConst(totalOffset),
+      dest, rbb));
+  rbb->addInstrBack(
       new StoreRiscvInst(instr->type_, dest, regAlloca->findMem(instr), rbb));
-  return ans;
+  return nullptr;
 }
 
 RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
@@ -403,21 +421,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     // 分支指令
     case Instruction::Br:
-      if (forward == nullptr) {
-        rbb->addInstrBack(this->createJumpInstr(
-            foo->regAlloca, static_cast<BranchInst *>(instr), rbb));
-      } else if (forward->op_id_ == Instruction::FCmp) {
-        rbb->addInstrBack(this->createFCMPInstr(
-            foo->regAlloca, static_cast<FCmpInst *>(forward),
-            static_cast<BranchInst *>(instr), rbb));
-      } else if (forward->op_id_ == Instruction::ICmp) {
-        rbb->addInstrBack(this->createICMPInstr(
-            foo->regAlloca, static_cast<ICmpInst *>(forward),
-            static_cast<BranchInst *>(instr), rbb));
-      } else {
-        assert(0);
-      }
-      forward = nullptr;
+      rbb->addInstrBack(this->createBrInstr(
+          foo->regAlloca, static_cast<BranchInst *>(instr), rbb));
       break;
     case Instruction::Add:
     case Instruction::Sub:
@@ -456,10 +461,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     case Instruction::Alloca:
       break;
     case Instruction::GetElementPtr: {
-      std::vector<RiscvInstr *> instrSet = this->solveGetElementPtr(
-          foo->regAlloca, static_cast<GetElementPtrInst *>(instr), rbb);
-      for (auto *x : instrSet)
-        rbb->addInstrBack(x);
+      this->solveGetElementPtr(foo->regAlloca,
+                               static_cast<GetElementPtrInst *>(instr), rbb);
       // Writeback inside solveGetElementPtr().
       break;
     }
@@ -492,10 +495,10 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     case Instruction::ICmp:
       createICMPSInstr(foo->regAlloca, static_cast<ICmpInst *>(instr), rbb);
       foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
-      forward = instr;
       break;
     case Instruction::FCmp:
-      forward = instr;
+      std::cerr << "[Error] Not refactor FCMP yet.\n";
+      std::terminate();
       break;
     case Instruction::Call: {
       // 注意：该部分并未单独考虑系统函数！

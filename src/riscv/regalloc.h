@@ -115,7 +115,8 @@ public:
    * @param direct 当 direct 为 false 时将使用间接寻址。若使用间接寻址且
    * Value 为指针 (getElementInstr) ，则 findMem()
    * 将会将指针所指向的地址载入临时寄存器 t5，并返回操作数 0(t5) 。
-   * @return 返回一个 IntegerPhiReg* 或 FloatPhiReg* 类型的操作数 offset(rs) 。
+   * @return 返回一个 IntegerPhiReg* 或 FloatPhiReg* 类型的操作数 offset(rs)
+   * 。若操作数偏移量溢出，则将会计算返回操作数所指代的地址 (t5)。
    */
   RiscvOperand *findMem(Value *val, RiscvBasicBlock *bb, RiscvInstr *instr,
                         bool direct);
@@ -203,6 +204,11 @@ public:
   Value *getRegPosition(RiscvOperand *reg);
 
   /**
+   * 返回 Value 所对应的寄存器 reg 。
+   */
+  RiscvOperand *getPositionReg(Value *val);
+
+  /**
    * 保护的寄存器对象数组。
    */
   std::vector<RiscvOperand *> savedRegister;
@@ -219,6 +225,13 @@ public:
    */
   RiscvOperand *findPtr(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr);
+
+  /**
+   * 写回所有与内存存在关联的寄存器并删除关联。
+   * @param bb 被插入基本块
+   * @param instr 在特定指令前插入
+   */
+  void writeback_all(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
 
 private:
   std::map<Value *, RiscvOperand *> pos, curReg;

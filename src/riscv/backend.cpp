@@ -286,7 +286,7 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
       floatRegCount = 0;
   for (int i = 0; i < argnum; i++) {
     std::string name = "";
-    if (callInstr->operands_[i]->type_->tid_ == Type::IntegerTyID) {
+    if (callInstr->operands_[i]->type_->tid_ != Type::FloatTyID) {
       if (intRegCount < 8)
         name = "a" + std::to_string(intRegCount);
       intRegCount++;
@@ -306,7 +306,7 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
     }
     // 相对于子函数栈帧进行栈分配
     RiscvOperand *stackPos = static_cast<RiscvOperand *>(
-        new RiscvIntPhiReg(NamefindReg("sp"), 4 * i));
+        new RiscvIntPhiReg(NamefindReg("sp"), VARIABLE_ALIGN_BYTE * i));
     regAlloca->setPosition(callInstr->operands_[i], stackPos);
   }
   // 涉及从Function 到RISCV function转换问题（第一个参数）
@@ -372,17 +372,23 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
     isConst = 0;
     ans.push_back(new LoadAddressRiscvInstr(dest, op0->name_, rbb));
   } else if (auto oi = dynamic_cast<Instruction *>(op0)) {
-    // 指令是在栈上分配的临时地址，则dest=当前的sp+现在分配的变量的偏移地址
+    // 获取指针指向的地址
     int varOffset = 0;
-    if (op0->type_->tid_ == Type::TypeID::FloatTyID)
-      varOffset =
-          static_cast<RiscvFloatPhiReg *>(regAlloca->findPtr(op0, rbb))->shift_;
-    else
-      varOffset =
-          static_cast<RiscvIntPhiReg *>(regAlloca->findPtr(op0, rbb))->shift_;
-    ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
-                                      getRegOperand("sp"),
-                                      new RiscvConst(varOffset), dest, rbb));
+
+    ans.push_back(new MoveRiscvInst(
+        dest, regAlloca->findReg(op0, rbb, nullptr, 1, 1), rbb));
+
+    // if (op0->type_->tid_ == Type::TypeID::FloatTyID)
+    //   varOffset =
+    //       static_cast<RiscvFloatPhiReg *>(regAlloca->findPtr(op0,
+    //       rbb))->shift_;
+    // else
+    //   varOffset =
+    //       static_cast<RiscvIntPhiReg *>(regAlloca->findPtr(op0,
+    //       rbb))->shift_;
+    // ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
+    //                                   getRegOperand("sp"),
+    //                                   new RiscvConst(varOffset), dest, rbb));
     finalOffset += varOffset;
   }
   int curTypeSize = 0;
@@ -411,16 +417,19 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
                                         dest, dest, rbb));
     }
   }
-  if (totalOffset > 0)
-    ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
-                                      new RiscvConst(totalOffset), dest, rbb));
+  // if (totalOffset > 0)
+  ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
+                                    new RiscvConst(totalOffset), dest, rbb));
+  ans.push_back(
+      new StoreRiscvInst(instr->type_, dest, regAlloca->findMem(instr), rbb));
   finalOffset += totalOffset;
   // Set relative memory map.
   if (isConst) {
-    if (op0->type_->tid_ == Type::TypeID::FloatTyID)
-      regAlloca->setPointerPos(instr, new RiscvFloatPhiReg("sp", finalOffset));
-    else
-      regAlloca->setPointerPos(instr, new RiscvIntPhiReg("sp", finalOffset));
+    // if (op0->type_->tid_ == Type::TypeID::FloatTyID)
+    //   regAlloca->setPointerPos(instr, new RiscvFloatPhiReg("sp",
+    //   finalOffset));
+    // else
+    //   regAlloca->setPointerPos(instr, new RiscvIntPhiReg("sp", finalOffset));
   }
   return ans;
 }
@@ -494,7 +503,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           foo->regAlloca, static_cast<GetElementPtrInst *>(instr), rbb);
       for (auto *x : instrSet)
         rbb->addInstrBack(x);
-      foo->regAlloca->writeback(foo->regAlloca->findReg(instr, rbb), rbb);
+      // foo->regAlloca->writeback(foo->regAlloca->findReg(instr, rbb, nullptr,
+      // 1, 0), rbb);
       break;
     }
     case Instruction::FPtoSI:
@@ -546,7 +556,6 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 第一步：函数参数压栈，对于函数f(a0,a1,...,a7)，a7在高地址（24(sp)），a0在低地址（0(sp)）
       // 注意：该步中并未约定一定要求是函数寄存器a0-a7
 
-      // 这里问题很大！函数调用参数可能是常数
       std::vector<RiscvOperand *> parameters;
       int intRegCount = 0, floatRegCount = 0;
       for (int i = 0; i < curInstr->operands_.size() - 1; i++) {
@@ -563,18 +572,21 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
         // 如果寄存器超过数额，由caller放入栈中
         if (name.empty())
           parameters.push_back(foo->regAlloca->findReg(
-              curInstr->operands_[i], rbb, nullptr, 1, 1, nullptr, false));
+              curInstr->operands_[i], rbb, nullptr, 1, 1, nullptr));
         // 否则由caller的regAlloca，放到指定寄存器a0-a7 fa0-fa7。
         // 此处为了防止运算过程中可能没地方放，因而还是进行了栈空间的分配
         else {
           parameters.push_back(foo->regAlloca->findSpecificReg(
-              curInstr->operands_[i], name, rbb, nullptr, false));
+              curInstr->operands_[i], name, rbb, nullptr));
         }
       }
+      // Writeback all unsafe registers.
+      // foo->regAlloca->writeback_all(rbb);
       // 存放参数造成的额外开销。每个函数参数都放到了栈上，前8+8个参数也在寄存器中有备份
-      int SPShift = parameters.size() * 4 + 4;
+      int SPShift =
+          parameters.size() * VARIABLE_ALIGN_BYTE + VARIABLE_ALIGN_BYTE;
       reverse(parameters.begin(), parameters.end());
-      rbb->addInstrBack(new PushRiscvInst(parameters, rbb, foo->querySP()));
+      // rbb->addInstrBack(new PushRiscvInst(parameters, rbb, foo->querySP()));
       // 调整到新栈空间
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
@@ -715,7 +727,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     // 首先检查所有的alloca指令，加入一个基本块进行寄存器保护以及栈空间分配
     RiscvBasicBlock *initBlock = createRiscvBasicBlock();
     std::map<Value *, int> haveAllocated;
-    int IntParaCount = 0, FloatParaCount = 0, ParaShift = -8;
+    int IntParaCount = 0, FloatParaCount = 0, ParaShift = -VARIABLE_ALIGN_BYTE;
 
     // 函数起始栈帧就从-4开始，在riscvFunction提前修订base的值
     auto storeOnStack = [&](Value **val) {
@@ -745,7 +757,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           else
             break;
         }
-        if (curType->tid_ == Type::TypeID::IntegerTyID)
+        if (curType->tid_ != Type::TypeID::FloatTyID)
           rfoo->regAlloca->setPosition(*val,
                                        new RiscvIntPhiReg((*val)->name_, 0, 1));
         else
@@ -821,6 +833,16 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->setPosition(static_cast<Value *>(instr), ptrPos);
           rfoo->regAlloca->setPointerPos(static_cast<Value *>(instr), ptrPos);
         }
+
+    // Protect arguments in registers.
+    for (auto arg : foo->arguments_) {
+      auto reg = rfoo->regAlloca->getPositionReg(arg);
+      if (reg != nullptr) {
+        initBlock->addInstrBack(new StoreRiscvInst(
+            arg->type_, reg, rfoo->regAlloca->findMem(arg), initBlock));
+      }
+    }
+
     rfoo->addBlock(initBlock);
 
     for (BasicBlock *bb : foo->basic_blocks_)

@@ -64,7 +64,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   else if (curReg.find(val) == curReg.end()) {
     if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
-      if (IntRegID > 29)
+      if (IntRegID > 27)
         IntRegID = 9;
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
       writeback(cur, bb);
@@ -78,7 +78,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
       setPositionReg(val, cur, bb, instr);
     }
   } else if (!(val->is_constant() ||
-               val->type_->tid_ == val->type_->PointerTyID))
+               val->type_->tid_ == val->type_->PointerTyID || load))
     return curReg[val];
 
   // ! Though all registers are considered unsafe, there is no way
@@ -177,9 +177,11 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
   // If operand's offset value overflows, then use indirect addressing.
   auto mem_addr = static_cast<RiscvIntPhiReg *>(pos[val]);
   if (std::abs(mem_addr->shift_) >= 1024) {
-    bb->addInstrBefore(new BinaryRiscvInst(
-        RiscvInstr::ADDI, getRegOperand("sp"), new RiscvConst(mem_addr->shift_),
-        getRegOperand("t5"), bb), instr);
+    bb->addInstrBefore(new BinaryRiscvInst(RiscvInstr::ADDI,
+                                           getRegOperand("sp"),
+                                           new RiscvConst(mem_addr->shift_),
+                                           getRegOperand("t5"), bb),
+                       instr);
     return new RiscvIntPhiReg("t5");
   }
   return pos[val];
@@ -280,6 +282,12 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
 
 RegAlloca::RegAlloca() {
   // savedRegister.push_back(getRegOperand("ra"));
+}
+
+RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,
+                                 RiscvInstr *instr) {
+  auto reg = getPositionReg(val);
+  return writeback(reg, bb, instr);
 }
 
 Value *RegAlloca::getRegPosition(RiscvOperand *reg) {

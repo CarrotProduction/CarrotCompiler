@@ -140,9 +140,9 @@ public:
    * @param direct 仅在 Value 为指针时生效，用于在载入物理地址时传递参数给
    * findMem
    * @return 返回强制关联的寄存器操作数 rs 。
-   * @attention 该函数将在 Value 为 Alloca 指令时进行特殊处理，在 load=1 时将
+   * @note 该函数将在 Value 为 Alloca 指令时进行特殊处理，在 load=1 时将
    * Alloca 指针所指向的地址载入到分配的寄存器中。
-   * @attention 该函数将在 Value 为常量时进行特殊处理，在 load=1 时将常量通过 LI
+   * @note 该函数将在 Value 为常量时进行特殊处理，在 load=1 时将常量通过 LI
    * 指令载入到分配的寄存器中。
    * @attention 目前不应使用 direct 参数。
    */
@@ -196,6 +196,15 @@ public:
    * @return 返回最后写入的指令
    */
   RiscvInstr *writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
+                        RiscvInstr *instr = nullptr);
+  /**
+   * 将 Value 所关联的寄存器写回到内存地址中，并移除该寄存器在pos中映射的地址。
+   * @param val 将要写回的 Value
+   * @param bb 指令将要插入的基本块
+   * @param instr 当前需要在哪一条指令前方插入sw指令
+   * @return 返回最后写入的指令
+   */
+  RiscvInstr *writeback(Value *val, RiscvBasicBlock *bb,
                         RiscvInstr *instr = nullptr);
 
   /**

@@ -36,8 +36,8 @@ public:
     assert(u != nullptr && v != nullptr);
     if (u == v)
       return;
-    std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Merge " << u
-              << " to " << v << std::endl;
+    // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Merge " << u
+    //           << " to " << v << std::endl;
     father[u] = v;
   }
 };
@@ -136,7 +136,7 @@ public:
 
   // TODO:2 findNonuse
   // 实现一个函数，以找到一个当前尚未使用的寄存器以存放某个值。
-  RiscvOperand *findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
+  RiscvOperand *findNonuse(Type *ty, RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
 
   /**
    * 将 Value 与指定的寄存器强制关联并返回寄存器操作数。

@@ -75,7 +75,10 @@ std::string RiscvGlobalVariable::print(bool print_name, Constant *initVal) {
   }
   // 浮点
   else if (initVal->type_->tid_ == Type::TypeID::FloatTyID) {
-    code += "\t.word\t" + std::to_string(dynamic_cast<ConstantFloat *>(initVal)->value_) + "\n";
+    std::string valString = dynamic_cast<ConstantFloat *>(initVal)->print();
+    while (valString.length() < 10)
+      valString += "0";
+    code += "\t.word\t" + valString.substr(0, 10) + "\n";
     return code;
   }
   else if (initVal->type_->tid_ == Type::TypeID::ArrayTyID) {

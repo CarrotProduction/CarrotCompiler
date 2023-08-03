@@ -82,7 +82,8 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
   // If both operands are imm value, caculate the result directly and save to
   // binaryInstr value.
   if (binaryInstr->operands_[0]->is_constant() &&
-      binaryInstr->operands_[1]->is_constant()) {
+      binaryInstr->operands_[1]->is_constant() &&
+      dynamic_cast<ConstantInt *>(binaryInstr->operands_[0]) != nullptr) {
     int value[] = {
         static_cast<ConstantInt *>(binaryInstr->operands_[0])->value_,
         static_cast<ConstantInt *>(binaryInstr->operands_[1])->value_};
@@ -261,7 +262,7 @@ FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(RegAlloca *regAlloca,
       fcmpInstr->fcmp_op_,
       regAlloca->findReg(fcmpInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(fcmpInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findNonuse(rbb, nullptr),
+      regAlloca->findNonuse(new Type(Type::IntegerTyID), rbb, nullptr),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[1])),
       createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[2])),
       rbb);
@@ -559,8 +560,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
                              new RiscvIntReg(NamefindReg("ra")),
                              new RiscvIntPhiReg(NamefindReg("sp")), rbb));
       // 第二步：进行函数调用。
-      rbb->addInstrBack(
-          this->createCallInstr(foo->regAlloca, curInstr, rbb));
+      rbb->addInstrBack(this->createCallInstr(foo->regAlloca, curInstr, rbb));
       // 第三步：caller恢复栈帧，清除所有的函数参数
       // 首先恢复ra
       rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),
@@ -667,9 +667,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
                                                   static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::BitCast) {
-          std::cerr << "[Debug] [DSU] Bitcast Instruction: Merge value "
-               << static_cast<Value *>(instr)->print() << " to "
-               << instr->operands_[0]->print() << " ." << std::endl;
+          // std::cerr << "[Debug] [DSU] Bitcast Instruction: Merge value "
+          //           << static_cast<Value *>(instr)->print() << " to "
+          //           << instr->operands_[0]->print() << " ." << std::endl;
           rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
                                                   instr->operands_[0]);
         }
@@ -682,10 +682,11 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             std::string curFloatName =
                 "FloatConst" + std::to_string(ConstFloatCount);
             ConstFloatCount++;
-            data +=
-                curFloatName + "\t.float\t" +
-                std::to_string(dynamic_cast<ConstantFloat *>(Operand)->value_) +
-                "\n";
+            std::string valString =
+                dynamic_cast<ConstantFloat *>(Operand)->print();
+            while (valString.length() < 10)
+              valString += "0";
+            data += curFloatName + "\t.word\t" + valString.substr(0, 10) + "\n";
             rfoo->regAlloca->setPosition(Operand,
                                          new RiscvFloatPhiReg(curFloatName, 0));
           }
@@ -734,7 +735,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       if (dynamic_cast<Argument *>(*val) != nullptr) {
         // 不用额外分配空间
         // 整型参数
-        ParaShift-=4;
+        ParaShift -= 4;
         if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
             (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
           // Pointer type's size is set to 8 byte.

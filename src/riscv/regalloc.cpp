@@ -74,6 +74,8 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     } else {
       assert(val->type_->tid_ == Type::TypeID::FloatTyID);
       ++FloatRegID;
+      if (FloatRegID >= 32)
+        FloatRegID = 0;
       RiscvFloatReg *cur =
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
       setPositionReg(val, cur, bb, instr);
@@ -104,6 +106,8 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
       if (cval != nullptr)
         bb->addInstrBefore(new MoveRiscvInst(current_reg, cval->value_, bb),
                            instr);
+      else if (dynamic_cast<ConstantFloat *>(val) != nullptr)
+        bb->addInstrBefore(new MoveRiscvInst(current_reg, this->findMem(val), bb), instr);
       else {
         std::cerr << "[Warning] Trying to find a register for unknown type of "
                      "constant value which is not implemented for now."
@@ -116,10 +120,10 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
               new RiscvConst(static_cast<RiscvIntPhiReg *>(pos[val])->shift_),
               current_reg, bb),
           instr);
-      std::cerr << "[Debug] Get a alloca position <" << val->print() << ", "
-                << static_cast<RiscvIntPhiReg *>(pos[val])->print()
-                << "> into the register <" << current_reg->print() << ">"
-                << std::endl;
+      // std::cerr << "[Debug] Get a alloca position <" << val->print() << ", "
+      //           << static_cast<RiscvIntPhiReg *>(pos[val])->print()
+      //           << "> into the register <" << current_reg->print() << ">"
+      //           << std::endl;
     } else {
       std::cerr << "[Error] Unknown error in findReg()." << std::endl;
       std::terminate();
@@ -190,19 +194,30 @@ RiscvOperand *RegAlloca::findMem(Value *val) {
   return findMem(val, nullptr, nullptr, true);
 }
 
-RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
-  ++IntRegID;
-  RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, ++IntRegID));
-  return cur;
+RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb, RiscvInstr *instr) {
+  if (ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::PointerTyID) {
+    ++IntRegID;
+    if (IntRegID > 27)
+      IntRegID = 9;
+    RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
+    return cur;
+  }
+  else {
+    ++FloatRegID;
+    if (FloatRegID >= 32)
+      FloatRegID = 0;
+    RiscvFloatReg *cur = new RiscvFloatReg(new Register(Register::Float, FloatRegID));
+    return cur;
+  }
 }
 
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   val = this->DSU_for_Variable.query(val);
   if (pos.find(val) != pos.end()) {
-    std::cerr << "[Warning] Trying overwriting memory address map of value "
-              << std::hex << val << " (" << val->name_ << ") ["
-              << riscvVal->print() << " -> " << pos[val]->print() << "]"
-              << std::endl;
+    // std::cerr << "[Warning] Trying overwriting memory address map of value "
+    //           << std::hex << val << " (" << val->name_ << ") ["
+    //           << riscvVal->print() << " -> " << pos[val]->print() << "]"
+    //           << std::endl;
     // std::terminate();
   }
   pos[val] = riscvVal;
@@ -244,8 +259,7 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
     std::terminate();
   }
 
-  std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
-            << val->print() << ">\n";
+  // std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <" << val->print() << ">\n";
 
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;
@@ -326,7 +340,7 @@ void RegAlloca::setPointerPos(Value *val, RiscvOperand *PointerMem) {
   val = this->DSU_for_Variable.query(val);
   assert(val->type_->tid_ == Type::TypeID::PointerTyID ||
          val->type_->tid_ == Type::TypeID::ArrayTyID);
-  std::cerr << "SET POINTER: " << val->name_ << "!" << PointerMem->print()
-            << "\n";
+  // std::cerr << "SET POINTER: " << val->name_ << "!" << PointerMem->print()
+  //           << "\n";
   this->ptrPos[val] = PointerMem;
 }

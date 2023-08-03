@@ -734,8 +734,12 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
       if (dynamic_cast<Argument *>(*val) != nullptr) {
         // 不用额外分配空间
         // 整型参数
+        ParaShift-=4;
         if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
             (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
+          // Pointer type's size is set to 8 byte.
+          if ((*val)->type_->tid_ == Type::TypeID::PointerTyID)
+            ParaShift -= 4;
           if (IntParaCount < 8)
             rfoo->regAlloca->setPositionReg(
                 *val, new RiscvIntReg(
@@ -743,9 +747,6 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->setPosition(
               *val, new RiscvIntPhiReg(NamefindReg("sp"), ParaShift));
           IntParaCount++;
-          // Pointer type's size is set to 8 byte.
-          if ((*val)->type_->tid_ == Type::TypeID::PointerTyID)
-            ParaShift -= 4;
         }
         // 浮点参数
         else {
@@ -760,7 +761,6 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
           FloatParaCount++;
         }
-        ParaShift -= 4;
       }
       // 函数内参数
       else {

@@ -282,33 +282,7 @@ CallRiscvInst *RiscvBuilder::createCallInstr(RegAlloca *regAlloca,
                                              CallInst *callInstr,
                                              RiscvBasicBlock *rbb) {
   // push 指令需要寄存器
-  int argnum = callInstr->operands_.size() - 1, intRegCount = 0,
-      floatRegCount = 0;
-  for (int i = 0; i < argnum; i++) {
-    std::string name = "";
-    if (callInstr->operands_[i]->type_->tid_ != Type::FloatTyID) {
-      if (intRegCount < 8)
-        name = "a" + std::to_string(intRegCount);
-      intRegCount++;
-    } else {
-      if (floatRegCount < 8)
-        name = "fa" + std::to_string(floatRegCount);
-      floatRegCount++;
-    }
-    // 如果寄存器不超过数额，约定寄存器
-    if (!name.empty()) {
-      if (name.front() == 'a')
-        regAlloca->setPositionReg(callInstr->operands_[i],
-                                  new RiscvIntReg(NamefindReg(name)));
-      else
-        regAlloca->setPositionReg(callInstr->operands_[i],
-                                  new RiscvFloatReg(NamefindReg(name)));
-    }
-    // 相对于子函数栈帧进行栈分配
-    RiscvOperand *stackPos = static_cast<RiscvOperand *>(
-        new RiscvIntPhiReg(NamefindReg("sp"), VARIABLE_ALIGN_BYTE * i));
-    regAlloca->setPosition(callInstr->operands_[i], stackPos);
-  }
+  int argnum = callInstr->operands_.size() - 1;
   // 涉及从Function 到RISCV function转换问题（第一个参数）
   CallRiscvInst *instr =
       new CallRiscvInst(createRiscvFunction(static_cast<Function *>(
@@ -378,17 +352,6 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
     ans.push_back(new MoveRiscvInst(
         dest, regAlloca->findReg(op0, rbb, nullptr, 1, 1), rbb));
 
-    // if (op0->type_->tid_ == Type::TypeID::FloatTyID)
-    //   varOffset =
-    //       static_cast<RiscvFloatPhiReg *>(regAlloca->findPtr(op0,
-    //       rbb))->shift_;
-    // else
-    //   varOffset =
-    //       static_cast<RiscvIntPhiReg *>(regAlloca->findPtr(op0,
-    //       rbb))->shift_;
-    // ans.push_back(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI,
-    //                                   getRegOperand("sp"),
-    //                                   new RiscvConst(varOffset), dest, rbb));
     finalOffset += varOffset;
   }
   int curTypeSize = 0;
@@ -422,15 +385,6 @@ RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
                                     new RiscvConst(totalOffset), dest, rbb));
   ans.push_back(
       new StoreRiscvInst(instr->type_, dest, regAlloca->findMem(instr), rbb));
-  finalOffset += totalOffset;
-  // Set relative memory map.
-  if (isConst) {
-    // if (op0->type_->tid_ == Type::TypeID::FloatTyID)
-    //   regAlloca->setPointerPos(instr, new RiscvFloatPhiReg("sp",
-    //   finalOffset));
-    // else
-    //   regAlloca->setPointerPos(instr, new RiscvIntPhiReg("sp", finalOffset));
-  }
   return ans;
 }
 
@@ -555,10 +509,11 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       if (curInstr->type_->tid_ == Type::TypeID::IntegerTyID ||
           curInstr->type_->tid_ == Type::TypeID::PointerTyID)
         foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
-                                       new RiscvIntReg(NamefindReg("a0")));
+                                       new RiscvIntReg(NamefindReg("a0")), rbb);
       else if (curInstr->type_->tid_ == Type::TypeID::FloatTyID)
         foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
-                                       new RiscvIntReg(NamefindReg("fa0")));
+                                       new RiscvIntReg(NamefindReg("fa0")),
+                                       rbb);
       // 第一步：函数参数压栈，对于函数f(a0,a1,...,a7)，a7在高地址（24(sp)），a0在低地址（0(sp)）
       // 注意：该步中并未约定一定要求是函数寄存器a0-a7
 
@@ -603,9 +558,9 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           new StoreRiscvInst(new Type(Type::TypeID::IntegerTyID),
                              new RiscvIntReg(NamefindReg("ra")),
                              new RiscvIntPhiReg(NamefindReg("sp")), rbb));
-      // 第二步：进行函数调用，告知callee的regAlloca分配单元。
+      // 第二步：进行函数调用。
       rbb->addInstrBack(
-          this->createCallInstr(calleeFoo->regAlloca, curInstr, rbb));
+          this->createCallInstr(foo->regAlloca, curInstr, rbb));
       // 第三步：caller恢复栈帧，清除所有的函数参数
       // 首先恢复ra
       rbb->addInstrBack(new LoadRiscvInst(new Type(Type::TypeID::IntegerTyID),
@@ -712,6 +667,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
                                                   static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::BitCast) {
+          std::cerr << "[Debug] [DSU] Bitcast Instruction: Merge value "
+               << static_cast<Value *>(instr)->print() << " to "
+               << instr->operands_[0]->print() << " ." << std::endl;
           rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
                                                   instr->operands_[0]);
         }

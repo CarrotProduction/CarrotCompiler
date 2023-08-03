@@ -57,24 +57,25 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                                  RiscvOperand *specified, bool direct) {
   val = this->DSU_for_Variable.query(val);
   bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
+  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
 
   // If there is no register allocated for value then get a new one
   if (specified != nullptr)
     setPositionReg(val, specified, bb, instr);
   else if (curReg.find(val) == curReg.end()) {
-    if (val->type_->tid_ != Type::FloatTyID) {
+    if (isAlloca) { // Alloca instr's address is always unsafe.
+      setPositionReg(val, getRegOperand("t2"), bb, instr);
+    } else if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 27)
         IntRegID = 9;
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
-      writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);
     } else {
       assert(val->type_->tid_ == Type::TypeID::FloatTyID);
       ++FloatRegID;
       RiscvFloatReg *cur =
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
-      writeback(cur, bb);
       setPositionReg(val, cur, bb, instr);
     }
   } else if (!(val->is_constant() ||
@@ -91,22 +92,12 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
       findMem(val, bb, instr, direct); // Value's direct memory address
   auto current_reg = curReg[val];      // Value's current register
   auto load_type = val->type_;
-  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
   if (load) {
     // Load before usage.
     if (mem_addr != nullptr) {
-      if (isAlloca) {
-        bb->addInstrBefore(
-            new BinaryRiscvInst(
-                BinaryRiscvInst::ADDI, getRegOperand("sp"),
-                new RiscvConst(
-                    dynamic_cast<RiscvIntPhiReg *>(pos[val])->shift_),
-                current_reg, bb),
-            instr);
-      } else {
-        bb->addInstrBefore(
-            new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
-      }
+      bb->addInstrBefore(
+          new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
+
     } else if (val->is_constant()) {
       // If value is a int constant, create a LI instruction.
       auto cval = dynamic_cast<ConstantInt *>(val);
@@ -118,6 +109,17 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
                      "constant value which is not implemented for now."
                   << std::endl;
       }
+    } else if (isAlloca) {
+      bb->addInstrBefore(
+          new BinaryRiscvInst(
+              BinaryRiscvInst::ADDI, getRegOperand("sp"),
+              new RiscvConst(static_cast<RiscvIntPhiReg *>(pos[val])->shift_),
+              current_reg, bb),
+          instr);
+      std::cerr << "[Debug] Get a alloca position <" << val->print() << ", "
+                << static_cast<RiscvIntPhiReg *>(pos[val])->print()
+                << "> into the register <" << current_reg->print() << ">"
+                << std::endl;
     } else {
       std::cerr << "[Error] Unknown error in findReg()." << std::endl;
       std::terminate();
@@ -171,9 +173,13 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
                        instr);
     return new RiscvIntPhiReg("t5");
   }
-  // assert(pos.count(val) == 1);
+  // Cannot access to alloca's memory directly.
+  else if (direct && isAlloca)
+    return nullptr;
+
   if (pos.find(val) == pos.end())
     return nullptr;
+
   // If operand's offset value overflows, then use indirect addressing.
   auto mem_addr = static_cast<RiscvIntPhiReg *>(pos[val]);
   if (std::abs(mem_addr->shift_) >= 1024) {
@@ -198,6 +204,7 @@ RiscvOperand *RegAlloca::findNonuse(RiscvBasicBlock *bb, RiscvInstr *instr) {
 }
 
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
+  val = this->DSU_for_Variable.query(val);
   if (pos.find(val) != pos.end()) {
     std::cerr << "[Warning] Trying overwriting memory address map of value "
               << std::hex << val << " (" << val->name_ << ") ["
@@ -226,7 +233,7 @@ RiscvOperand *RegAlloca::findSpecificReg(Value *val, std::string RegName,
 
 void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg,
                                RiscvBasicBlock *bb, RiscvInstr *instr) {
-  val = DSU_for_Variable.query(val);
+  val = this->DSU_for_Variable.query(val);
   Value *old_val = getRegPosition(riscvReg);
   RiscvOperand *old_reg = getPositionReg(val);
   if (old_val != nullptr && old_val != val)
@@ -247,10 +254,6 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
   std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
             << val->print() << ">\n";
 
-  // Remove original links on value.
-  if (curReg.find(val) != curReg.end())
-    regPos.erase(curReg[val]);
-
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;
 }
@@ -260,9 +263,17 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   Value *value = getRegPosition(riscvReg);
   if (value == nullptr)
     return nullptr; // Value not found in map
+
+  value = this->DSU_for_Variable.query(value);
+
+  // Erase map info
+  regPos.erase(riscvReg);
+  curReg.erase(value);
+
   RiscvOperand *mem_addr = findMem(value);
+
   if (mem_addr == nullptr)
-    return nullptr; // Maybe an immediate value
+    return nullptr; // Maybe an immediate value or dicrect accessing alloca
 
   auto store_type = value->type_;
   auto store_instr = new StoreRiscvInst(value->type_, riscvReg, mem_addr, bb);
@@ -272,10 +283,6 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
     bb->addInstrBefore(store_instr, instr);
   else
     bb->addInstrBack(store_instr);
-
-  // Erase map info
-  regPos.erase(riscvReg);
-  curReg.erase(value);
 
   return store_instr;
 }
@@ -293,11 +300,11 @@ RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,
 Value *RegAlloca::getRegPosition(RiscvOperand *reg) {
   if (regPos.find(reg) == regPos.end())
     return nullptr;
-  return DSU_for_Variable.query(regPos[reg]);
+  return this->DSU_for_Variable.query(regPos[reg]);
 }
 
 RiscvOperand *RegAlloca::getPositionReg(Value *val) {
-  val = DSU_for_Variable.query(val);
+  val = this->DSU_for_Variable.query(val);
   if (curReg.find(val) == curReg.end())
     return nullptr;
   return curReg[val];

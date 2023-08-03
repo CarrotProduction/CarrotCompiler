@@ -243,9 +243,20 @@ std::string StoreRiscvInst::print() {
     std::terminate();
   }
   riscv_instr += this->operand_[0]->print();
-  riscv_instr += ", ";
-  riscv_instr += this->operand_[1]->print();
-  riscv_instr += "\n";
+  riscv_instr += ", ";  
+  int shift = 0;
+  if (dynamic_cast<RiscvFloatPhiReg *>(this->operand_[1]) != nullptr)
+    shift = dynamic_cast<RiscvFloatPhiReg *>(this->operand_[1])->shift_;
+  else if (dynamic_cast<RiscvIntPhiReg *>(this->operand_[1]) != nullptr)
+    shift += dynamic_cast<RiscvIntPhiReg *>(this->operand_[1])->shift_;
+  if (shift < -2048 || shift > 2047) {
+    std::string preprocess = "";
+    preprocess += "\t\tLI\tt5, " + std::to_string(shift) + "\n";
+    preprocess += "\t\tADD\tt5, sp, t5\n";
+    riscv_instr = preprocess + riscv_instr + "(t5)\n";
+  }
+  else
+    riscv_instr += this->operand_[1]->print() + "\n";
   return riscv_instr;
 }
 
@@ -267,8 +278,19 @@ std::string LoadRiscvInst::print() {
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   assert(this->operand_[1] != nullptr);
-  riscv_instr += this->operand_[1]->print();
-  riscv_instr += "\n";
+  int shift = 0;
+  if (dynamic_cast<RiscvFloatPhiReg *>(this->operand_[1]) != nullptr)
+    shift = dynamic_cast<RiscvFloatPhiReg *>(this->operand_[1])->shift_;
+  else if (dynamic_cast<RiscvIntPhiReg *>(this->operand_[1]) != nullptr)
+    shift += dynamic_cast<RiscvIntPhiReg *>(this->operand_[1])->shift_;
+  if (shift < -2048 || shift > 2047) {
+    std::string preprocess = "";
+    preprocess += "\t\tLI\tt5, " + std::to_string(shift) + "\n";
+    preprocess += "\t\tADD\tt5, sp, t5\n";
+    riscv_instr = preprocess + riscv_instr + "(t5)\n";
+  }
+  else
+    riscv_instr += this->operand_[1]->print() + "\n";
   return riscv_instr;
 }
 

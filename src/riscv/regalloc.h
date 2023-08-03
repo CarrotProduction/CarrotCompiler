@@ -141,6 +141,8 @@ public:
    * @return 返回强制关联的寄存器操作数 rs 。
    * @attention 该函数将在 Value 为 Alloca 指令时进行特殊处理，在 load=1 时将
    * Alloca 指针所指向的地址载入到分配的寄存器中。
+   * @attention 该函数将在 Value 为常量时进行特殊处理，在 load=1 时将常量通过 LI
+   * 指令载入到分配的寄存器中。
    * @attention 目前不应使用 direct 参数。
    */
   RiscvOperand *findSpecificReg(Value *val, std::string RegName,

@@ -205,6 +205,10 @@ void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
               << std::endl;
     // std::terminate();
   }
+
+  std::cerr << "[Debug] [RegAlloca] Map value <" << val->print()
+            << "> to operand <" << riscvVal->print() << ">" << std::endl;
+
   pos[val] = riscvVal;
 }
 

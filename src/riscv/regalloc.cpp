@@ -64,7 +64,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     setPositionReg(val, specified, bb, instr);
   else if (curReg.find(val) == curReg.end()) {
     if (isAlloca) { // Alloca instr's address is always unsafe.
-      setPositionReg(val, getRegOperand("t2"), bb, instr);
+      setPositionReg(val, getRegOperand("t0"), bb, instr);
     } else if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 27)

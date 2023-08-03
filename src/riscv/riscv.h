@@ -170,7 +170,7 @@ public:
   /**
    * Return if shift value overflows.
    */
-  bool overflow() { return std::abs(shift_) >= 1024; }
+  bool overflow() { return std::abs(shift_) >= 2048; }
 };
 
 // 需间接寻址得到的数据，浮点
@@ -205,7 +205,7 @@ public:
   /**
    * Return if shift value overflows.
    */
-  bool overflow() { return std::abs(shift_) >= 1024; }
+  bool overflow() { return std::abs(shift_) >= 2048; }
 };
 
 class RiscvLabel : public RiscvOperand {

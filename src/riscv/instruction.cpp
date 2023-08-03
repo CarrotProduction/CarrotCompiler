@@ -77,10 +77,10 @@ std::string BinaryRiscvInst::print() {
 
   bool overflow = false;
   if (type_ == ADDI &&
-      std::abs(static_cast<RiscvConst *>(operand_[1])->intval) >= 1024) {
+      std::abs(static_cast<RiscvConst *>(operand_[1])->intval) >= 2048) {
     overflow = true;
     type_ = ADD;
-    riscv_instr += "LI\tt5, " + operand_[1]->print();
+    riscv_instr += "LI\tt6, " + operand_[1]->print();
     riscv_instr += "\n\t\t";
   }
 
@@ -91,7 +91,7 @@ std::string BinaryRiscvInst::print() {
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   if (overflow) {
-    riscv_instr += "t5";
+    riscv_instr += "t6";
   } else {
     riscv_instr += this->operand_[1]->print();
   }
@@ -183,7 +183,7 @@ std::string ICmpSRiscvInstr::print() {
 
   if (eorne) {
     riscv_instr += "SUB\t";
-    riscv_instr += "t5";
+    riscv_instr += "t6";
     riscv_instr += ", ";
     riscv_instr += operand_[0]->print();
     riscv_instr += ", ";
@@ -200,7 +200,7 @@ std::string ICmpSRiscvInstr::print() {
     riscv_instr += this->operand_[1]->print();
     riscv_instr += "\n";
   } else {
-    riscv_instr += "t5\n";
+    riscv_instr += "t6\n";
   }
   return riscv_instr;
 }
@@ -252,9 +252,9 @@ std::string StoreRiscvInst::print() {
   bool overflow = mem_addr->overflow();
 
   if (overflow) {
-    riscv_instr += "LI\tt5, " + std::to_string(mem_addr->shift_);
+    riscv_instr += "LI\tt6, " + std::to_string(mem_addr->shift_);
     riscv_instr += "\n\t\t";
-    riscv_instr += "ADD\tt5, t5, " + mem_addr->MemBaseName;
+    riscv_instr += "ADD\tt6, t6, " + mem_addr->MemBaseName;
     riscv_instr += "\n\t\t";
   }
 
@@ -272,7 +272,7 @@ std::string StoreRiscvInst::print() {
   riscv_instr += ", ";
 
   if (overflow) {
-    riscv_instr += "(t5)";
+    riscv_instr += "(t6)";
   } else {
     riscv_instr += this->operand_[1]->print();
   }
@@ -290,9 +290,9 @@ std::string LoadRiscvInst::print() {
   bool overflow = mem_addr->overflow();
 
   if (overflow) {
-    riscv_instr += "LI\tt5, " + std::to_string(mem_addr->shift_);
+    riscv_instr += "LI\tt6, " + std::to_string(mem_addr->shift_);
     riscv_instr += "\n\t\t";
-    riscv_instr += "ADD\tt5, t5, " + mem_addr->MemBaseName;
+    riscv_instr += "ADD\tt6, t6, " + mem_addr->MemBaseName;
     riscv_instr += "\n\t\t";
   }
 
@@ -309,7 +309,7 @@ std::string LoadRiscvInst::print() {
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   if (overflow) {
-    riscv_instr += "(t5)";
+    riscv_instr += "(t6)";
   } else {
     riscv_instr += this->operand_[1]->print();
   }

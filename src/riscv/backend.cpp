@@ -389,7 +389,7 @@ RiscvInstr *RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca,
       // 存在变量参与偏移量计算
       isConst = 0;
       // 考虑目标数是int还是float
-      RiscvOperand *mulTempReg = new RiscvIntReg(NamefindReg("t6"));
+      RiscvOperand *mulTempReg = new RiscvIntReg(NamefindReg("t3"));
       rbb->addInstrBack(new MoveRiscvInst(mulTempReg, curTypeSize, rbb));
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::InstrType::MUL, regAlloca->findReg(opi, rbb, nullptr, 1),

@@ -483,10 +483,12 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     case Instruction::Xor:
       rbb->addInstrBack(this->createBinaryInstr(
           foo->regAlloca, static_cast<BinaryInst *>(instr), rbb));
+      foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::FNeg:
       rbb->addInstrBack(this->createUnaryInstr(
           foo->regAlloca, static_cast<UnaryInst *>(instr), rbb));
+      foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::PHI:
       break;
@@ -503,23 +505,25 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           foo->regAlloca, static_cast<GetElementPtrInst *>(instr), rbb);
       for (auto *x : instrSet)
         rbb->addInstrBack(x);
-      // foo->regAlloca->writeback(foo->regAlloca->findReg(instr, rbb, nullptr,
-      // 1, 0), rbb);
+      // Writeback inside solveGetElementPtr().
       break;
     }
     case Instruction::FPtoSI:
       rbb->addInstrBack(this->createFptoSiInstr(
           foo->regAlloca, static_cast<FpToSiInst *>(instr), rbb));
+      foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::SItoFP:
       rbb->addInstrBack(this->createSiToFpInstr(
           foo->regAlloca, static_cast<SiToFpInst *>(instr), rbb));
+      foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::Load: {
       auto instrSet = this->createLoadInstr(
           foo->regAlloca, static_cast<LoadInst *>(instr), rbb);
       for (auto x : instrSet)
         rbb->addInstrBack(x);
+      foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     }
     case Instruction::Store: {
@@ -527,10 +531,12 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           foo->regAlloca, static_cast<StoreInst *>(instr), rbb);
       for (auto *x : instrSet)
         rbb->addInstrBack(x);
+      // Store Instruction returns void value.
       break;
     }
     case Instruction::ICmp:
       createICMPSInstr(foo->regAlloca, static_cast<ICmpInst *>(instr), rbb);
+      foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       forward = instr;
       break;
     case Instruction::FCmp:
@@ -616,6 +622,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
         rbb->addInstrBack(
             new StoreRiscvInst(new IntegerType(32), getRegOperand("a0"),
                                foo->regAlloca->findMem(curInstr), rbb));
+        foo->regAlloca->writeback(static_cast<Value *>(curInstr), rbb);
       }
       break;
     }
@@ -780,7 +787,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           IntParaCount++;
           // Pointer type's size is set to 8 byte.
           if ((*val)->type_->tid_ == Type::TypeID::PointerTyID)
-            ParaShift += 4;
+            ParaShift -= 4;
         }
         // 浮点参数
         else {
@@ -795,7 +802,7 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
               *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
           FloatParaCount++;
         }
-        ParaShift += 4;
+        ParaShift -= 4;
       }
       // 函数内参数
       else {

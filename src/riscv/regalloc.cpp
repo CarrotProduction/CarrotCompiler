@@ -180,17 +180,6 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
   if (pos.find(val) == pos.end())
     return nullptr;
 
-  // If operand's offset value overflows, then use indirect addressing.
-  auto mem_addr = static_cast<RiscvIntPhiReg *>(pos[val]);
-  if (std::abs(mem_addr->shift_) >= 1024 && bb != nullptr) {
-    bb->addInstrBefore(
-        new MoveRiscvInst(getRegOperand("t5"), mem_addr->shift_, bb), instr);
-    bb->addInstrBefore(new BinaryRiscvInst(RiscvInstr::ADD, getRegOperand("sp"),
-                                           getRegOperand("t5"),
-                                           getRegOperand("t5"), bb),
-                       instr);
-    return new RiscvIntPhiReg("t5");
-  }
   return pos[val];
 }
 

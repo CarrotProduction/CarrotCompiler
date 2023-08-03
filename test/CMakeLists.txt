@@ -16,13 +16,22 @@ function(add_test_dir testdir)
     get_filename_component(testfile "${file}" NAME_WE)
     get_filename_component(testcate "${testdir}" NAME)
     set(testname "${testcate}_${testfile}")
-    add_test(NAME "${testname}_llir"
+    if(BUILD_IR_TESTING)
+      add_test(NAME "${testname}_llir"
+        COMMAND ${CMAKE_COMMAND}
+        -D "COMPILER=${CMAKE_BINARY_DIR}/compiler"
+        -D "RUNTIME=${CMAKE_BINARY_DIR}/runtime"
+        -D "TEST_DIR=${testdir}"
+        -D "TEST_NAME=${testfile}"
+        -P ${CMAKE_SOURCE_DIR}/cmake/LLVMIRTest.cmake)
+    endif(BUILD_IR_TESTING)
+    add_test(NAME "${testname}_asm"
       COMMAND ${CMAKE_COMMAND}
       -D "COMPILER=${CMAKE_BINARY_DIR}/compiler"
       -D "RUNTIME=${CMAKE_BINARY_DIR}/runtime"
       -D "TEST_DIR=${testdir}"
       -D "TEST_NAME=${testfile}"
-      -P ${CMAKE_SOURCE_DIR}/cmake/LLVMIRTest.cmake)
+      -P ${CMAKE_SOURCE_DIR}/cmake/RISCVTest.cmake)
   endforeach()
 endfunction()
 

@@ -8,9 +8,18 @@ Windows 用户请自行查找方案，如使用 WSL 等。
 
 首先确保您使用的 Linux 发行版上存在以下本项目的依赖项：
 
-`flex` `bison` `cmake` `make` `llvm` `clang` `gcc`
+`flex` `bison` `cmake` `make` `gcc`
 
-之后执行如下指令进行编译：
+如果需要运行 LLIR 测试，则还需要以下依赖项：
+
+`llvm` `clang`
+
+如果需要运行 RISC-V 汇编测试，则还需要以下依赖项：
+
+* Arch 用户：`qemu-user` `riscv64-linux-gnu-gcc`
+* Ubuntu 用户：`qemu-user` `crossbuild-essential-riscv64`
+
+之后在项目根目录下执行如下指令进行项目构建：
 
 ```shell
 mkdir build
@@ -20,6 +29,8 @@ cmake --build .
 ```
 
 构建将在 `build` 目录下产生 `compiler` 程序文件，即本项目实现的 Sysy 语言编译器
+
+如果构建出错，使用 `git clean -f -x` 来重置本地仓库的状态，该指令将强制删除所有未被追踪的文件/文件夹，即使它们被忽略。
 
 ## 如何测试
 

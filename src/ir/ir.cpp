@@ -117,6 +117,8 @@ bool Value::remove_used(Instruction *user, unsigned int i) {
   return true;
 }
 
+bool Value::is_constant() { return name_[0] == 0; }
+
 //-----------------------------------------------Constant-----------------------------------------------
 std::string ConstantInt::print() {
   std::string const_ir;

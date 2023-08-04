@@ -170,7 +170,7 @@ public:
   /**
    * Return if shift value overflows.
    */
-  bool overflow() { return std::abs(shift_) >= 1024; }
+  bool overflow() { return std::abs(shift_) >= 2048; }
 };
 
 // 需间接寻址得到的数据，浮点
@@ -205,7 +205,7 @@ public:
   /**
    * Return if shift value overflows.
    */
-  bool overflow() { return std::abs(shift_) >= 1024; }
+  bool overflow() { return std::abs(shift_) >= 2048; }
 };
 
 class RiscvLabel : public RiscvOperand {
@@ -293,7 +293,7 @@ public:
     addArgs(val);
     tempRange += VARIABLE_ALIGN_BYTE;
   }
-  void storeArray(int elementNum) { base_ -= VARIABLE_ALIGN_BYTE * elementNum; }
+  void storeArray(int elementNum) { base_ -= elementNum; }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
   // 默认所有寄存器不保护
   // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复

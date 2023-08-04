@@ -674,9 +674,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
                                                   static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::BitCast) {
-          std::cerr << "[Debug] [DSU] Bitcast Instruction: Merge value "
-                    << static_cast<Value *>(instr)->print() << " to "
-                    << instr->operands_[0]->print() << " ." << std::endl;
+          // std::cerr << "[Debug] [DSU] Bitcast Instruction: Merge value "
+          //           << static_cast<Value *>(instr)->print() << " to "
+          //           << instr->operands_[0]->print() << " ." << std::endl;
           rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
                                                   instr->operands_[0]);
         }
@@ -703,25 +703,26 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     int IntParaCount = 0, FloatParaCount = 0, ParaShift = 0;
 
     // 函数起始栈帧就从-4开始，在riscvFunction提前修订base的值
-    auto storeOnStack = [&](Value **val) {
+    auto storeOnStack = [&](Value *val) {
       if (val == nullptr)
         return;
-      assert(*val != nullptr);
-      if (haveAllocated.count(*val))
+      if (haveAllocated.count(val))
         return;
       // 几种特殊类型，不需要分栈空间
-      if (dynamic_cast<Function *>(*val) != nullptr)
+      if (dynamic_cast<Function *>(val) != nullptr)
         return;
-      if (dynamic_cast<BasicBlock *>(*val) != nullptr)
+      if (dynamic_cast<BasicBlock *>(val) != nullptr)
+        return;
+      if (val->type_->tid_ == Type::LabelTyID || val->type_->tid_ == Type::VoidTyID)
         return;
       // 注意：函数参数不用分配，而是直接指定！
       // 这里设定是：v开头的是局部变量，arg开头的是函数寄存器变量
       // 无名常量
-      if ((*val)->name_.empty())
+      if (val->name_.empty())
         return;
       // 全局变量不用给他保存栈上地址，它本身就有对应的内存地址，直接忽略
-      if (dynamic_cast<GlobalVariable *>(*val) != nullptr) {
-        auto curType = (*val)->type_;
+      if (dynamic_cast<GlobalVariable *>(val) != nullptr) {
+        auto curType = (val)->type_;
         while (1) {
           if (curType->tid_ == Type::TypeID::ArrayTyID)
             curType = static_cast<ArrayType *>(curType)->contained_;
@@ -731,39 +732,39 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
             break;
         }
         if (curType->tid_ != Type::TypeID::FloatTyID)
-          rfoo->regAlloca->setPosition(*val,
-                                       new RiscvIntPhiReg((*val)->name_, 0, 1));
+          rfoo->regAlloca->setPosition(val,
+                                       new RiscvIntPhiReg(val->name_, 0, 1));
         else
           rfoo->regAlloca->setPosition(
-              *val, new RiscvFloatPhiReg((*val)->name_, 0, 1));
+              val, new RiscvFloatPhiReg((val)->name_, 0, 1));
         return;
       }
       // 除了全局变量之外的参数
-      if (dynamic_cast<Argument *>(*val) != nullptr) {
+      if (dynamic_cast<Argument *>(val) != nullptr) {
         // 不用额外分配空间
         // 整型参数
-        if ((*val)->type_->tid_ == Type::TypeID::IntegerTyID ||
-            (*val)->type_->tid_ == Type::TypeID::PointerTyID) {
+        if (val->type_->tid_ == Type::TypeID::IntegerTyID ||
+            val->type_->tid_ == Type::TypeID::PointerTyID) {
           // Pointer type's size is set to 8 byte.
           if (IntParaCount < 8)
             rfoo->regAlloca->setPositionReg(
-                *val, getRegOperand("a" + std::to_string(IntParaCount)));
+                val, getRegOperand("a" + std::to_string(IntParaCount)));
           rfoo->regAlloca->setPosition(
-              *val, new RiscvIntPhiReg(NamefindReg("sp"), ParaShift));
+              val, new RiscvIntPhiReg(NamefindReg("sp"), ParaShift));
           IntParaCount++;
-          if ((*val)->type_->tid_ == Type::TypeID::PointerTyID)
+          if (val->type_->tid_ == Type::TypeID::PointerTyID)
             ParaShift += 4;
         }
         // 浮点参数
         else {
-          assert((*val)->type_->tid_ == Type::TypeID::FloatTyID);
+          assert(val->type_->tid_ == Type::TypeID::FloatTyID);
           // 寄存器有
           if (FloatParaCount < 8) {
             rfoo->regAlloca->setPositionReg(
-                *val, getRegOperand("fa" + std::to_string(FloatParaCount)));
+                val, getRegOperand("fa" + std::to_string(FloatParaCount)));
           }
           rfoo->regAlloca->setPosition(
-              *val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
+              val, new RiscvFloatPhiReg(NamefindReg("sp"), ParaShift));
           FloatParaCount++;
         }
         ParaShift += 4;
@@ -773,28 +774,24 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
         int curSP = rfoo->querySP();
         RiscvOperand *stackPos = static_cast<RiscvOperand *>(
             new RiscvIntPhiReg(NamefindReg("sp"), curSP));
-        rfoo->regAlloca->setPosition(static_cast<Value *>(*val), stackPos);
+        rfoo->regAlloca->setPosition(static_cast<Value *>(val), stackPos);
         rfoo->addTempVar(stackPos);
       }
-      haveAllocated[*val] = 1;
+      haveAllocated[val] = 1;
     };
 
     // 关联函数参数、寄存器与内存
     for (Value *arg : foo->arguments_)
-      storeOnStack(&arg);
-
+      storeOnStack(arg);
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_)
         if (instr->op_id_ != Instruction::OpID::PHI &&
             instr->op_id_ != Instruction::OpID::ZExt &&
             instr->op_id_ != Instruction::OpID::Alloca) {
           // 所有的函数局部变量都要压入栈
-          Value *tempPtr = static_cast<Value *>(instr);
-          storeOnStack(&tempPtr);
-          for (auto *val : instr->operands_) {
-            tempPtr = static_cast<Value *>(val);
-            storeOnStack(&tempPtr);
-          }
+          storeOnStack(static_cast<Value *>(instr));
+          for (auto *val : instr->operands_)
+            storeOnStack(static_cast<Value *>(val));
         }
     for (BasicBlock *bb : foo->basic_blocks_)
       for (Instruction *instr : bb->instr_list_)
@@ -802,13 +799,12 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           // 分配指针，并且将指针地址也同步保存
           auto curInstr = static_cast<AllocaInst *>(instr);
           int curTypeSize = calcTypeSize(curInstr->alloca_ty_);
-          rfoo->storeArray(curTypeSize);
+          rfoo->storeArray(curTypeSize >> 2);
           int curSP = rfoo->querySP();
           RiscvOperand *ptrPos = new RiscvIntPhiReg(NamefindReg("sp"), curSP);
           rfoo->regAlloca->setPosition(static_cast<Value *>(instr), ptrPos);
           rfoo->regAlloca->setPointerPos(static_cast<Value *>(instr), ptrPos);
         }
-
     // Temporarily protect all registers realted to arguments.
     for (auto arg : foo->arguments_) {
       auto reg = rfoo->regAlloca->getPositionReg(arg);

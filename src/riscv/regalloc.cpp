@@ -2,14 +2,15 @@
 #include "instruction.h"
 #include "riscv.h"
 
-int IntRegID = 9, FloatRegID = 0; // 测试阶段使用
+int IntRegID = 9, FloatRegID = 7; // 测试阶段使用
 
 // 寄存器堆分配工作
 
 // 根据输入的寄存器的名字`reg`返回相应的寄存器类指针。
-// TODO:
-// 需要涉及sp、fp、a0-a7（整数函数参数）、fa0-fa7（浮点函数参数）等寄存器。
 Register *NamefindReg(std::string reg) {
+  if (reg.size() > 4)
+    return nullptr;
+
   Register *reg_to_ret = new Register(Register::Int, 0);
 
   // Check if int registers
@@ -26,9 +27,7 @@ Register *NamefindReg(std::string reg) {
     if (reg_to_ret->print() == reg)
       return reg_to_ret;
   }
-  std::cerr << "[Fatal error] Register <" << reg << "> not exists."
-            << std::endl;
-  std::terminate();
+
   return nullptr;
 }
 
@@ -62,10 +61,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   // If there is no register allocated for value then get a new one
   if (specified != nullptr)
     setPositionReg(val, specified, bb, instr);
-  else if (curReg.find(val) == curReg.end()) {
-    if (isAlloca) { // Alloca instr's address is always unsafe.
-      setPositionReg(val, getRegOperand("t2"), bb, instr);
-    } else if (val->type_->tid_ != Type::FloatTyID) {
+  else if (curReg.find(val) == curReg.end() || isAlloca ||
+           val->is_constant()) { // Alloca and constant value is always unsafe.
+    if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 27)
         IntRegID = 9;
@@ -74,14 +72,15 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     } else {
       assert(val->type_->tid_ == Type::TypeID::FloatTyID);
       ++FloatRegID;
-      if (FloatRegID >= 32)
-        FloatRegID = 0;
+      if (FloatRegID == 10)
+        FloatRegID += 8;
+      if (FloatRegID > 27)
+        FloatRegID = 8;
       RiscvFloatReg *cur =
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
       setPositionReg(val, cur, bb, instr);
     }
-  } else if (!(val->is_constant() ||
-               val->type_->tid_ == val->type_->PointerTyID || load))
+  } else if (!load)
     return curReg[val];
 
   // ! Though all registers are considered unsafe, there is no way
@@ -107,7 +106,8 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
         bb->addInstrBefore(new MoveRiscvInst(current_reg, cval->value_, bb),
                            instr);
       else if (dynamic_cast<ConstantFloat *>(val) != nullptr)
-        bb->addInstrBefore(new MoveRiscvInst(current_reg, this->findMem(val), bb), instr);
+        bb->addInstrBefore(
+            new MoveRiscvInst(current_reg, this->findMem(val), bb), instr);
       else {
         std::cerr << "[Warning] Trying to find a register for unknown type of "
                      "constant value which is not implemented for now."
@@ -142,13 +142,15 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
 RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr, bool direct) {
   val = this->DSU_for_Variable.query(val);
-  bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
-  bool isPointer = val->type_->tid_ == val->type_->PointerTyID;
-  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
   if (pos.count(val) == 0 && !val->is_constant()) {
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
               << ")'s memory map not found." << std::endl;
   }
+  bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
+  bool isPointer = val->type_->tid_ == val->type_->PointerTyID;
+  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
+  // All float constant considered as global variables for now.
+  isGVar = isGVar || dynamic_cast<ConstantFloat *>(val) != nullptr;
   // Always loading global variable's address into t5 when execute findMem().
   if (isGVar) {
     if (bb == nullptr) {
@@ -188,25 +190,23 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
 }
 
 RiscvOperand *RegAlloca::findMem(Value *val) {
-  // std::cerr << "[Warning] [RegAlloca] You're using an unsafe function "
-  //              "overload. Use findMem(val, bb, instr, dicret) instead."
-  //           << std::endl;
   return findMem(val, nullptr, nullptr, true);
 }
 
-RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb, RiscvInstr *instr) {
+RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb,
+                                    RiscvInstr *instr) {
   if (ty->tid_ == Type::IntegerTyID || ty->tid_ == Type::PointerTyID) {
     ++IntRegID;
     if (IntRegID > 27)
       IntRegID = 9;
     RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
     return cur;
-  }
-  else {
+  } else {
     ++FloatRegID;
     if (FloatRegID >= 32)
       FloatRegID = 0;
-    RiscvFloatReg *cur = new RiscvFloatReg(new Register(Register::Float, FloatRegID));
+    RiscvFloatReg *cur =
+        new RiscvFloatReg(new Register(Register::Float, FloatRegID));
     return cur;
   }
 }
@@ -214,10 +214,10 @@ RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb, RiscvInstr *i
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   val = this->DSU_for_Variable.query(val);
   if (pos.find(val) != pos.end()) {
-    // std::cerr << "[Warning] Trying overwriting memory address map of value "
-    //           << std::hex << val << " (" << val->name_ << ") ["
-    //           << riscvVal->print() << " -> " << pos[val]->print() << "]"
-    //           << std::endl;
+    std::cerr << "[Warning] Trying overwriting memory address map of value "
+              << std::hex << val << " (" << val->name_ << ") ["
+              << riscvVal->print() << " -> " << pos[val]->print() << "]"
+              << std::endl;
     // std::terminate();
   }
 
@@ -263,7 +263,8 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
     std::terminate();
   }
 
-  // std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <" << val->print() << ">\n";
+  std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
+            << val->print() << ">\n";
 
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;

@@ -140,6 +140,15 @@ std::string ConstantFloat::print() {
   return fp_ir;
 }
 
+std::string ConstantFloat::print32() {
+  std::stringstream fp_ir_ss;
+  std::string fp_ir;
+  float val = this->value_;
+  fp_ir_ss << "0x" << std::hex << *(uint32_t *)&val << std::endl;
+  fp_ir_ss >> fp_ir;
+  return fp_ir;
+}
+
 std::string ConstantArray::print() {
   std::string const_ir;
   const_ir += "[";

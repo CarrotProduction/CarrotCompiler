@@ -5,23 +5,24 @@
 // IR的指令转变到RISV的指令
 std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::ADD, "ADD"},         {RiscvInstr::ADDI, "ADDI"},
-    {RiscvInstr::SUB, "SUB"},         {RiscvInstr::SUBI, "SUBI"},
-    {RiscvInstr::FADD, "FADD.S"},     {RiscvInstr::FSUB, "FSUB.S"},
-    {RiscvInstr::FMUL, "FMUL.S"},     {RiscvInstr::FDIV, "FDIV.S"},
-    {RiscvInstr::MUL, "MUL"},         {RiscvInstr::DIV, "DIV"},
-    {RiscvInstr::REM, "REM"},         {RiscvInstr::AND, "AND"},
-    {RiscvInstr::OR, "OR"},           {RiscvInstr::ANDI, "ANDI"},
-    {RiscvInstr::ORI, "ORI"},         {RiscvInstr::XOR, "XOR"},
-    {RiscvInstr::XORI, "XORI"},       {RiscvInstr::RET, "RET"},
-    {RiscvInstr::FPTOSI, "FCVT.W.S"}, {RiscvInstr::SITOFP, "FCVT.S.W"},
-    {RiscvInstr::FMV, "FMV.S"},       {RiscvInstr::CALL, "CALL"},
-    {RiscvInstr::LI, "LI"},           {RiscvInstr::MOV, "MV"},
-    {RiscvInstr::PUSH, "PUSH"},       {RiscvInstr::POP, "POP"},
-    {RiscvInstr::SW, "SW"},           {RiscvInstr::LW, "LW"},
-    {RiscvInstr::FSW, "FSW"},         {RiscvInstr::FLW, "FLW"},
-    {RiscvInstr::SHL, "SLL"},         {RiscvInstr::ASHR, "SRA"},
-    {RiscvInstr::SHLI, "SLLI"},       {RiscvInstr::LSHR, "SRL"},
-    {RiscvInstr::ASHRI, "SRAI"},      {RiscvInstr::LSHRI, "SRLI"},
+    {RiscvInstr::ADDIW, "ADDIW"},     {RiscvInstr::SUB, "SUB"},
+    {RiscvInstr::SUBI, "SUBI"},       {RiscvInstr::FADD, "FADD.S"},
+    {RiscvInstr::FSUB, "FSUB.S"},     {RiscvInstr::FMUL, "FMUL.S"},
+    {RiscvInstr::FDIV, "FDIV.S"},     {RiscvInstr::MUL, "MUL"},
+    {RiscvInstr::DIV, "DIV"},         {RiscvInstr::REM, "REM"},
+    {RiscvInstr::AND, "AND"},         {RiscvInstr::OR, "OR"},
+    {RiscvInstr::ANDI, "ANDI"},       {RiscvInstr::ORI, "ORI"},
+    {RiscvInstr::XOR, "XOR"},         {RiscvInstr::XORI, "XORI"},
+    {RiscvInstr::RET, "RET"},         {RiscvInstr::FPTOSI, "FCVT.W.S"},
+    {RiscvInstr::SITOFP, "FCVT.S.W"}, {RiscvInstr::FMV, "FMV.S"},
+    {RiscvInstr::CALL, "CALL"},       {RiscvInstr::LI, "LI"},
+    {RiscvInstr::MOV, "MV"},          {RiscvInstr::PUSH, "PUSH"},
+    {RiscvInstr::POP, "POP"},         {RiscvInstr::SW, "SW"},
+    {RiscvInstr::LW, "LW"},           {RiscvInstr::FSW, "FSW"},
+    {RiscvInstr::FLW, "FLW"},         {RiscvInstr::SHL, "SLL"},
+    {RiscvInstr::ASHR, "SRA"},        {RiscvInstr::SHLI, "SLLI"},
+    {RiscvInstr::LSHR, "SRL"},        {RiscvInstr::ASHRI, "SRAI"},
+    {RiscvInstr::LSHRI, "SRLI"},
 };
 // Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
@@ -41,19 +42,20 @@ const std::map<ICmpInst::ICmpOp, ICmpInst::ICmpOp> ICmpRiscvInstr::ICmpOpEquiv =
 const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpName = {
     {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
     {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
-    {FCmpInst::FCmpOp::FCMP_OGE, "FLT.S"},
-    {FCmpInst::FCmpOp::FCMP_UGE, "FLT.S"},
-    {FCmpInst::FCmpOp::FCMP_ORD, "FCLASS.S"},
-    {FCmpInst::FCmpOp::FCMP_UNO, "FCLASS.S"}, // 取反
     {FCmpInst::FCmpOp::FCMP_OLE, "FLE.S"},
     {FCmpInst::FCmpOp::FCMP_ULE, "FLE.S"},
-    {FCmpInst::FCmpOp::FCMP_OGT, "FLE.S"}, // 取反
-    {FCmpInst::FCmpOp::FCMP_UGT, "FLE.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_ORD, "FCLASS.S"},
+    {FCmpInst::FCmpOp::FCMP_UNO, "FCLASS.S"}, // 取反
     {FCmpInst::FCmpOp::FCMP_OEQ, "FEQ.S"},
     {FCmpInst::FCmpOp::FCMP_UEQ, "FEQ.S"},
     {FCmpInst::FCmpOp::FCMP_ONE, "FEQ.S"}, // 取反
     {FCmpInst::FCmpOp::FCMP_UNE, "FEQ.S"}  // 取反
 };
+const std::map<FCmpInst::FCmpOp, FCmpInst::FCmpOp> FCmpRiscvInstr::FCmpOpEquiv =
+    {{FCmpInst::FCmpOp::FCMP_OGT, FCmpInst::FCmpOp::FCMP_OLT},
+     {FCmpInst::FCmpOp::FCMP_UGT, FCmpInst::FCmpOp::FCMP_ULT},
+     {FCmpInst::FCmpOp::FCMP_OGE, FCmpInst::FCmpOp::FCMP_OLE},
+     {FCmpInst::FCmpOp::FCMP_UGE, FCmpInst::FCmpOp::FCMP_ULE}};
 std::string print_as_op(Value *v, bool print_ty);
 std::string print_cmp_type(ICmpInst::ICmpOp op);
 std::string print_fcmp_type(FCmpInst::FCmpOp op);
@@ -79,7 +81,7 @@ std::string BinaryRiscvInst::print() {
       std::abs(static_cast<RiscvConst *>(operand_[1])->intval) >= 1024) {
     overflow = true;
     type_ = ADD;
-    riscv_instr += "LI\tt5, " + operand_[1]->print();
+    riscv_instr += "LI\tt6, " + operand_[1]->print();
     riscv_instr += "\n\t\t";
   }
 
@@ -90,7 +92,7 @@ std::string BinaryRiscvInst::print() {
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   if (overflow) {
-    riscv_instr += "t5";
+    riscv_instr += "t6";
   } else {
     riscv_instr += this->operand_[1]->print();
   }
@@ -182,7 +184,7 @@ std::string ICmpSRiscvInstr::print() {
 
   if (eorne) {
     riscv_instr += "SUB\t";
-    riscv_instr += "t5";
+    riscv_instr += "t6";
     riscv_instr += ", ";
     riscv_instr += operand_[0]->print();
     riscv_instr += ", ";
@@ -199,48 +201,21 @@ std::string ICmpSRiscvInstr::print() {
     riscv_instr += this->operand_[1]->print();
     riscv_instr += "\n";
   } else {
-    riscv_instr += "t5\n";
+    riscv_instr += "t6\n";
   }
   return riscv_instr;
 }
 
 std::string FCmpRiscvInstr::print() {
-  if (this->fcmp_op_ == FCmpInst::FCMP_FALSE)
-    return "\t\tJ\t" +
-           static_cast<RiscvBasicBlock *>(this->operand_[4])->name_ + "\n";
-  else if (this->fcmp_op_ == FCmpInst::FCMP_TRUE)
-    return "\t\tJ\t" +
-           static_cast<RiscvBasicBlock *>(this->operand_[3])->name_ + "\n";
-  // 第一条指令
   std::string riscv_instr = "\t\t";
+
   riscv_instr += FCmpOpName.at(this->fcmp_op_) + "\t";
+  riscv_instr += this->result_->print();
+  riscv_instr += ", ";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
-  riscv_instr += ", ";
-  riscv_instr += this->operand_[2]->print();
-  riscv_instr += "\n\t\t";
-  // 第二条指令
-  // 取反指令
-  if (this->fcmp_op_ == FCmpInst::FCMP_UNO ||
-      this->fcmp_op_ == FCmpInst::FCMP_OGT ||
-      this->fcmp_op_ == FCmpInst::FCMP_UGT ||
-      this->fcmp_op_ == FCmpInst::FCMP_ONE ||
-      this->fcmp_op_ == FCmpInst::FCMP_UNE)
-    std::swap(this->operand_[3], this->operand_[4]);
-  riscv_instr += "BNE\t" + this->operand_[2]->print() + ", ZERO, " +
-                 static_cast<RiscvBasicBlock *>(this->operand_[3])->name_ +
-                 "\n";
-  auto falseLink = dynamic_cast<RiscvBasicBlock *>(this->operand_[4]);
-  // Force Jump
-  riscv_instr += "\t\tJ\t" + falseLink->name_ + "\n";
-  return riscv_instr;
-}
-
-std::string JumpRiscvInstr::print() {
-  std::string riscv_instr =
-      "\t\tJ\t" + static_cast<RiscvBasicBlock *>(this->operand_[0])->name_ +
-      "\n";
+  riscv_instr += "\n";
   return riscv_instr;
 }
 
@@ -251,9 +226,9 @@ std::string StoreRiscvInst::print() {
   bool overflow = mem_addr->overflow();
 
   if (overflow) {
-    riscv_instr += "LI\tt5, " + std::to_string(mem_addr->shift_);
+    riscv_instr += "LI\tt6, " + std::to_string(mem_addr->shift_);
     riscv_instr += "\n\t\t";
-    riscv_instr += "ADD\tt5, t5, " + mem_addr->MemBaseName;
+    riscv_instr += "ADD\tt6, t6, " + mem_addr->MemBaseName;
     riscv_instr += "\n\t\t";
   }
 
@@ -271,7 +246,7 @@ std::string StoreRiscvInst::print() {
   riscv_instr += ", ";
 
   if (overflow) {
-    riscv_instr += "(t5)";
+    riscv_instr += "(t6)";
   } else {
     riscv_instr += this->operand_[1]->print();
   }
@@ -289,9 +264,9 @@ std::string LoadRiscvInst::print() {
   bool overflow = mem_addr->overflow();
 
   if (overflow) {
-    riscv_instr += "LI\tt5, " + std::to_string(mem_addr->shift_);
+    riscv_instr += "LI\tt6, " + std::to_string(mem_addr->shift_);
     riscv_instr += "\n\t\t";
-    riscv_instr += "ADD\tt5, t5, " + mem_addr->MemBaseName;
+    riscv_instr += "ADD\tt6, t6, " + mem_addr->MemBaseName;
     riscv_instr += "\n\t\t";
   }
 
@@ -308,7 +283,7 @@ std::string LoadRiscvInst::print() {
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   if (overflow) {
-    riscv_instr += "(t5)";
+    riscv_instr += "(t6)";
   } else {
     riscv_instr += this->operand_[1]->print();
   }
@@ -326,7 +301,7 @@ std::string MoveRiscvInst::print() {
     riscv_instr += "MV\t";
   // 浮点数
   else
-    riscv_instr += "FMV\t";
+    riscv_instr += "FMV.S\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -336,18 +311,20 @@ std::string MoveRiscvInst::print() {
 
 std::string SiToFpRiscvInstr::print() {
   std::string riscv_instr = "\t\tFCVT.S.W\t";
-  riscv_instr += this->operand_[0]->print();
-  riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[0]->print();
   riscv_instr += "\n";
   return riscv_instr;
 }
 
 std::string FpToSiRiscvInstr::print() {
   std::string riscv_instr = "\t\tFCVT.W.S\t";
+  riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
-  riscv_instr += this->operand_[1]->print();
+  riscv_instr += "rtz";   // round to zero.
   riscv_instr += "\n";
   return riscv_instr;
 }
@@ -355,5 +332,21 @@ std::string FpToSiRiscvInstr::print() {
 std::string LoadAddressRiscvInstr::print() {
   std::string riscv_instr =
       "\t\tLA\t" + this->operand_[0]->print() + ", " + this->name_ + "\n";
+  return riscv_instr;
+}
+
+std::string BranchRiscvInstr::print() {
+  std::string riscv_instr = "\t\t";
+  // If single label operand then force jump
+  if (operand_[0] != nullptr) {
+    riscv_instr += "BGTZ\t";
+    riscv_instr += operand_[0]->print();
+    riscv_instr += ", ";
+    riscv_instr += static_cast<RiscvBasicBlock *>(operand_[1])->name_;
+    riscv_instr += "\n\t\t";
+  }
+  riscv_instr += "J\t";
+  riscv_instr += static_cast<RiscvBasicBlock *>(operand_[2])->name_;
+  riscv_instr += "\n";
   return riscv_instr;
 }

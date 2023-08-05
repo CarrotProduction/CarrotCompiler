@@ -75,7 +75,7 @@ std::string RiscvGlobalVariable::print(bool print_name, Constant *initVal) {
   }
   // 浮点
   else if (initVal->type_->tid_ == Type::TypeID::FloatTyID) {
-    std::string valString = dynamic_cast<ConstantFloat *>(initVal)->print();
+    std::string valString = dynamic_cast<ConstantFloat *>(initVal)->print32();
     while (valString.length() < 10)
       valString += "0";
     code += "\t.word\t" + valString.substr(0, 10) + "\n";

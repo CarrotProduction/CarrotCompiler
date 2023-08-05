@@ -123,7 +123,7 @@ class RiscvIntReg : public RiscvOperand {
 public:
   Register *reg_;
   RiscvIntReg(Register *reg) : RiscvOperand(IntReg), reg_(reg) {
-    // assert(reg_->regtype_ == Register::Int); // 判断整型寄存器存储
+    assert(reg_->regtype_ == Register::Int); // 判断整型寄存器存储
   }
   std::string print() { return reg_->print(); }
 };
@@ -132,7 +132,7 @@ class RiscvFloatReg : public RiscvOperand {
 
 public:
   Register *reg_;
-  RiscvFloatReg(Register *reg) : RiscvOperand(IntReg), reg_(reg) {
+  RiscvFloatReg(Register *reg) : RiscvOperand(FloatReg), reg_(reg) {
     assert(reg_->regtype_ == Register::Float); // 判断整型寄存器存储
   }
   std::string print() { return reg_->print(); }
@@ -293,7 +293,7 @@ public:
     addArgs(val);
     tempRange += VARIABLE_ALIGN_BYTE;
   }
-  void storeArray(int elementNum) { base_ -= VARIABLE_ALIGN_BYTE * elementNum; }
+  void storeArray(int elementNum) { base_ -= elementNum; }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
   // 默认所有寄存器不保护
   // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复
@@ -334,5 +334,5 @@ public:
 
 Type *findPtrType(Type *ty);
 
-RiscvFunction* createSyslibFunc(Function *foo);
+RiscvFunction *createSyslibFunc(Function *foo);
 #endif // !RISCVH

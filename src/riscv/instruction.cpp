@@ -238,13 +238,6 @@ std::string FCmpRiscvInstr::print() {
   return riscv_instr;
 }
 
-std::string JumpRiscvInstr::print() {
-  std::string riscv_instr =
-      "\t\tJ\t" + static_cast<RiscvBasicBlock *>(this->operand_[0])->name_ +
-      "\n";
-  return riscv_instr;
-}
-
 std::string StoreRiscvInst::print() {
   std::string riscv_instr = "\t\t";
 

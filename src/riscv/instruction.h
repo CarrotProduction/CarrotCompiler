@@ -373,16 +373,6 @@ public:
   FCmpInst::FCmpOp fcmp_op_;
   std::string print() override;
 };
-
-class JumpRiscvInstr : public RiscvInstr {
-public:
-  JumpRiscvInstr(RiscvBasicBlock *trueLink, RiscvBasicBlock *bb)
-      : RiscvInstr(JMP, 1) {
-    setOperand(0, trueLink);
-  }
-  std::string print() override;
-};
-
 class FpToSiRiscvInstr : public RiscvInstr {
 public:
   FpToSiRiscvInstr(RiscvOperand *Source, RiscvOperand *Target,

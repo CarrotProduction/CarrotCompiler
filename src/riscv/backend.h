@@ -65,8 +65,6 @@ public:
                                       RiscvBasicBlock *rbb);
   CallRiscvInst *createCallInstr(RegAlloca *regAlloca, CallInst *callInstr,
                                  RiscvBasicBlock *rbb);
-  JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca, BranchInst *brInstr,
-                                  RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
   ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca, ReturnInst *returnInstr,
                                   RiscvBasicBlock *rbb);

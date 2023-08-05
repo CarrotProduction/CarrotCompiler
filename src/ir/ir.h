@@ -163,6 +163,7 @@ public:
   ConstantFloat(Type *ty, float val) : Constant(ty, ""), value_(val) {}
   virtual std::string print() override;
   float value_;
+  std::string print32();
 };
 
 //[3 x i32] [i32 42, i32 11, i32 74]

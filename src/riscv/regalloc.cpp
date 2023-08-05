@@ -2,14 +2,15 @@
 #include "instruction.h"
 #include "riscv.h"
 
-int IntRegID = 9, FloatRegID = 0; // 测试阶段使用
+int IntRegID = 9, FloatRegID = 7; // 测试阶段使用
 
 // 寄存器堆分配工作
 
 // 根据输入的寄存器的名字`reg`返回相应的寄存器类指针。
-// TODO:
-// 需要涉及sp、fp、a0-a7（整数函数参数）、fa0-fa7（浮点函数参数）等寄存器。
 Register *NamefindReg(std::string reg) {
+  if (reg.size() > 4)
+    return nullptr;
+
   Register *reg_to_ret = new Register(Register::Int, 0);
 
   // Check if int registers
@@ -26,9 +27,7 @@ Register *NamefindReg(std::string reg) {
     if (reg_to_ret->print() == reg)
       return reg_to_ret;
   }
-  std::cerr << "[Fatal error] Register <" << reg << "> not exists."
-            << std::endl;
-  std::terminate();
+
   return nullptr;
 }
 
@@ -73,8 +72,10 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     } else {
       assert(val->type_->tid_ == Type::TypeID::FloatTyID);
       ++FloatRegID;
-      if (FloatRegID >= 32)
-        FloatRegID = 0;
+      if (FloatRegID == 10)
+        FloatRegID += 8;
+      if (FloatRegID > 27)
+        FloatRegID = 8;
       RiscvFloatReg *cur =
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
       setPositionReg(val, cur, bb, instr);
@@ -141,13 +142,15 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
 RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr, bool direct) {
   val = this->DSU_for_Variable.query(val);
-  bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
-  bool isPointer = val->type_->tid_ == val->type_->PointerTyID;
-  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
   if (pos.count(val) == 0 && !val->is_constant()) {
     std::cerr << "[Warning] Value " << std::hex << val << " (" << val->name_
               << ")'s memory map not found." << std::endl;
   }
+  bool isGVar = dynamic_cast<GlobalVariable *>(val) != nullptr;
+  bool isPointer = val->type_->tid_ == val->type_->PointerTyID;
+  bool isAlloca = dynamic_cast<AllocaInst *>(val) != nullptr;
+  // All float constant considered as global variables for now.
+  isGVar = isGVar || dynamic_cast<ConstantFloat *>(val) != nullptr;
   // Always loading global variable's address into t5 when execute findMem().
   if (isGVar) {
     if (bb == nullptr) {

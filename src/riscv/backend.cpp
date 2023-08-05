@@ -243,7 +243,7 @@ ICmpRiscvInstr *RiscvBuilder::createICMPSInstr(RegAlloca *regAlloca,
       icmpInstr->icmp_op_,
       regAlloca->findReg(icmpInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(icmpInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0));
+      regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0), rbb);
   rbb->addInstrBack(instr);
   if (inv) {
     auto instr_reg = regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0);
@@ -253,19 +253,61 @@ ICmpRiscvInstr *RiscvBuilder::createICMPSInstr(RegAlloca *regAlloca,
   return instr;
 }
 
-// FCMP处理上和ICMP类似，但是在最后生成语句的时候是输出两句
-FCmpRiscvInstr *RiscvBuilder::createFCMPInstr(RegAlloca *regAlloca,
-                                              FCmpInst *fcmpInstr,
-                                              BranchInst *brInstr,
-                                              RiscvBasicBlock *rbb) {
+RiscvInstr *RiscvBuilder::createFCMPInstr(RegAlloca *regAlloca,
+                                          FCmpInst *fcmpInstr,
+                                          RiscvBasicBlock *rbb) {
+  // Deal with always true
+  if (fcmpInstr->fcmp_op_ == fcmpInstr->FCMP_TRUE ||
+      fcmpInstr->fcmp_op_ == fcmpInstr->FCMP_FALSE) {
+    auto instr =
+        new MoveRiscvInst(regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0),
+                          fcmpInstr->fcmp_op_ == fcmpInstr->FCMP_TRUE, rbb);
+    rbb->addInstrBack(instr);
+    return instr;
+  }
+  bool swap = FCmpRiscvInstr::FCmpOpName.count(fcmpInstr->fcmp_op_) == 0;
+  if (swap) {
+    std::swap(fcmpInstr->operands_[0], fcmpInstr->operands_[1]);
+    fcmpInstr->fcmp_op_ =
+        FCmpRiscvInstr::FCmpOpEquiv.find(fcmpInstr->fcmp_op_)->second;
+  }
+  bool inv = false;
+  bool inv_classify = false;
+  switch (fcmpInstr->fcmp_op_) {
+  case FCmpInst::FCMP_ONE:
+  case FCmpInst::FCMP_UNE:
+    inv = true;
+  default:
+    break;
+  }
+  switch (fcmpInstr->fcmp_op_) {
+  case FCmpInst::FCMP_OEQ:
+  case FCmpInst::FCMP_OGT:
+  case FCmpInst::FCMP_OGE:
+  case FCmpInst::FCMP_OLT:
+  case FCmpInst::FCMP_OLE:
+  case FCmpInst::FCMP_ONE:
+  case FCmpInst::FCMP_ORD:
+    inv_classify = true;
+  default:
+    break;
+  }
+
+  if (inv_classify) {
+    std::cerr << "[Warning] Not implemented FCLASS yet.\n";
+  }
   FCmpRiscvInstr *instr = new FCmpRiscvInstr(
       fcmpInstr->fcmp_op_,
       regAlloca->findReg(fcmpInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(fcmpInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findNonuse(new Type(Type::IntegerTyID), rbb, nullptr),
-      createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[1])),
-      createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[2])),
-      rbb);
+      regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0), rbb);
+  rbb->addInstrBack(instr);
+  if (inv) {
+    auto instr_reg = regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0);
+    rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::XORI, instr_reg,
+                                          new RiscvConst(1), instr_reg, rbb));
+    return instr;
+  }
   return instr;
 }
 
@@ -389,9 +431,9 @@ RiscvInstr *RiscvBuilder::solveGetElementPtr(RegAlloca *regAlloca,
     }
   }
   // if (totalOffset > 0)
-  rbb->addInstrBack(new BinaryRiscvInst(
-      RiscvInstr::InstrType::ADDI, dest, new RiscvConst(totalOffset),
-      dest, rbb));
+  rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::InstrType::ADDI, dest,
+                                        new RiscvConst(totalOffset), dest,
+                                        rbb));
   rbb->addInstrBack(
       new StoreRiscvInst(instr->type_, dest, regAlloca->findMem(instr), rbb));
   return nullptr;
@@ -487,8 +529,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::FCmp:
-      std::cerr << "[Error] Not refactor FCMP yet.\n";
-      std::terminate();
+      createFCMPInstr(foo->regAlloca, static_cast<FCmpInst *>(instr), rbb);
+      foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::Call: {
       // 注意：该部分并未单独考虑系统函数！

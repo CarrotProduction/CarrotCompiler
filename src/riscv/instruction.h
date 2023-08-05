@@ -344,14 +344,15 @@ public:
 class ICmpSRiscvInstr : public ICmpRiscvInstr {
 public:
   ICmpSRiscvInstr(ICmpInst::ICmpOp op, RiscvOperand *v1, RiscvOperand *v2,
-                  RiscvOperand *target)
-      : ICmpRiscvInstr(op, v1, v2, nullptr, nullptr) {
+                  RiscvOperand *target, RiscvBasicBlock *bb)
+      : ICmpRiscvInstr(op, v1, v2, nullptr, bb) {
     setOperand(0, v1);
     setOperand(1, v2);
     setResult(target);
   }
   std::string print() override;
 };
+
 
 // 浮点比较
 // 类型：cmpop val1, val2, true_link, false_link
@@ -360,15 +361,13 @@ public:
 class FCmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpName;
+  static const std::map<FCmpInst::FCmpOp, FCmpInst::FCmpOp> FCmpOpEquiv;
   FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
-                 RiscvOperand *v3, RiscvBasicBlock *trueLink,
-                 RiscvBasicBlock *falseLink, RiscvBasicBlock *bb)
-      : RiscvInstr(FCMP, 5, bb), fcmp_op_(op) {
+                  RiscvOperand *target, RiscvBasicBlock *bb)
+      : RiscvInstr(FCMP, 2, bb), fcmp_op_(op) {
     setOperand(0, v1);
     setOperand(1, v2);
-    setOperand(2, v3);
-    setOperand(3, trueLink);
-    setOperand(4, falseLink);
+    setResult(target);
   }
   FCmpInst::FCmpOp fcmp_op_;
   std::string print() override;

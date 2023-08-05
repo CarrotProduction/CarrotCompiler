@@ -39,17 +39,23 @@ const std::map<ICmpInst::ICmpOp, ICmpInst::ICmpOp> ICmpRiscvInstr::ICmpOpEquiv =
      {ICmpInst::ICmpOp::ICMP_UGT, ICmpInst::ICmpOp::ICMP_ULT},
      {ICmpInst::ICmpOp::ICMP_SLE, ICmpInst::ICmpOp::ICMP_SGE},
      {ICmpInst::ICmpOp::ICMP_SGT, ICmpInst::ICmpOp::ICMP_SLT}};
-const std::map<FCmpInst::FCmpOp, FCmpInst::FCmpOp> FCmpRiscvInstr::FCmpOpEquiv = {
-  {FCmpInst::FCmpOp::FCMP_OLT, FCmpInst::FCmpOp::FCMP_OGT}, 
-  {FCmpInst::FCmpOp::FCMP_ULT, FCmpInst::FCmpOp::FCMP_UGT}, 
-  {FCmpInst::FCmpOp::FCMP_OGE, FCmpInst::FCmpOp::FCMP_OLE}, 
-  {FCmpInst::FCmpOp::FCMP_UGE, FCmpInst::FCmpOp::FCMP_ULE}, 
+const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpName = {
+    {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
+    {FCmpInst::FCmpOp::FCMP_OLE, "FLE.S"},
+    {FCmpInst::FCmpOp::FCMP_ULE, "FLE.S"},
+    {FCmpInst::FCmpOp::FCMP_ORD, "FCLASS.S"},
+    {FCmpInst::FCmpOp::FCMP_UNO, "FCLASS.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_OEQ, "FEQ.S"},
+    {FCmpInst::FCmpOp::FCMP_UEQ, "FEQ.S"},
+    {FCmpInst::FCmpOp::FCMP_ONE, "FEQ.S"}, // 取反
+    {FCmpInst::FCmpOp::FCMP_UNE, "FEQ.S"}  // 取反
 };
-const std::map<FCmpInst::FCmpOp, std::string> FCmpRiscvInstr::FCmpOpSName = {
-    {FCmpInst::FCmpOp::FCMP_OLT, "FLT.S"},  {FCmpInst::FCmpOp::FCMP_ULT, "FLT.S"},
-    {FCmpInst::FCmpOp::FCMP_ORD, "FCLASS.S"}, {FCmpInst::FCmpOp::FCMP_OLE, "FLE.S"},
-    {FCmpInst::FCmpOp::FCMP_ULE, "FLE.S"},  {FCmpInst::FCmpOp::FCMP_OEQ, "FEQ.S"}, 
-    {FCmpInst::FCmpOp::FCMP_UEQ, "FEQ.S"}};
+const std::map<FCmpInst::FCmpOp, FCmpInst::FCmpOp> FCmpRiscvInstr::FCmpOpEquiv =
+    {{FCmpInst::FCmpOp::FCMP_OGT, FCmpInst::FCmpOp::FCMP_OLT},
+     {FCmpInst::FCmpOp::FCMP_UGT, FCmpInst::FCmpOp::FCMP_ULT},
+     {FCmpInst::FCmpOp::FCMP_OGE, FCmpInst::FCmpOp::FCMP_OLE},
+     {FCmpInst::FCmpOp::FCMP_UGE, FCmpInst::FCmpOp::FCMP_ULE}};
 std::string print_as_op(Value *v, bool print_ty);
 std::string print_cmp_type(ICmpInst::ICmpOp op);
 std::string print_fcmp_type(FCmpInst::FCmpOp op);
@@ -165,6 +171,7 @@ std::string ICmpRiscvInstr::print() {
 
 std::string ICmpSRiscvInstr::print() {
   std::string riscv_instr = "\t\t";
+
   // If equal or nequal instruction
   bool eorne = false;
   switch (icmp_op_) {
@@ -200,27 +207,15 @@ std::string ICmpSRiscvInstr::print() {
 }
 
 std::string FCmpRiscvInstr::print() {
-  assert(false);
-  return "";
-}
-
-std::string FCmpSRiscvInstr::print() {
-  // 第一条指令
   std::string riscv_instr = "\t\t";
-  riscv_instr += FCmpOpSName.at(this->fcmp_op_) + "\t";
+
+  riscv_instr += FCmpOpName.at(this->fcmp_op_) + "\t";
+  riscv_instr += this->result_->print();
+  riscv_instr += ", ";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
-  riscv_instr += ", ";
-  riscv_instr += this->operand_[2]->print();
-  riscv_instr += "\n\t\t";
-  return riscv_instr;
-}
-
-std::string JumpRiscvInstr::print() {
-  std::string riscv_instr =
-      "\t\tJ\t" + static_cast<RiscvBasicBlock *>(this->operand_[0])->name_ +
-      "\n";
+  riscv_instr += "\n";
   return riscv_instr;
 }
 
@@ -306,7 +301,7 @@ std::string MoveRiscvInst::print() {
     riscv_instr += "MV\t";
   // 浮点数
   else
-    riscv_instr += "FMV\t";
+    riscv_instr += "FMV.S\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -316,18 +311,18 @@ std::string MoveRiscvInst::print() {
 
 std::string SiToFpRiscvInstr::print() {
   std::string riscv_instr = "\t\tFCVT.S.W\t";
-  riscv_instr += this->operand_[0]->print();
-  riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[0]->print();
   riscv_instr += "\n";
   return riscv_instr;
 }
 
 std::string FpToSiRiscvInstr::print() {
   std::string riscv_instr = "\t\tFCVT.W.S\t";
-  riscv_instr += this->operand_[0]->print();
-  riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[0]->print();
   riscv_instr += "\n";
   return riscv_instr;
 }

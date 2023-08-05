@@ -62,10 +62,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   // If there is no register allocated for value then get a new one
   if (specified != nullptr)
     setPositionReg(val, specified, bb, instr);
-  else if (curReg.find(val) == curReg.end()) {
-    if (isAlloca) { // Alloca instr's address is always unsafe.
-      setPositionReg(val, getRegOperand("t0"), bb, instr);
-    } else if (val->type_->tid_ != Type::FloatTyID) {
+  else if (curReg.find(val) == curReg.end() || isAlloca ||
+           val->is_constant()) { // Alloca and constant value is always unsafe.
+    if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
       if (IntRegID > 27)
         IntRegID = 9;
@@ -80,8 +79,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
       setPositionReg(val, cur, bb, instr);
     }
-  } else if (!(val->is_constant() ||
-               val->type_->tid_ == val->type_->PointerTyID || load))
+  } else if (!load)
     return curReg[val];
 
   // ! Though all registers are considered unsafe, there is no way

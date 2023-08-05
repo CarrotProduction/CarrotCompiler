@@ -55,8 +55,8 @@ public:
                                   BranchInst *brInstr, RiscvBasicBlock *rbb);
   ICmpRiscvInstr *createICMPSInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
                                    RiscvBasicBlock *rbb);
-  RiscvInstr *createFCMPSInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,
-                                   RiscvBasicBlock *rbb);
+  RiscvInstr *createFCMPInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,
+                                  RiscvBasicBlock *rbb);
   SiToFpRiscvInstr *createSiToFpInstr(RegAlloca *regAlloca,
                                       SiToFpInst *sitofpInstr,
                                       RiscvBasicBlock *rbb);
@@ -65,8 +65,6 @@ public:
                                       RiscvBasicBlock *rbb);
   CallRiscvInst *createCallInstr(RegAlloca *regAlloca, CallInst *callInstr,
                                  RiscvBasicBlock *rbb);
-  JumpRiscvInstr *createJumpInstr(RegAlloca *regAlloca, BranchInst *brInstr,
-                                  RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
   ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca, ReturnInst *returnInstr,
                                   RiscvBasicBlock *rbb);

@@ -243,7 +243,7 @@ ICmpRiscvInstr *RiscvBuilder::createICMPSInstr(RegAlloca *regAlloca,
       icmpInstr->icmp_op_,
       regAlloca->findReg(icmpInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(icmpInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0));
+      regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0), rbb);
   rbb->addInstrBack(instr);
   if (inv) {
     auto instr_reg = regAlloca->findReg(icmpInstr, rbb, nullptr, 1, 0);
@@ -253,59 +253,61 @@ ICmpRiscvInstr *RiscvBuilder::createICMPSInstr(RegAlloca *regAlloca,
   return instr;
 }
 
-// FCMP处理上和ICMP类似，但是在最后生成语句的时候是输出两句
-RiscvInstr *RiscvBuilder::createFCMPSInstr(RegAlloca *regAlloca,
-                                           FCmpInst *fcmpInstr,
-                                           RiscvBasicBlock *rbb) {
-  if (fcmpInstr->fcmp_op_ == FCmpInst::FCMP_FALSE ||
-      fcmpInstr->fcmp_op_ == FCmpInst::FCMP_TRUE) {
-    auto instr = new MoveRiscvInst(
-        regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0),
-        new RiscvConst(fcmpInstr->fcmp_op_ == FCmpInst::FCMP_TRUE), rbb);
+RiscvInstr *RiscvBuilder::createFCMPInstr(RegAlloca *regAlloca,
+                                          FCmpInst *fcmpInstr,
+                                          RiscvBasicBlock *rbb) {
+  // Deal with always true
+  if (fcmpInstr->fcmp_op_ == fcmpInstr->FCMP_TRUE ||
+      fcmpInstr->fcmp_op_ == fcmpInstr->FCMP_FALSE) {
+    auto instr =
+        new MoveRiscvInst(regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0),
+                          fcmpInstr->fcmp_op_ == fcmpInstr->FCMP_TRUE, rbb);
     rbb->addInstrBack(instr);
     return instr;
   }
-
-  bool swap = FCmpRiscvInstr::FCmpOpSName.count(fcmpInstr->fcmp_op_) == 0;
+  bool swap = FCmpRiscvInstr::FCmpOpName.count(fcmpInstr->fcmp_op_) == 0;
   if (swap) {
     std::swap(fcmpInstr->operands_[0], fcmpInstr->operands_[1]);
     fcmpInstr->fcmp_op_ =
         FCmpRiscvInstr::FCmpOpEquiv.find(fcmpInstr->fcmp_op_)->second;
   }
   bool inv = false;
+  bool inv_classify = false;
   switch (fcmpInstr->fcmp_op_) {
-  case FCmpInst::FCMP_OGT:
-  case FCmpInst::FCMP_UGT:
   case FCmpInst::FCMP_ONE:
   case FCmpInst::FCMP_UNE:
-  case FCmpInst::FCMP_OGE:
-  case FCmpInst::FCMP_UGE:
-  case FCmpInst::FCMP_UNO:
     inv = true;
   default:
     break;
   }
-  FCmpSRiscvInstr *instr = new FCmpSRiscvInstr(
+  switch (fcmpInstr->fcmp_op_) {
+  case FCmpInst::FCMP_OEQ:
+  case FCmpInst::FCMP_OGT:
+  case FCmpInst::FCMP_OGE:
+  case FCmpInst::FCMP_OLT:
+  case FCmpInst::FCMP_OLE:
+  case FCmpInst::FCMP_ONE:
+  case FCmpInst::FCMP_ORD:
+    inv_classify = true;
+  default:
+    break;
+  }
+
+  if (inv_classify) {
+    std::cerr << "[Warning] Not implemented FCLASS yet.\n";
+  }
+  FCmpRiscvInstr *instr = new FCmpRiscvInstr(
       fcmpInstr->fcmp_op_,
       regAlloca->findReg(fcmpInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(fcmpInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0));
+      regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0), rbb);
   rbb->addInstrBack(instr);
   if (inv) {
     auto instr_reg = regAlloca->findReg(fcmpInstr, rbb, nullptr, 1, 0);
     rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::XORI, instr_reg,
                                           new RiscvConst(1), instr_reg, rbb));
+    return instr;
   }
-  return instr;
-}
-
-// 无条件跳转指令：JMP -> J
-JumpRiscvInstr *RiscvBuilder::createJumpInstr(RegAlloca *regAlloca,
-                                              BranchInst *brInstr,
-                                              RiscvBasicBlock *rbb) {
-  JumpRiscvInstr *instr = new JumpRiscvInstr(
-      createRiscvBasicBlock(static_cast<BasicBlock *>(brInstr->operands_[0])),
-      rbb);
   return instr;
 }
 
@@ -527,9 +529,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::FCmp:
-      // std::cerr << "[Error] Not refactor FCMP yet.\n";
-      // std::terminate();
-      createFCMPSInstr(foo->regAlloca, static_cast<FCmpInst *>(instr), rbb);
+      createFCMPInstr(foo->regAlloca, static_cast<FCmpInst *>(instr), rbb);
       foo->regAlloca->writeback(static_cast<Value *>(instr), rbb);
       break;
     case Instruction::Call: {

@@ -301,7 +301,7 @@ std::string MoveRiscvInst::print() {
     riscv_instr += "MV\t";
   // 浮点数
   else
-    riscv_instr += "FMV\t";
+    riscv_instr += "FMV.S\t";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -311,18 +311,18 @@ std::string MoveRiscvInst::print() {
 
 std::string SiToFpRiscvInstr::print() {
   std::string riscv_instr = "\t\tFCVT.S.W\t";
-  riscv_instr += this->operand_[0]->print();
-  riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[0]->print();
   riscv_instr += "\n";
   return riscv_instr;
 }
 
 std::string FpToSiRiscvInstr::print() {
   std::string riscv_instr = "\t\tFCVT.W.S\t";
-  riscv_instr += this->operand_[0]->print();
-  riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
+  riscv_instr += ", ";
+  riscv_instr += this->operand_[0]->print();
   riscv_instr += "\n";
   return riscv_instr;
 }

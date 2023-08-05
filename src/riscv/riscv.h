@@ -123,7 +123,7 @@ class RiscvIntReg : public RiscvOperand {
 public:
   Register *reg_;
   RiscvIntReg(Register *reg) : RiscvOperand(IntReg), reg_(reg) {
-    // assert(reg_->regtype_ == Register::Int); // 判断整型寄存器存储
+    assert(reg_->regtype_ == Register::Int); // 判断整型寄存器存储
   }
   std::string print() { return reg_->print(); }
 };
@@ -132,7 +132,7 @@ class RiscvFloatReg : public RiscvOperand {
 
 public:
   Register *reg_;
-  RiscvFloatReg(Register *reg) : RiscvOperand(IntReg), reg_(reg) {
+  RiscvFloatReg(Register *reg) : RiscvOperand(FloatReg), reg_(reg) {
     assert(reg_->regtype_ == Register::Float); // 判断整型寄存器存储
   }
   std::string print() { return reg_->print(); }
@@ -334,5 +334,5 @@ public:
 
 Type *findPtrType(Type *ty);
 
-RiscvFunction* createSyslibFunc(Function *foo);
+RiscvFunction *createSyslibFunc(Function *foo);
 #endif // !RISCVH

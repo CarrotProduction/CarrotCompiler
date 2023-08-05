@@ -545,11 +545,10 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       if (curInstr->type_->tid_ == Type::TypeID::IntegerTyID ||
           curInstr->type_->tid_ == Type::TypeID::PointerTyID)
         foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
-                                       new RiscvIntReg(NamefindReg("a0")), rbb);
+                                       getRegOperand("a0"), rbb);
       else if (curInstr->type_->tid_ == Type::TypeID::FloatTyID)
         foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
-                                       new RiscvIntReg(NamefindReg("fa0")),
-                                       rbb);
+                                       getRegOperand("fa0"), rbb);
 
       // 根据函数调用约定，按需传递参数。
 
@@ -598,17 +597,15 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       // ra的保护由caller去做
       rbb->addInstrBack(new StoreRiscvInst(
-          new Type(Type::TypeID::PointerTyID),
-          new RiscvIntReg(NamefindReg("ra")),
+          new Type(Type::TypeID::PointerTyID), getRegOperand("ra"),
           new RiscvIntPhiReg("sp", sp_shift_for_paras), rbb));
       // 第二步：进行函数调用。
       rbb->addInstrBack(this->createCallInstr(foo->regAlloca, curInstr, rbb));
       // 第三步：caller恢复栈帧，清除所有的函数参数
       // 首先恢复ra
-      rbb->addInstrBack(
-          new LoadRiscvInst(new Type(Type::TypeID::PointerTyID),
-                            new RiscvIntReg(NamefindReg("ra")),
-                            new RiscvIntPhiReg("sp", sp_shift_for_paras), rbb));
+      rbb->addInstrBack(new LoadRiscvInst(
+          new Type(Type::TypeID::PointerTyID), getRegOperand("ra"),
+          new RiscvIntPhiReg("sp", sp_shift_for_paras), rbb));
       rbb->addInstrBack(new BinaryRiscvInst(
           RiscvInstr::ADDI, static_cast<RiscvOperand *>(getRegOperand("sp")),
           static_cast<RiscvOperand *>(new RiscvConst(
@@ -616,9 +613,15 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
           static_cast<RiscvOperand *>(getRegOperand("sp")), rbb));
       // At last, save return value (a0) to target value.
       if (curInstr->type_->tid_ != curInstr->type_->VoidTyID) {
-        rbb->addInstrBack(
-            new StoreRiscvInst(new IntegerType(32), getRegOperand("a0"),
-                               foo->regAlloca->findMem(curInstr), rbb));
+        if (curInstr->type_->tid_ != curInstr->type_->FloatTyID) {
+          rbb->addInstrBack(
+              new StoreRiscvInst(new IntegerType(32), getRegOperand("a0"),
+                                 foo->regAlloca->findMem(curInstr), rbb));
+        } else {
+          rbb->addInstrBack(new StoreRiscvInst(
+              new Type(Type::FloatTyID), getRegOperand("fa0"),
+              foo->regAlloca->findMem(curInstr), rbb));
+        }
         foo->regAlloca->writeback(static_cast<Value *>(curInstr), rbb);
       }
       break;
@@ -728,7 +731,8 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
                 dynamic_cast<ConstantFloat *>(Operand)->print32();
             while (valString.length() < 10)
               valString += "0";
-            data += curFloatName + ":\n\t.word\t" + valString.substr(0, 10) + "\n";
+            data +=
+                curFloatName + ":\n\t.word\t" + valString.substr(0, 10) + "\n";
             rfoo->regAlloca->setPosition(Operand,
                                          new RiscvFloatPhiReg(curFloatName, 0));
           }

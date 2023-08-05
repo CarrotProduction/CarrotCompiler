@@ -78,7 +78,7 @@ std::string BinaryRiscvInst::print() {
 
   bool overflow = false;
   if (type_ == ADDI &&
-      std::abs(static_cast<RiscvConst *>(operand_[1])->intval) >= 2048) {
+      std::abs(static_cast<RiscvConst *>(operand_[1])->intval) >= 1024) {
     overflow = true;
     type_ = ADD;
     riscv_instr += "LI\tt6, " + operand_[1]->print();
@@ -323,6 +323,8 @@ std::string FpToSiRiscvInstr::print() {
   riscv_instr += this->operand_[1]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[0]->print();
+  riscv_instr += ", ";
+  riscv_instr += "rtz";   // round to zero.
   riscv_instr += "\n";
   return riscv_instr;
 }

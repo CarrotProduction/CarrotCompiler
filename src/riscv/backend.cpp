@@ -370,7 +370,7 @@ SiToFpRiscvInstr *RiscvBuilder::createSiToFpInstr(RegAlloca *regAlloca,
                                                   RiscvBasicBlock *rbb) {
   return new SiToFpRiscvInstr(
       regAlloca->findReg(sitofpInstr->operands_[0], rbb, nullptr, 1),
-      regAlloca->findReg(static_cast<Value *>(sitofpInstr), rbb, nullptr, 1),
+      regAlloca->findReg(static_cast<Value *>(sitofpInstr), rbb, nullptr, 1, 0),
       rbb);
 }
 
@@ -379,7 +379,7 @@ FpToSiRiscvInstr *RiscvBuilder::createFptoSiInstr(RegAlloca *regAlloca,
                                                   RiscvBasicBlock *rbb) {
   return new FpToSiRiscvInstr(
       regAlloca->findReg(fptosiInstr->operands_[0], rbb, nullptr, 1),
-      regAlloca->findReg(static_cast<Value *>(fptosiInstr), rbb, nullptr, 1),
+      regAlloca->findReg(static_cast<Value *>(fptosiInstr), rbb, nullptr, 1, 0),
       rbb);
 }
 
@@ -578,12 +578,22 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
         }
         // 如果寄存器耗尽，则将函数参数使用store指令存入指定的内存中。
         if (name.empty()) {
-          rbb->addInstrBack(new StoreRiscvInst(
-              operand->type_,
-              foo->regAlloca->findSpecificReg(operand, "t1", rbb),
-              new RiscvIntPhiReg("sp", foo->querySP() - sp_shift_for_regs -
-                                           sp_shift_for_paras + paraShift),
-              rbb));
+          if(operand->type_->tid_ != Type::FloatTyID) {
+            rbb->addInstrBack(new StoreRiscvInst(
+                operand->type_,
+                foo->regAlloca->findSpecificReg(operand, "t1", rbb),
+                new RiscvIntPhiReg("sp", foo->querySP() - sp_shift_for_regs -
+                                            sp_shift_for_paras + paraShift),
+                rbb));
+          }
+          else {
+            rbb->addInstrBack(new StoreRiscvInst(
+                operand->type_,
+                foo->regAlloca->findSpecificReg(operand, "ft1", rbb),
+                new RiscvIntPhiReg("sp", foo->querySP() - sp_shift_for_regs -
+                                            sp_shift_for_paras + paraShift),
+                rbb));
+          }
         } else {
           foo->regAlloca->findSpecificReg(operand, name, rbb, nullptr);
         }

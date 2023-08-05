@@ -55,8 +55,8 @@ public:
                                   BranchInst *brInstr, RiscvBasicBlock *rbb);
   ICmpRiscvInstr *createICMPSInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
                                    RiscvBasicBlock *rbb);
-  FCmpRiscvInstr *createFCMPInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,
-                                  BranchInst *brInstr, RiscvBasicBlock *rbb);
+  RiscvInstr *createFCMPSInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,
+                                   RiscvBasicBlock *rbb);
   SiToFpRiscvInstr *createSiToFpInstr(RegAlloca *regAlloca,
                                       SiToFpInst *sitofpInstr,
                                       RiscvBasicBlock *rbb);

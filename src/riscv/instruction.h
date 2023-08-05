@@ -360,6 +360,8 @@ public:
 class FCmpRiscvInstr : public RiscvInstr {
 public:
   static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpName;
+  static const std::map<FCmpInst::FCmpOp, FCmpInst::FCmpOp> FCmpOpEquiv;
+  static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpSName;
   FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
                  RiscvOperand *v3, RiscvBasicBlock *trueLink,
                  RiscvBasicBlock *falseLink, RiscvBasicBlock *bb)
@@ -371,6 +373,18 @@ public:
     setOperand(4, falseLink);
   }
   FCmpInst::FCmpOp fcmp_op_;
+  std::string print() override;
+};
+
+class FCmpSRiscvInstr : public FCmpRiscvInstr {
+public:
+  FCmpSRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
+                  RiscvOperand *target)
+      : FCmpRiscvInstr(op, v1, v2, target, nullptr, nullptr, nullptr) {
+    setOperand(0, v1);
+    setOperand(1, v2);
+    setResult(target);
+  }
   std::string print() override;
 };
 

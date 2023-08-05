@@ -725,10 +725,10 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
                 "FloatConst" + std::to_string(ConstFloatCount);
             ConstFloatCount++;
             std::string valString =
-                dynamic_cast<ConstantFloat *>(Operand)->print();
+                dynamic_cast<ConstantFloat *>(Operand)->print32();
             while (valString.length() < 10)
               valString += "0";
-            data += curFloatName + "\t.word\t" + valString.substr(0, 10) + "\n";
+            data += curFloatName + ":\n\t.word\t" + valString.substr(0, 10) + "\n";
             rfoo->regAlloca->setPosition(Operand,
                                          new RiscvFloatPhiReg(curFloatName, 0));
           }

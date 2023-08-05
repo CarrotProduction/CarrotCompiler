@@ -624,10 +624,10 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       break;
     }
     }
-    std::cout << "FINISH TRANSFER " << ++translationCount << "Codes\n";
+    // std::cout << "FINISH TRANSFER " << ++translationCount << "Codes\n";
   }
-  std::cout << "END BLOCK\n";
-  std::cout << rbb->print() << "END BLOCK PRINT\n";
+  // std::cout << "END BLOCK\n";
+  // std::cout << rbb->print() << "END BLOCK PRINT\n";
   return rbb;
 }
 

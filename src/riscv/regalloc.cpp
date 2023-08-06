@@ -2,7 +2,7 @@
 #include "instruction.h"
 #include "riscv.h"
 
-int IntRegID = 9, FloatRegID = 7; // 测试阶段使用
+int IntRegID = 32, FloatRegID = 32; // 测试阶段使用
 
 // 寄存器堆分配工作
 
@@ -65,17 +65,17 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
            val->is_constant()) { // Alloca and constant value is always unsafe.
     if (val->type_->tid_ != Type::FloatTyID) {
       ++IntRegID;
-      if (IntRegID > 27)
-        IntRegID = 9;
+      if (IntRegID > 17)
+        IntRegID = 10;
       RiscvIntReg *cur = new RiscvIntReg(new Register(Register::Int, IntRegID));
       setPositionReg(val, cur, bb, instr);
     } else {
       assert(val->type_->tid_ == Type::TypeID::FloatTyID);
       ++FloatRegID;
-      if (FloatRegID == 10)
-        FloatRegID += 8;
-      if (FloatRegID > 27)
-        FloatRegID = 8;
+      // if (FloatRegID == 10)
+      //   FloatRegID += 8;
+      if (FloatRegID > 17)
+        FloatRegID = 10;
       RiscvFloatReg *cur =
           new RiscvFloatReg(new Register(Register::Float, FloatRegID));
       setPositionReg(val, cur, bb, instr);

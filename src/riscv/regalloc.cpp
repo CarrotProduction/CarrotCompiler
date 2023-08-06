@@ -116,7 +116,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
     } else if (isAlloca) {
       bb->addInstrBefore(
           new BinaryRiscvInst(
-              BinaryRiscvInst::ADDI, getRegOperand("sp"),
+              BinaryRiscvInst::ADDI, getRegOperand("fp"),
               new RiscvConst(static_cast<RiscvIntPhiReg *>(pos[val])->shift_),
               current_reg, bb),
           instr);
@@ -300,7 +300,8 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
 }
 
 RegAlloca::RegAlloca() {
-  // savedRegister.push_back(getRegOperand("ra"));
+  // fp 的保护单独进行处理
+  savedRegister.push_back(getRegOperand("ra"));
 }
 
 RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,

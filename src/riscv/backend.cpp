@@ -350,7 +350,11 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
   auto reg_to_recover = regAlloca->savedRegister;
   reverse(reg_to_recover.begin(), reg_to_recover.end());
   for (auto reg : reg_to_recover) {
+    if(reg->getType() == reg->IntReg)
     rbb->addInstrBack(new LoadRiscvInst(new Type(Type::PointerTyID), reg,
+                                        new RiscvIntPhiReg("fp", curSP), rbb));
+    else
+    rbb->addInstrBack(new LoadRiscvInst(new Type(Type::FloatTyID), reg,
                                         new RiscvIntPhiReg("fp", curSP), rbb));
     curSP += VARIABLE_ALIGN_BYTE;
   }
@@ -875,9 +879,14 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
     auto &reg_to_save = rfoo->regAlloca->savedRegister;
     for (auto reg : reg_to_save) {
       rfoo->shiftSP(-VARIABLE_ALIGN_BYTE);
-      initBlock->addInstrBack(new StoreRiscvInst(
-          new Type(Type::PointerTyID), reg,
-          new RiscvIntPhiReg(NamefindReg("fp"), rfoo->querySP()), initBlock));
+      if (reg->getType() == reg->IntReg)
+        initBlock->addInstrBack(new StoreRiscvInst(
+            new Type(Type::PointerTyID), reg,
+            new RiscvIntPhiReg(NamefindReg("fp"), rfoo->querySP()), initBlock));
+      else
+        initBlock->addInstrBack(new StoreRiscvInst(
+            new Type(Type::FloatTyID), reg,
+            new RiscvIntPhiReg(NamefindReg("fp"), rfoo->querySP()), initBlock));
     }
 
     // 分配整体的栈空间，并设置s0为原sp

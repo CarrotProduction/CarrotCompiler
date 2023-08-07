@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
         output = optarg;
         break;
       default:
-        return -1;
+        break;
     }
   }
   filename = argv[optind];

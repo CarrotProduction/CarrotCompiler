@@ -107,9 +107,9 @@ RiscvFunction *createSyslibFunc(Function *foo) {
     auto *rfoo = createRiscvFunction(foo);
     // 预处理块
     auto *bb1 = createRiscvBasicBlock();
-    bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t5")),
+    bb1->addInstrBack(new MoveRiscvInst(getRegOperand("t5"),
                                         getRegOperand("a0"), bb1));
-    bb1->addInstrBack(new MoveRiscvInst(new RiscvIntReg(NamefindReg("t6")),
+    bb1->addInstrBack(new MoveRiscvInst(getRegOperand("t6"),
                                         getRegOperand("a1"), bb1));
     bb1->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, getRegOperand("a0"),
                                           getRegOperand("t6"),

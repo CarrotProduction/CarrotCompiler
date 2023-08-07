@@ -16,11 +16,13 @@ public:
   T query(T id) {
     // 不存在变量初值为自己
     if (father.find(id) == father.end()) {
-      // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] New value " << id
+      // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] New value " <<
+      // id
       //           << std::endl;
       return father[id] = id;
     } else {
-      // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Find value " << id
+      // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Find value "
+      // << id
       //           << std::endl;
       return getfather(id);
     }
@@ -68,7 +70,6 @@ public:
 extern int IntRegID, FloatRegID; // 测试阶段使用
 
 Register *NamefindReg(std::string reg);
-RiscvOperand *getRegOperand(std::string reg);
 
 // 辅助函数
 // 根据寄存器 riscvReg 的类型返回存储指令的类型
@@ -136,7 +137,8 @@ public:
 
   // TODO:2 findNonuse
   // 实现一个函数，以找到一个当前尚未使用的寄存器以存放某个值。
-  RiscvOperand *findNonuse(Type *ty, RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
+  RiscvOperand *findNonuse(Type *ty, RiscvBasicBlock *bb,
+                           RiscvInstr *instr = nullptr);
 
   /**
    * 将 Value 与指定的寄存器强制关联并返回寄存器操作数。
@@ -229,7 +231,9 @@ public:
    */
   std::vector<RiscvOperand *> savedRegister;
 
-  // Initialize savedRegister
+  /**
+   * 初始化寄存器对象池，需要保护的寄存器对象等。
+   */
   RegAlloca();
 
   // 指针所指向的内存地址
@@ -249,8 +253,36 @@ public:
    */
   void writeback_all(RiscvBasicBlock *bb, RiscvInstr *instr = nullptr);
 
+  /**
+   * 清空所有寄存器关系。
+   */
+  void clear();
+
 private:
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;
+  /**
+   * 安全寄存器寻找。用于确保寄存器在被寻找之后的 SAFE_FIND_LIMIT
+   * 个时间戳内不被写回。
+   */
+  std::map<RiscvOperand *, int> regFindTimeStamp;
+  int safeFindTimeStamp = 0;
+  static const int SAFE_FIND_LIMIT = 5;
 };
+
+/**
+ * 寄存器对象池。
+ */
+static std::vector<RiscvOperand *> regPool;
+
+/**
+ * 根据提供的寄存器名，从寄存器池中返回操作数。
+ */
+RiscvOperand *getRegOperand(std::string reg);
+
+/**
+ * 根据提供的寄存器类型与编号，从寄存器池中返回操作数。
+ */
+RiscvOperand *getRegOperand(Register::RegType op_ty_, int id);
+
 #endif // !REGALLOCH

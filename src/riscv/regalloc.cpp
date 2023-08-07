@@ -303,11 +303,11 @@ RegAlloca::RegAlloca() {
   // fp 的保护单独进行处理
   savedRegister.push_back(getRegOperand("ra")); // 保护 ra
   // 保护 s1-s11
-  for(int i=1; i<=11; i++)
-    savedRegister.push_back(getRegOperand("s"+std::to_string(i)));
+  // for(int i=1; i<=11; i++)
+  //   savedRegister.push_back(getRegOperand("s"+std::to_string(i)));
   // 保护 fs0-fs11
-  for(int i=0; i<=11; i++)
-    savedRegister.push_back(getRegOperand("fs"+std::to_string(i)));
+  // for(int i=0; i<=11; i++)
+  //   savedRegister.push_back(getRegOperand("fs"+std::to_string(i)));
 }
 
 RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,

@@ -350,12 +350,14 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
   auto reg_to_recover = regAlloca->savedRegister;
   reverse(reg_to_recover.begin(), reg_to_recover.end());
   for (auto reg : reg_to_recover) {
-    if(reg->getType() == reg->IntReg)
-    rbb->addInstrBack(new LoadRiscvInst(new Type(Type::PointerTyID), reg,
-                                        new RiscvIntPhiReg("fp", curSP), rbb));
+    if (reg->getType() == reg->IntReg)
+      rbb->addInstrBack(new LoadRiscvInst(new Type(Type::PointerTyID), reg,
+                                          new RiscvIntPhiReg("fp", curSP),
+                                          rbb));
     else
-    rbb->addInstrBack(new LoadRiscvInst(new Type(Type::FloatTyID), reg,
-                                        new RiscvIntPhiReg("fp", curSP), rbb));
+      rbb->addInstrBack(new LoadRiscvInst(new Type(Type::FloatTyID), reg,
+                                          new RiscvIntPhiReg("fp", curSP),
+                                          rbb));
     curSP += VARIABLE_ALIGN_BYTE;
   }
 
@@ -580,6 +582,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       // 根据函数调用约定，按需传递参数。
 
       int sp_shift_for_paras = 0;
+      int sp_shift_alignment_padding = 0; // Align sp pointer to 16-byte
       int paraShift = 0;
 
       int intRegCount = 0, floatRegCount = 0;
@@ -588,6 +591,10 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       for (int i = 0; i < curInstr->operands_.size() - 1; i++) {
         sp_shift_for_paras += calcTypeSize(curInstr->operands_[i]->type_);
       }
+
+      sp_shift_alignment_padding =
+          16 - ((abs(foo->querySP()) + sp_shift_for_paras) & 15);
+      sp_shift_for_paras += sp_shift_alignment_padding;
 
       // 为参数申请栈帧
       rbb->addInstrBack(new BinaryRiscvInst(
@@ -658,7 +665,7 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
 // 总控程序
 std::string RiscvBuilder::buildRISCV(Module *m) {
   this->rm = new RiscvModule();
-  std::string data = ".section .data\n";
+  std::string data = ".align 2\n.section .data\n"; // Add align attribute
   // 全局变量
   if (m->global_list_.size()) {
     for (GlobalVariable *gb : m->global_list_) {

@@ -566,14 +566,9 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
       CallInst *curInstr = static_cast<CallInst *>(instr);
       RiscvFunction *calleeFoo = createRiscvFunction(
           static_cast<Function *>(curInstr->operands_.back()));
-      // 如果存在返回值，则要将返回值的寄存器地址告知caller的regalloca
-      if (curInstr->type_->tid_ == Type::TypeID::IntegerTyID ||
-          curInstr->type_->tid_ == Type::TypeID::PointerTyID)
-        foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
-                                       getRegOperand("a0"), rbb);
-      else if (curInstr->type_->tid_ == Type::TypeID::FloatTyID)
-        foo->regAlloca->setPositionReg(static_cast<Value *>(instr),
-                                       getRegOperand("fa0"), rbb);
+
+      // 写回所有寄存器
+      foo->regAlloca->writeback_all(rbb);
 
       // 根据函数调用约定，按需传递参数。
 

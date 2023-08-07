@@ -164,7 +164,7 @@ public:
   // target = v1 op v2，后面接一个flag参数表示要不要加入到对应的basic block中
   BinaryRiscvInst(InstrType op, RiscvOperand *v1, RiscvOperand *v2,
                   RiscvOperand *target, RiscvBasicBlock *bb, bool flag = 0)
-      : RiscvInstr(op, 2, bb) {
+      : RiscvInstr(op, 2, bb), word(flag) {
     setOperand(0, v1);
     setOperand(1, v2);
     setResult(target);
@@ -172,6 +172,7 @@ public:
     if (flag)
       this->parent_->addInstrBack(this);
   }
+  bool word;
 };
 
 // 一元指令

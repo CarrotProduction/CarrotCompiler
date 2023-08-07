@@ -118,7 +118,7 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
   BinaryRiscvInst *instr = new BinaryRiscvInst(
       id, regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
       regAlloca->findReg(binaryInstr->operands_[1], rbb, nullptr, 1),
-      regAlloca->findReg(binaryInstr, rbb, nullptr, 1, 0), rbb);
+      regAlloca->findReg(binaryInstr, rbb, nullptr, 1, 0), rbb, true);
   return instr;
 }
 
@@ -188,7 +188,7 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
   ans.push_back(new LoadRiscvInst(
       curType->contained_, regPos,
       regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr, false), rbb));
- return ans;
+  return ans;
 }
 
 ICmpRiscvInstr *RiscvBuilder::createICMPInstr(RegAlloca *regAlloca,

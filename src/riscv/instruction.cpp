@@ -86,6 +86,9 @@ std::string BinaryRiscvInst::print() {
   }
 
   riscv_instr += instrTy2Riscv.at(this->type_);
+  if (word && (type_ == ADDI || type_ == ADD || type_ == MUL || type_ == REM ||
+               type_ == DIV))
+    riscv_instr += "W"; // Integer word type instruction.
   riscv_instr += "\t";
   riscv_instr += this->result_->print();
   riscv_instr += ", ";
@@ -324,7 +327,7 @@ std::string FpToSiRiscvInstr::print() {
   riscv_instr += ", ";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
-  riscv_instr += "rtz";   // round to zero.
+  riscv_instr += "rtz"; // round to zero.
   riscv_instr += "\n";
   return riscv_instr;
 }

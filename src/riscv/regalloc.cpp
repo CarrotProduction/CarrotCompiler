@@ -140,12 +140,6 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
       std::cerr << "[Error] Unknown error in findReg()." << std::endl;
       std::terminate();
     }
-
-    // Save after usage. (not being executed for now.)
-
-    // if (mem_addr != nullptr)
-    //   bb->addInstrAfter(
-    //       new StoreRiscvInst(load_type, current_reg, mem_addr, bb), instr);
   }
 
   return current_reg;
@@ -187,9 +181,9 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
     }
 
     bb->addInstrBefore(new LoadRiscvInst(new Type(Type::PointerTyID),
-                                         getRegOperand("t5"), pos[val], bb),
+                                         getRegOperand("t4"), pos[val], bb),
                        instr);
-    return new RiscvIntPhiReg("t5");
+    return new RiscvIntPhiReg("t4");
   }
   // Cannot access to alloca's memory directly.
   else if (direct && isAlloca)

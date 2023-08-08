@@ -56,7 +56,7 @@ public:
   ICmpRiscvInstr *createICMPSInstr(RegAlloca *regAlloca, ICmpInst *icmpInstr,
                                    RiscvBasicBlock *rbb);
   RiscvInstr *createFCMPInstr(RegAlloca *regAlloca, FCmpInst *fcmpInstr,
-                                  RiscvBasicBlock *rbb);
+                              RiscvBasicBlock *rbb);
   SiToFpRiscvInstr *createSiToFpInstr(RegAlloca *regAlloca,
                                       SiToFpInst *sitofpInstr,
                                       RiscvBasicBlock *rbb);
@@ -67,7 +67,7 @@ public:
                                  RiscvBasicBlock *rbb);
   RiscvBasicBlock *transferRiscvBasicBlock(BasicBlock *bb, RiscvFunction *foo);
   ReturnRiscvInst *createRetInstr(RegAlloca *regAlloca, ReturnInst *returnInstr,
-                                  RiscvBasicBlock *rbb);
+                                  RiscvBasicBlock *rbb, RiscvFunction *rfoo);
   BranchRiscvInstr *createBrInstr(RegAlloca *regAlloca, BranchInst *brInstr,
                                   RiscvBasicBlock *rbb);
   RiscvInstr *solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,

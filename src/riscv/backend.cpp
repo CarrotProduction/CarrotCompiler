@@ -659,6 +659,8 @@ RiscvBasicBlock *RiscvBuilder::transferRiscvBasicBlock(BasicBlock *bb,
     }
     // std::cout << "FINISH TRANSFER " << ++translationCount << "Codes\n";
   }
+  // std::cout << "END BLOCK\n";
+  // std::cout << rbb->print() << "END BLOCK PRINT\n";
   return rbb;
 }
 

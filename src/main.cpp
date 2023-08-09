@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 
   int opt;
   bool isO2 = false;
-  while ((opt = getopt(argc, argv, "Sco:")) != -1) {
+  while ((opt = getopt(argc, argv, "ScoO:")) != -1) {
     switch (opt) {
     case 'S':
       print_asm = true;
@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
       break;
     case 'O':
       isO2 = true;
+      break;
     default:
       break;
     }

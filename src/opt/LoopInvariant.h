@@ -16,15 +16,15 @@ struct node {
 
 class LoopInvariant : public Optimization {
   int ind;
-  std::stack<node *> tarjan_stack;
-  std::stack<std::set<BasicBlock *> *> loopBBStack;
-  std::map<std::set<BasicBlock *> *, BasicBlock *> enterBBMap;
+  std::stack<node *> tarjanStack;
+  std::stack<std::set<BasicBlock *> *> loopStack;
+  std::map<std::set<BasicBlock *> *, BasicBlock *> entryPos;
 
 public:
   explicit LoopInvariant(Module *m) : Optimization(m) {}
-  void search();
-  bool tarjan(std::set<node *> &nodes, std::set<std::set<node *> *> &SCCs);
-  void dfs(node *pos, std::set<std::set<node *> *> &SCCs);
+  void searchLoop();
+  bool searchSCC(std::set<node *> &basicBlock, std::set<std::set<node *> *> &SCCs);
+  void tarjan(node *pos, std::set<std::set<node *> *> &SCCs);
   void execute();
 };
 

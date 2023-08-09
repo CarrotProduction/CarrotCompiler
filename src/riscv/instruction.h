@@ -20,8 +20,8 @@ public:
       : RiscvLabel(Block, name), func_(nullptr), blockInd_(blockInd) {}
   void addFunction(RiscvFunction *func) { func->addBlock(this); }
   std::string printname() { return name_; }
-  void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
-  void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
+  // void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
+  // void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
   void deleteInstr(RiscvInstr *instr) {
     auto it = std::find(instruction.begin(), instruction.end(), instr);
     if (it != instruction.end())
@@ -65,12 +65,6 @@ public:
     }
   }
   std::string print();
-  /*
-    此处加入所需数据流分析的参数和函数
-    下面为示例
-  */
-  std::vector<RiscvBasicBlock *> outB; // 出边
-  std::vector<RiscvBasicBlock *> inB;  // 入边
 };
 
 // 传入寄存器编号以生成一条语句，

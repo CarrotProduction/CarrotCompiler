@@ -1,10 +1,13 @@
+#include "CombineInstr.h"
+#include "ConstSpread.h"
+#include "LoopInvariant.h"
+#include "SimplifyJump.h"
 #include "ast.h"
+#include "backend.h"
 #include "define.h"
 #include "genIR.h"
 #include <fstream>
 #include <iostream>
-#include "backend.h"
-#include "ConstSpread.h"
 #include <ostream>
 #include <unistd.h>
 
@@ -24,22 +27,25 @@ int main(int argc, char **argv) {
   std::string output = "-";
 
   int opt;
-  while((opt = getopt(argc, argv, "Sco:")) != -1)
-  {
+  bool isO2 = false;
+  while ((opt = getopt(argc, argv, "Sco:O::")) != -1) {
     switch (opt) {
-      case 'S':
-        print_asm = true;
-        print_ir = false;
-        break;
-      case 'c':
-        print_ir = true;
-        print_asm = false;
-        break;
-      case 'o':
-        output = optarg;
-        break;
-      default:
-        break;
+    case 'S':
+      print_asm = true;
+      print_ir = false;
+      break;
+    case 'c':
+      print_ir = true;
+      print_asm = false;
+      break;
+    case 'o':
+      output = optarg;
+      break;
+    case 'O':
+      isO2 = true;
+      break;
+    default:
+      break;
     }
   }
   filename = argv[optind];
@@ -60,10 +66,15 @@ int main(int argc, char **argv) {
 
   // Run IR optimization
   // TODO
-  std::vector<Optimization *> Opt;
-  Opt.push_back(new ConstSpread(m.get()));
-  for (auto x : Opt)
-    x->execute();
+  if (isO2) {
+    std::vector<Optimization *> Opt;
+    Opt.push_back(new ConstSpread(m.get()));
+    Opt.push_back(new LoopInvariant(m.get()));
+    Opt.push_back(new CombineInstr(m.get()));
+    Opt.push_back(new SimplifyJump(m.get()));
+    for (auto x : Opt)
+      x->execute();
+  }
 
   // Open output file
   std::ofstream fout;

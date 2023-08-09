@@ -1,4 +1,4 @@
-set(SOURCE_FILES ConstSpread.cpp BasicOperation.cpp)
+set(SOURCE_FILES ConstSpread.cpp BasicOperation.cpp LoopInvariant.cpp)
 
 add_library(opt ${SOURCE_FILES}) 
 

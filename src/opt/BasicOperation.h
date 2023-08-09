@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <stack>
 #include "opt.h"
 
 void deleteUse(Value* opnd,Instruction *inst);

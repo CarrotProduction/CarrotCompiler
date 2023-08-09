@@ -1,3 +1,6 @@
-set(SOURCE_FILES opt.cpp)
+set(SOURCE_FILES ConstSpread.cpp BasicOperation.cpp)
 
 add_library(opt ${SOURCE_FILES}) 
+
+target_link_libraries(opt PRIVATE ir)
+target_include_directories(opt PRIVATE ${CMAKE_SOURCE_DIR}/src/ir)

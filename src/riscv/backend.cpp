@@ -329,32 +329,6 @@ ReturnRiscvInst *RiscvBuilder::createRetInstr(RegAlloca *regAlloca,
     rbb->addInstrBack(new MoveRiscvInst(
         reg_to_save, regAlloca->findReg(operand, rbb, nullptr), rbb));
   }
-  // 将被保护的寄存器还原
-  // ! FP 必须被最后还原。
-  int curSP = rfoo->querySP();
-  auto reg_to_recover = regAlloca->savedRegister;
-  reverse(reg_to_recover.begin(), reg_to_recover.end());
-  for (auto reg : reg_to_recover) {
-    if (reg->getType() == reg->IntReg)
-      rbb->addInstrBack(new LoadRiscvInst(new Type(Type::PointerTyID), reg,
-                                          new RiscvIntPhiReg("fp", curSP),
-                                          rbb));
-    else
-      rbb->addInstrBack(new LoadRiscvInst(new Type(Type::FloatTyID), reg,
-                                          new RiscvIntPhiReg("fp", curSP),
-                                          rbb));
-    curSP += VARIABLE_ALIGN_BYTE;
-  }
-
-  // 还原 fp
-  rbb->addInstrBack(new LoadRiscvInst(new Type(Type::PointerTyID),
-                                      getRegOperand("fp"),
-                                      new RiscvIntPhiReg("fp", curSP), rbb));
-
-  // 释放栈帧
-  rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADDI, getRegOperand("sp"),
-                                        new RiscvConst(-rfoo->querySP()),
-                                        getRegOperand("sp"), rbb));
 
   return new ReturnRiscvInst(rbb);
 }

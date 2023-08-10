@@ -11,7 +11,6 @@ class RiscvOperand;
 const int VARIABLE_ALIGN_BYTE = 8;
 
 #include "ir.h"
-#include "regalloc.h"
 #include "string.h"
 
 class RiscvOperand {

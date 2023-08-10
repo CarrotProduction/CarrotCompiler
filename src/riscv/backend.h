@@ -72,5 +72,11 @@ public:
                                   RiscvBasicBlock *rbb);
   RiscvInstr *solveGetElementPtr(RegAlloca *regAlloca, GetElementPtrInst *instr,
                                  RiscvBasicBlock *rbb);
+
+  /**
+   * 在返回语句前插入必要的语句。
+   */
+  void initRetInstr(RegAlloca *regAlloca, RiscvInstr *returnInstr,
+                    RiscvBasicBlock *rbb, RiscvFunction *foo);
 };
 #endif // !BACKENDH

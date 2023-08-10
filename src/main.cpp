@@ -6,6 +6,8 @@
 #include "backend.h"
 #include "define.h"
 #include "genIR.h"
+#include "DeleteDeadCode.h"
+#include "opt.h"
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -27,7 +29,7 @@ int main(int argc, char **argv) {
   std::string output = "-";
 
   int opt;
-  bool isO2 = false;
+  bool isO2 = true;
   while ((opt = getopt(argc, argv, "Sco:O::")) != -1) {
     switch (opt) {
     case 'S':
@@ -69,8 +71,11 @@ int main(int argc, char **argv) {
   if (isO2) {
     std::vector<Optimization *> Opt;
     Opt.push_back(new ConstSpread(m.get()));
-    Opt.push_back(new LoopInvariant(m.get()));
     Opt.push_back(new CombineInstr(m.get()));
+    Opt.push_back(new DomainTree(m.get()));
+    Opt.push_back(new DeadCodeDeletion(m.get()));
+    Opt.push_back(new SimplifyJump(m.get()));
+    Opt.push_back(new LoopInvariant(m.get()));
     Opt.push_back(new SimplifyJump(m.get()));
     for (auto x : Opt)
       x->execute();

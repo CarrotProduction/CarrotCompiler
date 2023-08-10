@@ -302,6 +302,8 @@ std::string MoveRiscvInst::print() {
   // 浮点数
   else
     riscv_instr += "FMV.S\t";
+  if (this->operand_[0]->print() == this->operand_[1]->print())
+    return "";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();

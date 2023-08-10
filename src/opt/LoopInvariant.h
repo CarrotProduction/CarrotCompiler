@@ -21,11 +21,11 @@ class LoopInvariant : public Optimization {
   std::map<std::set<BasicBlock *> *, BasicBlock *> entryPos;
 
 public:
-  explicit LoopInvariant(Module *m) : Optimization(m) {}
+  LoopInvariant(Module *m) : Optimization(m) {}
+  void execute();
   void searchLoop();
   bool searchSCC(std::set<node *> &basicBlock, std::set<std::set<node *> *> &SCCs);
   void tarjan(node *pos, std::set<std::set<node *> *> &SCCs);
-  void execute();
 };
 
 #endif // !LOOPH

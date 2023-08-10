@@ -3,6 +3,11 @@
 #include "backend.h"
 #include "define.h"
 #include "genIR.h"
+#include "SimplifyJump.h"
+#include "opt.h"
+#include "LoopInvariant.h"
+#include "DeleteDeadCode.h"
+#include "CombineInstr.h"
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -63,14 +68,18 @@ int main(int argc, char **argv) {
 
   // Run IR optimization
   // TODO
-  std::vector<Optimization *> optimization;
-  optimization.push_back(new ConstSpread(m.get()));
-  for (auto x : optimization)
-    x->execute();
   if (isO2) {
-    
+    std::vector<Optimization *> Opt;
+    Opt.push_back(new ConstSpread(m.get()));
+    Opt.push_back(new CombineInstr(m.get()));
+    Opt.push_back(new DomainTree(m.get()));
+    Opt.push_back(new DeadCodeDeletion(m.get()));
+    Opt.push_back(new SimplifyJump(m.get()));
+    Opt.push_back(new LoopInvariant(m.get()));
+    Opt.push_back(new SimplifyJump(m.get()));
+    for (auto x : Opt)
+      x->execute();
   }
-
   // Open output file
   std::ofstream fout;
   std::ostream *out;

@@ -1,4 +1,5 @@
 #include "CombineInstr.h"
+#include <unordered_map>
 
 void CombineInstr::execute() {
   for (auto foo : m->function_list_)

@@ -11,7 +11,6 @@ class RiscvOperand;
 const int VARIABLE_ALIGN_BYTE = 8;
 
 #include "ir.h"
-#include "regalloc.h"
 #include "string.h"
 
 class RiscvOperand {
@@ -294,7 +293,12 @@ public:
     tempRange += VARIABLE_ALIGN_BYTE;
   }
   void shiftSP(int shift_value) { base_ += shift_value; }
-  void storeArray(int elementNum) { base_ -= elementNum; }
+  void storeArray(int elementNum) {
+    if(elementNum & 7) {
+      elementNum += 8 - (elementNum & 7);   // Align to 8 byte.
+    }
+    base_ -= elementNum;
+  }
   void deleteArgs(RiscvOperand *val) { argsOffset.erase(val); } // 删除一个参数
   // 默认所有寄存器不保护
   // 如果这个时候寄存器不够了，则临时把其中一个寄存器对应的值压入栈上，等函数结束的时候再恢复

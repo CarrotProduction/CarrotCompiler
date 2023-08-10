@@ -182,6 +182,13 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
                                                         RiscvBasicBlock *rbb) {
   assert(loadInstr->operands_[0]->type_->tid_ == Type::TypeID::PointerTyID);
   auto curType = static_cast<PointerType *>(loadInstr->operands_[0]->type_);
+  // if (calcTypeSize(curType->contained_) > 4) {
+  //   auto mem = regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr, false);
+  //   if (static_cast<RiscvIntPhiReg *>(mem)->shift_ & 7) {
+  //     std::cerr << "[Error] Alignment error." << std::endl;
+  //     std::terminate();
+  //   }
+  // }
   std::vector<RiscvInstr *> ans;
   auto regPos =
       regAlloca->findReg(static_cast<Value *>(loadInstr), rbb, nullptr, 1, 0);

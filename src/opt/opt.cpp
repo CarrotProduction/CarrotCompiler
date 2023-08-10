@@ -1,4 +1,6 @@
 #include "opt.h"
+#include <functional>
+#include <vector>
 
 void DomainTree::execute() {
   for (auto foo : m->function_list_)

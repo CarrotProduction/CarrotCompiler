@@ -157,6 +157,17 @@ std::vector<RiscvInstr *> RiscvBuilder::createStoreInstr(RegAlloca *regAlloca,
   // 真正的store：第二操作数为一个指针类型
   if (storeInstr->operands_[1]->type_->tid_ == Type::TypeID::PointerTyID) {
     auto curType = static_cast<PointerType *>(storeInstr->operands_[1]->type_);
+
+    // Alignment check.
+    // if (calcTypeSize(curType->contained_) > 4) {
+    //   auto mem =
+    //       regAlloca->findMem(storeInstr->operands_[1], rbb, nullptr, false);
+    //   if (static_cast<RiscvIntPhiReg *>(mem)->shift_ & 7) {
+    //     std::cerr << "[Error] Alignment error." << std::endl;
+    //     std::terminate();
+    //   }
+    // }
+
     StoreRiscvInst *instr = new StoreRiscvInst(
         curType->contained_,
         regAlloca->findReg(storeInstr->operands_[0], rbb, nullptr, 1),

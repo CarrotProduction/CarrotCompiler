@@ -3,6 +3,7 @@
 
 #include "ir.h"
 #include "riscv.h"
+#include "regalloc.h"
 
 // 语句块，也使用标号标识
 // 必须挂靠在函数下，否则无法正常生成标号
@@ -165,6 +166,11 @@ public:
     this->parent_ = bb;
     if (flag)
       this->parent_->addInstrBack(this);
+    // Optimize: 若立即数为0，则改用寄存器zero。
+    if(v2->getType() == v2->IntImm && static_cast<RiscvConst*>(v2)->intval == 0){
+      type_ = ADD;
+      setOperand(1, getRegOperand("zero"));
+    }
   }
   bool word;
 };

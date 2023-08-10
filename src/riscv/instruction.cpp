@@ -295,6 +295,9 @@ std::string LoadRiscvInst::print() {
 }
 
 std::string MoveRiscvInst::print() {
+  // Optmize: 若两个操作数相等则忽略该指令
+  if (this->operand_[0] == this->operand_[1])
+    return "";
   std::string riscv_instr = "\t\t";
   // li 指令
   if (this->operand_[1]->tid_ == RiscvOperand::IntImm)

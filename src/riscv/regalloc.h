@@ -258,6 +258,11 @@ public:
    */
   void clear();
 
+  /**
+   * 返回所有被使用过的寄存器集合。
+   */
+  std::set<RiscvOperand *> getUsedReg() { return regUsed; }
+
 private:
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;
@@ -267,7 +272,11 @@ private:
    */
   std::map<RiscvOperand *, int> regFindTimeStamp;
   int safeFindTimeStamp = 0;
-  static const int SAFE_FIND_LIMIT = 5;
+  static const int SAFE_FIND_LIMIT = 3;
+  /**
+   * 被使用过的寄存器。
+   */
+  std::set<RiscvOperand *> regUsed;
 };
 
 /**

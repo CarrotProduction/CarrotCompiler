@@ -71,6 +71,8 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
            val->is_constant()) { // Alloca and constant value is always unsafe.
     bool found = false;
     RiscvOperand *cur = nullptr;
+    IntRegID = 32;
+    FloatRegID = 32;
     while (!found) {
       if (val->type_->tid_ != Type::FloatTyID) {
         ++IntRegID;
@@ -264,6 +266,7 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
 
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;
+  regUsed.insert(riscvReg);
 }
 
 RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
@@ -312,14 +315,14 @@ RegAlloca::RegAlloca() {
   }
 
   // fp 的保护单独进行处理
+  regUsed.insert(getRegOperand("ra"));
   savedRegister.push_back(getRegOperand("ra")); // 保护 ra
-  // ! 由于目前的寄存器保护实在是太慢，不如每次call前让caller写回所有寄存器。
   // 保护 s1-s11
-  // for (int i = 1; i <= 11; i++)
-  //   savedRegister.push_back(getRegOperand("s" + std::to_string(i)));
+  for (int i = 1; i <= 11; i++)
+    savedRegister.push_back(getRegOperand("s" + std::to_string(i)));
   // 保护 fs0-fs11
-  // for (int i = 0; i <= 11; i++)
-  //   savedRegister.push_back(getRegOperand("fs" + std::to_string(i)));
+  for (int i = 0; i <= 11; i++)
+    savedRegister.push_back(getRegOperand("fs" + std::to_string(i)));
 }
 
 RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,

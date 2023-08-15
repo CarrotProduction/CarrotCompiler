@@ -7,6 +7,7 @@ project(CarrotCompiler  VERSION 0.1
 # Common build options
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+# set(BUILD_IR_TESTING true)
 
 # Generic includes
 set(INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/include")

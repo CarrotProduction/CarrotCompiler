@@ -1,9 +1,9 @@
 #include "ast.h"
+#include "backend.h"
 #include "define.h"
 #include "genIR.h"
 #include <fstream>
 #include <iostream>
-#include "backend.h"
 #include <ostream>
 #include <unistd.h>
 
@@ -23,22 +23,22 @@ int main(int argc, char **argv) {
   std::string output = "-";
 
   int opt;
-  while((opt = getopt(argc, argv, "Sco:")) != -1)
-  {
+  while ((opt = getopt(argc, argv, "Sco:")) != -1) {
     switch (opt) {
-      case 'S':
-        print_asm = true;
-        print_ir = false;
-        break;
-      case 'c':
-        print_ir = true;
-        print_asm = false;
-        break;
-      case 'o':
-        output = optarg;
-        break;
-      default:
-        return -1;
+    case 'S':
+      print_asm = true;
+      print_ir = false;
+      break;
+    case 'c':
+      print_ir = true;
+      print_asm = false;
+      break;
+    case 'o':
+      output = optarg;
+      break;
+    default:
+      std::cerr << "[Warning] Unknown argument: " << opt << std::endl;
+      break;
     }
   }
   filename = argv[optind];

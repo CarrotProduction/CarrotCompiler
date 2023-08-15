@@ -86,6 +86,9 @@ std::string BinaryRiscvInst::print() {
   }
 
   riscv_instr += instrTy2Riscv.at(this->type_);
+  if (word && (type_ == ADDI || type_ == ADD || type_ == MUL || type_ == REM ||
+               type_ == DIV))
+    riscv_instr += "W"; // Integer word type instruction.
   riscv_instr += "\t";
   riscv_instr += this->result_->print();
   riscv_instr += ", ";
@@ -292,6 +295,9 @@ std::string LoadRiscvInst::print() {
 }
 
 std::string MoveRiscvInst::print() {
+  // Optmize: 若两个操作数相等则忽略该指令
+  if (this->operand_[0] == this->operand_[1])
+    return "";
   std::string riscv_instr = "\t\t";
   // li 指令
   if (this->operand_[1]->tid_ == RiscvOperand::IntImm)
@@ -302,6 +308,8 @@ std::string MoveRiscvInst::print() {
   // 浮点数
   else
     riscv_instr += "FMV.S\t";
+  if (this->operand_[0]->print() == this->operand_[1]->print())
+    return "";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
   riscv_instr += this->operand_[1]->print();
@@ -324,7 +332,7 @@ std::string FpToSiRiscvInstr::print() {
   riscv_instr += ", ";
   riscv_instr += this->operand_[0]->print();
   riscv_instr += ", ";
-  riscv_instr += "rtz";   // round to zero.
+  riscv_instr += "rtz"; // round to zero.
   riscv_instr += "\n";
   return riscv_instr;
 }

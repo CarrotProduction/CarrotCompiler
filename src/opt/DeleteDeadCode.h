@@ -2,7 +2,6 @@
 #define DELETEDEADCODEH
 
 #include "opt.h"
-#include <functional>
 
 extern std::set<std::string> sysLibFunc;
 

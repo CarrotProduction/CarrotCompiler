@@ -1,13 +1,13 @@
+#include "CombineInstr.h"
 #include "ConstSpread.h"
+#include "LoopInvariant.h"
+#include "SimplifyJump.h"
 #include "ast.h"
 #include "backend.h"
 #include "define.h"
 #include "genIR.h"
-#include "SimplifyJump.h"
-#include "opt.h"
-#include "LoopInvariant.h"
 #include "DeleteDeadCode.h"
-#include "CombineInstr.h"
+#include "opt.h"
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -70,10 +70,10 @@ int main(int argc, char **argv) {
   // TODO
   if (isO2) {
     std::vector<Optimization *> Opt;
+    Opt.push_back(new DeadCodeDeletion(m.get()));
     Opt.push_back(new ConstSpread(m.get()));
     Opt.push_back(new CombineInstr(m.get()));
     Opt.push_back(new DomainTree(m.get()));
-    Opt.push_back(new DeadCodeDeletion(m.get()));
     Opt.push_back(new SimplifyJump(m.get()));
     Opt.push_back(new LoopInvariant(m.get()));
     Opt.push_back(new SimplifyJump(m.get()));
@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
     fout.open(output);
     out = &fout;
   }
+
   // Print IR result
   const std::string IR = m->print();
   if (print_ir) {
@@ -96,6 +97,7 @@ int main(int argc, char **argv) {
   }
 
   // Generate assembly file
+  // TODO
   if (print_asm) {
     auto builder = new RiscvBuilder();
     const std::string RiscvCode = builder->buildRISCV(m.get());

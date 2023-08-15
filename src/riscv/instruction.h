@@ -3,6 +3,7 @@
 
 #include "ir.h"
 #include "riscv.h"
+#include "regalloc.h"
 
 // 语句块，也使用标号标识
 // 必须挂靠在函数下，否则无法正常生成标号
@@ -20,8 +21,8 @@ public:
       : RiscvLabel(Block, name), func_(nullptr), blockInd_(blockInd) {}
   void addFunction(RiscvFunction *func) { func->addBlock(this); }
   std::string printname() { return name_; }
-  void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
-  void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
+  // void addOutBlock(RiscvBasicBlock *bb) { inB.push_back(bb); }
+  // void addInBlock(RiscvBasicBlock *bb) { outB.push_back(bb); }
   void deleteInstr(RiscvInstr *instr) {
     auto it = std::find(instruction.begin(), instruction.end(), instr);
     if (it != instruction.end())
@@ -65,12 +66,6 @@ public:
     }
   }
   std::string print();
-  /*
-    此处加入所需数据流分析的参数和函数
-    下面为示例
-  */
-  std::vector<RiscvBasicBlock *> outB; // 出边
-  std::vector<RiscvBasicBlock *> inB;  // 入边
 };
 
 // 传入寄存器编号以生成一条语句，
@@ -164,14 +159,18 @@ public:
   // target = v1 op v2，后面接一个flag参数表示要不要加入到对应的basic block中
   BinaryRiscvInst(InstrType op, RiscvOperand *v1, RiscvOperand *v2,
                   RiscvOperand *target, RiscvBasicBlock *bb, bool flag = 0)
-      : RiscvInstr(op, 2, bb) {
+      : RiscvInstr(op, 2, bb), word(flag) {
     setOperand(0, v1);
     setOperand(1, v2);
     setResult(target);
     this->parent_ = bb;
-    if (flag)
-      this->parent_->addInstrBack(this);
+    // Optimize: 若立即数为0，则改用寄存器zero。
+    if(v2->getType() == v2->IntImm && static_cast<RiscvConst*>(v2)->intval == 0){
+      type_ = ADD;
+      setOperand(1, getRegOperand("zero"));
+    }
   }
+  bool word;
 };
 
 // 一元指令

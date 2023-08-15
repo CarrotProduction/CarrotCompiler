@@ -14,7 +14,7 @@ set(SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/sylib.c")
 
 if(BUILD_IR_TESTING)
   add_custom_target(sysy-ir ALL
-    COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS}
+    COMMAND clang ${CMAKE_C_FLAGS}
     -I ${INCLUDE_DIRECTORY}
     -S -emit-llvm
     ${SOURCE_FILES}

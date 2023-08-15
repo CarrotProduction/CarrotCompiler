@@ -36,7 +36,7 @@ set(TEST_REF "${TEST_NAME}.ref")
 # SysY to RISC-V Assembly
 execute_process(
   COMMAND
-  ${COMPILER} -S ${TEST_SRC}
+  ${COMPILER} -S ${TEST_SRC} -O1
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   OUTPUT_FILE ${TEST_ASM}
   ERROR_VARIABLE TEST_ERR
@@ -53,7 +53,7 @@ endif(TEST_RET)
 # GCC Assemble and Link
 execute_process(
   COMMAND
-  riscv64-linux-gnu-gcc "${CMAKE_CURRENT_BINARY_DIR}/${TEST_ASM}" "${RUNTIME_LIB}" -static -o "${CMAKE_CURRENT_BINARY_DIR}/${TEST_EXE}"
+  riscv64-linux-gnu-gcc "${CMAKE_CURRENT_BINARY_DIR}/${TEST_ASM}" "${RUNTIME_LIB}" -march=rv64gc -static -o "${CMAKE_CURRENT_BINARY_DIR}/${TEST_EXE}"
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   ERROR_VARIABLE TEST_ERR
   RESULT_VARIABLE TEST_RET
@@ -69,7 +69,7 @@ endif(TEST_RET)
 # Run the executable with qemu
 execute_process(
   COMMAND
-  qemu-riscv64 ${TEST_EXE}
+  qemu-riscv64 ${TEST_EXE} -M sifive_u -smp 5 -m 2G
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   INPUT_FILE ${TEST_INS}
   OUTPUT_VARIABLE TEST_OUT_CONTENT

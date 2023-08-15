@@ -219,15 +219,15 @@ RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb,
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
   val = this->DSU_for_Variable.query(val);
   if (pos.find(val) != pos.end()) {
-    std::cerr << "[Warning] Trying overwriting memory address map of value "
-              << std::hex << val << " (" << val->name_ << ") ["
-              << riscvVal->print() << " -> " << pos[val]->print() << "]"
-              << std::endl;
+    // std::cerr << "[Warning] Trying overwriting memory address map of value "
+    //           << std::hex << val << " (" << val->name_ << ") ["
+    //           << riscvVal->print() << " -> " << pos[val]->print() << "]"
+    //           << std::endl;
     // std::terminate();
   }
 
-  std::cerr << "[Debug] [RegAlloca] Map value <" << val->print()
-            << "> to operand <" << riscvVal->print() << ">" << std::endl;
+  // std::cerr << "[Debug] [RegAlloca] Map value <" << val->print()
+  //           << "> to operand <" << riscvVal->print() << ">" << std::endl;
 
   pos[val] = riscvVal;
 }
@@ -261,8 +261,8 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
     std::terminate();
   }
 
-  std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
-            << val->print() << ">\n";
+  // std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
+  //           << val->print() << ">\n";
 
   curReg[val] = riscvReg;
   regPos[riscvReg] = val;
@@ -277,8 +277,8 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
 
   value = this->DSU_for_Variable.query(value);
 
-  std::cerr << "[Debug] [RegAlloca] Writeback register <" << riscvReg->print()
-            << "> to value <" << value->print() << ">.\n";
+  // std::cerr << "[Debug] [RegAlloca] Writeback register <" << riscvReg->print()
+  //           << "> to value <" << value->print() << ">.\n";
 
   // Erase map info
   regPos.erase(riscvReg);
@@ -288,8 +288,8 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   RiscvOperand *mem_addr = findMem(value);
 
   if (mem_addr == nullptr) {
-    std::cerr << "[Debug] [RegAlloca] Writeback ignore alloca pointer direct "
-                 "access and immvalue.\n";
+    // std::cerr << "[Debug] [RegAlloca] Writeback ignore alloca pointer direct "
+    //              "access and immvalue.\n";
     return nullptr; // Maybe an immediate value or dicrect accessing alloca
   }
 

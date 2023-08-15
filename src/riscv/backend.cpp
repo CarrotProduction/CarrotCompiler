@@ -758,9 +758,9 @@ std::string RiscvBuilder::buildRISCV(Module *m) {
           rfoo->regAlloca->DSU_for_Variable.merge(instr->operands_[0],
                                                   static_cast<Value *>(instr));
         } else if (instr->op_id_ == Instruction::OpID::BitCast) {
-          std::cerr << "[Debug] [DSU] Bitcast Instruction: Merge value "
-                    << static_cast<Value *>(instr)->print() << " to "
-                    << instr->operands_[0]->print() << " ." << std::endl;
+          // std::cerr << "[Debug] [DSU] Bitcast Instruction: Merge value "
+          //           << static_cast<Value *>(instr)->print() << " to "
+          //           << instr->operands_[0]->print() << " ." << std::endl;
           rfoo->regAlloca->DSU_for_Variable.merge(static_cast<Value *>(instr),
                                                   instr->operands_[0]);
         }

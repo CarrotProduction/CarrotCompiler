@@ -70,10 +70,10 @@ int main(int argc, char **argv) {
   // TODO
   if (isO2) {
     std::vector<Optimization *> Opt;
+    Opt.push_back(new DeadCodeDeletion(m.get()));
     Opt.push_back(new ConstSpread(m.get()));
     Opt.push_back(new CombineInstr(m.get()));
     Opt.push_back(new DomainTree(m.get()));
-    Opt.push_back(new DeadCodeDeletion(m.get()));
     Opt.push_back(new SimplifyJump(m.get()));
     Opt.push_back(new LoopInvariant(m.get()));
     Opt.push_back(new SimplifyJump(m.get()));

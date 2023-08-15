@@ -1,7 +1,13 @@
+#include "CombineInstr.h"
+#include "ConstSpread.h"
+#include "LoopInvariant.h"
+#include "SimplifyJump.h"
 #include "ast.h"
 #include "backend.h"
 #include "define.h"
 #include "genIR.h"
+#include "DeleteDeadCode.h"
+#include "opt.h"
 #include <fstream>
 #include <iostream>
 #include <ostream>
@@ -23,7 +29,8 @@ int main(int argc, char **argv) {
   std::string output = "-";
 
   int opt;
-  while ((opt = getopt(argc, argv, "Sco:")) != -1) {
+  bool isO2 = false;
+  while ((opt = getopt(argc, argv, "Sco:O::")) != -1) {
     switch (opt) {
     case 'S':
       print_asm = true;
@@ -36,8 +43,10 @@ int main(int argc, char **argv) {
     case 'o':
       output = optarg;
       break;
+    case 'O':
+      isO2 = true;
+      break;
     default:
-      std::cerr << "[Warning] Unknown argument: " << opt << std::endl;
       break;
     }
   }
@@ -59,6 +68,18 @@ int main(int argc, char **argv) {
 
   // Run IR optimization
   // TODO
+  if (isO2) {
+    std::vector<Optimization *> Opt;
+    Opt.push_back(new ConstSpread(m.get()));
+    Opt.push_back(new CombineInstr(m.get()));
+    Opt.push_back(new DomainTree(m.get()));
+    Opt.push_back(new DeadCodeDeletion(m.get()));
+    Opt.push_back(new SimplifyJump(m.get()));
+    Opt.push_back(new LoopInvariant(m.get()));
+    Opt.push_back(new SimplifyJump(m.get()));
+    for (auto x : Opt)
+      x->execute();
+  }
 
   // Open output file
   std::ofstream fout;

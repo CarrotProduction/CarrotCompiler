@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 
   int opt;
   bool isO2 = false;
-  while ((opt = getopt(argc, argv, "ScoO:")) != -1) {
+  while ((opt = getopt(argc, argv, "Sco:O::")) != -1) {
     switch (opt) {
     case 'S':
       print_asm = true;

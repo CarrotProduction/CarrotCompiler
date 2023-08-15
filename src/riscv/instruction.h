@@ -170,8 +170,6 @@ public:
     setOperand(1, v2);
     setResult(target);
     this->parent_ = bb;
-    if (flag)
-      this->parent_->addInstrBack(this);
     // Optimize: 若立即数为0，则改用寄存器zero。
     if(v2->getType() == v2->IntImm && static_cast<RiscvConst*>(v2)->intval == 0){
       type_ = ADD;

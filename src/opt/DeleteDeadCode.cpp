@@ -24,6 +24,7 @@ void DeadCodeDeletion::initFuncPtrArg() {
       }
   }
 }
+
 void DeadCodeDeletion::Init(Function *foo) {
   storePos.clear();
   for (auto bb : foo->basic_blocks_) {
@@ -48,6 +49,7 @@ void DeadCodeDeletion::Init(Function *foo) {
     }
   }
 }
+
 bool DeadCodeDeletion::checkOpt(Function *foo, Instruction *ins) {
   if (ins->op_id_ == Instruction::Ret) {
     exitBlock = ins->parent_;
@@ -69,29 +71,25 @@ bool DeadCodeDeletion::checkOpt(Function *foo, Instruction *ins) {
 
 void DeadCodeDeletion::findInstr(Function *foo) {
   std::list<Value *> workList;
-  for (auto bb : foo->basic_blocks_) {
-    for (auto ins : bb->instr_list_) {
+  for (auto bb : foo->basic_blocks_)
+    for (auto ins : bb->instr_list_)
       if (checkOpt(foo, ins)) {
         uselessInstr.insert(ins);
         workList.push_back(ins);
       }
-    }
-  }
   while (!workList.empty()) {
     auto ins = dynamic_cast<Instruction *>(workList.back());
     workList.pop_back();
-    if (ins == nullptr) {
+    if (ins == nullptr)
       continue;
-    }
     for (auto operand : ins->operands_) {
       auto temp = dynamic_cast<Instruction *>(operand);
       if (!temp)
         continue;
-      if (uselessInstr.insert(temp).second) {
+      if (uselessInstr.insert(temp).second)
         workList.push_back(temp);
-      }
     }
-    if (ins->op_id_ == Instruction::PHI) {
+    if (ins->op_id_ == Instruction::PHI)
       for (int i = 1; i < ins->operands_.size(); i += 2) {
         auto bb = dynamic_cast<BasicBlock *>(ins->get_operand(i));
         auto br = bb->get_terminator();
@@ -99,27 +97,21 @@ void DeadCodeDeletion::findInstr(Function *foo) {
           workList.push_back(br);
         }
       }
-    }
     if (storePos.count(ins)) {
-      for (auto curInstr : storePos[ins]) {
-        if (uselessInstr.insert(dynamic_cast<Instruction *>(curInstr)).second) {
+      for (auto curInstr : storePos[ins])
+        if (uselessInstr.insert(dynamic_cast<Instruction *>(curInstr)).second)
           workList.push_back(curInstr);
-        }
-      }
       storePos.erase(ins);
     }
-    if (uselessBlock.insert(ins->parent_).second) {
+    if (uselessBlock.insert(ins->parent_).second)
       for (auto RFrontier : ins->parent_->rdom_frontier_) {
         auto t = RFrontier->get_terminator();
-        if (uselessInstr.insert(t).second) {
+        if (uselessInstr.insert(t).second)
           workList.push_back(t);
-        }
       }
-    }
   }
 }
 void DeadCodeDeletion::deleteInstr(Function *foo) {
-  int deleteCnt = 0, changeCnt = 0;
   for (auto bb : foo->basic_blocks_) {
     std::vector<Instruction *> ins2Del;
     for (auto ins : bb->instr_list_) {
@@ -128,7 +120,6 @@ void DeadCodeDeletion::deleteInstr(Function *foo) {
           ins2Del.push_back(ins);
         } else {
           if (ins->operands_.size() == 3) {
-            changeCnt++;
             auto trueBB = dynamic_cast<BasicBlock *>(ins->get_operand(1));
             auto falseBB = dynamic_cast<BasicBlock *>(ins->get_operand(2));
             trueBB->remove_pre_basic_block(bb);
@@ -159,10 +150,8 @@ void DeadCodeDeletion::deleteInstr(Function *foo) {
         }
       }
     }
-    deleteCnt += ins2Del.size();
-    for (auto ins : ins2Del) {
+    for (auto ins : ins2Del)
       bb->delete_instr(ins);
-    }
   }
 }
 

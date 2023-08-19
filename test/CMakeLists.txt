@@ -8,7 +8,7 @@ set(PERFORMANCE_TESTS_DIR
 set(FINAL_PERFORMANCE_TESTS_DIR
   "${CMAKE_CURRENT_SOURCE_DIR}/case/final_performance")
 
-# set(BUILD_PERFORMANCE_TESTS true)
+set(BUILD_PERFORMANCE_TESTS true)
 # set(BUILD_IR_TESTING true)
 
 # Define test function

@@ -5,7 +5,9 @@
 #include "ast.h"
 #include "backend.h"
 #include "define.h"
+#include "InstructionSubstitution.h"
 #include "genIR.h"
+#include "FunctionInline.h"
 #include "DeleteDeadCode.h"
 #include "opt.h"
 #include <fstream>
@@ -29,7 +31,7 @@ int main(int argc, char **argv) {
   std::string output = "-";
 
   int opt;
-  bool isO2 = false;
+  bool isO2 = true;
   while ((opt = getopt(argc, argv, "Sco:O::")) != -1) {
     switch (opt) {
     case 'S':
@@ -70,17 +72,19 @@ int main(int argc, char **argv) {
   // TODO
   if (isO2) {
     std::vector<Optimization *> Opt;
+    Opt.push_back(new FunctionInline(m.get()));
     Opt.push_back(new DeadCodeDeletion(m.get()));
-    Opt.push_back(new ConstSpread(m.get()));
     Opt.push_back(new CombineInstr(m.get()));
+    Opt.push_back(new ConstSpread(m.get()));
+    Opt.push_back(new InstructionSubstitution(m.get()));
     Opt.push_back(new DomainTree(m.get()));
     Opt.push_back(new SimplifyJump(m.get()));
     Opt.push_back(new LoopInvariant(m.get()));
+    Opt.push_back(new DeadCodeDeletion(m.get()));
     Opt.push_back(new SimplifyJump(m.get()));
     for (auto x : Opt)
       x->execute();
   }
-
   // Open output file
   std::ofstream fout;
   std::ostream *out;

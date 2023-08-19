@@ -341,9 +341,8 @@ bool ConstSpread::BranchProcess(Function *func) {
         bb->delete_instr(br);
         for (auto succ_bb : bb->succ_bbs_) {
           succ_bb->remove_pre_basic_block(bb);
-          if (succ_bb != truebb) {
+          if (succ_bb != truebb)
             SolvePhi(bb, succ_bb);
-          }
         }
         bb->succ_bbs_.clear();
         new BranchInst(dynamic_cast<BasicBlock *>(truebb), bb);

@@ -23,8 +23,10 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::ASHR, "SRA"},        {RiscvInstr::SHLI, "SLLI"},
     {RiscvInstr::LSHR, "SRL"},        {RiscvInstr::ASHRI, "SRAI"},
     {RiscvInstr::LSHRI, "SRLI"},      {RiscvInstr::SLL, "SLL"},
-    {RiscvInstr::SLLI, "SLLI"},        {RiscvInstr::SRA, "SRA"},
-    {RiscvInstr::SRAI, "SRAI"}};
+    {RiscvInstr::SLLI, "SLLI"},       {RiscvInstr::SRA, "SRA"},
+    {RiscvInstr::SRAI, "SRAI"},       {RiscvInstr::SRL, "SRL"},
+    {RiscvInstr::SRLI, "SRLI"},
+};
 // Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},
@@ -86,9 +88,28 @@ std::string BinaryRiscvInst::print() {
     riscv_instr += "\n\t\t";
   }
 
+  switch (type_) {
+  case ADDI:
+  case ADD:
+  case SUBI:
+  case SUB:
+  case SLL:
+  case SLLI:
+  case SRL:
+  case SRLI:
+  case SRA:
+  case SRAI:
+  case REM:
+  case DIV:
+  case MUL:
+    break;
+  default:
+    word = false;
+    break;
+  }
+
   riscv_instr += instrTy2Riscv.at(this->type_);
-  if (word && (type_ == ADDI || type_ == ADD || type_ == MUL || type_ == REM ||
-               type_ == DIV))
+  if (word)
     riscv_instr += "W"; // Integer word type instruction.
   riscv_instr += "\t";
   riscv_instr += this->result_->print();

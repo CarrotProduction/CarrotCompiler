@@ -122,34 +122,91 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
       int &val = con->value_;
       bool flag = false;
       switch (binaryInstr->op_id_) {
-      case Instruction::OpID::SDiv:
-        if (__builtin_popcount(val) == 1) {
-          flag = true;
-          id = RiscvInstr::SRAI;
-          for (unsigned int test_val = 0;; test_val++)
-            if ((1u << test_val) & val) {
-              val = test_val;
-            }
-        }
-        break;
       case Instruction::OpID::Mul:
+        if (val == 1)
+          return nullptr;
         if (__builtin_popcount(val) == 1) {
           flag = true;
           id = RiscvInstr::SLLI;
           for (unsigned int test_val = 0;; test_val++)
             if ((1u << test_val) & val) {
               val = test_val;
+              break;
             }
         }
         break;
-      case Instruction::OpID::SRem:
+      case Instruction::OpID::SDiv:
+        if (val == 1)
+          return nullptr;
         if (__builtin_popcount(val) == 1) {
           flag = true;
-          id = RiscvInstr::ANDI;
+          id = RiscvInstr::SRAI;
+          int digit_val = 0;
           for (unsigned int test_val = 0;; test_val++)
             if ((1u << test_val) & val) {
-              val = test_val;
+              digit_val = test_val;
+              break;
             }
+          auto ope_reg =
+              regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1);
+          regAlloca->setPositionReg(binaryInstr, ope_reg, rbb, nullptr);
+
+          // sraiw t0, rs, 33-digit_val
+          if (digit_val > 1)
+            rbb->addInstrBack(new BinaryRiscvInst(
+                RiscvInstr::SRAI, ope_reg, new RiscvConst(33 - digit_val),
+                getRegOperand("t0"), rbb, true));
+          // srliw t0, t0(or rs), 32-digit_val
+          rbb->addInstrBack(new BinaryRiscvInst(
+              RiscvInstr::SRLI, digit_val > 1 ? getRegOperand("t0") : ope_reg,
+              new RiscvConst(32 - digit_val), getRegOperand("t0"), rbb, true));
+          // addw rs, t0, rs
+          rbb->addInstrBack(new BinaryRiscvInst(
+              RiscvInstr::ADD, ope_reg, getRegOperand("t0"), ope_reg, rbb));
+          // sraiw rs, rs, digit_val
+          rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::SRAI, ope_reg,
+                                                new RiscvConst(digit_val),
+                                                ope_reg, rbb, true));
+          return nullptr;
+        }
+        break;
+      case Instruction::OpID::SRem:
+        if (val == 1) {
+          return new BinaryRiscvInst(
+              RiscvInstr::ADD, getRegOperand("zero"), getRegOperand("zero"),
+              regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
+              rbb);
+        }
+        if (__builtin_popcount(val) == 1 && val <= 2048 && val >= 1) {
+          flag = true;
+          id = RiscvInstr::ANDI;
+          int digit_val = 0;
+          for (unsigned int test_val = 0;; test_val++)
+            if ((1u << test_val) & val) {
+              digit_val = test_val;
+              break;
+            }
+          auto ope_reg =
+              regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1);
+          regAlloca->setPositionReg(binaryInstr, ope_reg, rbb, nullptr);
+
+          // srliw t0, rs, 32-digit_val
+          rbb->addInstrBack(new BinaryRiscvInst(
+              RiscvInstr::SRLI, ope_reg, new RiscvConst(32 - digit_val),
+              getRegOperand("t0"), rbb, true));
+          // addw rs, rs, t0
+          rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, ope_reg,
+                                                getRegOperand("t0"), ope_reg,
+                                                rbb, true));
+          // andi rs, rs, (1<<digit_val)-1
+          rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::ANDI, ope_reg,
+                                                new RiscvConst(val - 1),
+                                                ope_reg, rbb));
+          // subw rs, rs, t0
+          rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::SUB, ope_reg,
+                                                getRegOperand("t0"), ope_reg,
+                                                rbb, true));
+          return nullptr;
         }
       default:
         flag = false;

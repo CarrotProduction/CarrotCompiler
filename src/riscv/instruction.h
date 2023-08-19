@@ -94,6 +94,8 @@ public:
     ORI,
     SRA,
     SRAI,
+    SRL,
+    SRLI,
     SLL,
     SLLI,
     SW,

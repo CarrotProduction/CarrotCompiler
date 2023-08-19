@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <stack>
+#include <functional>
 #include "opt.h"
 
 void deleteUse(Value* opnd,Instruction *inst);

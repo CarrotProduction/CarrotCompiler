@@ -294,8 +294,8 @@ public:
   }
   void shiftSP(int shift_value) { base_ += shift_value; }
   void storeArray(int elementNum) {
-    if(elementNum & 7) {
-      elementNum += 8 - (elementNum & 7);   // Align to 8 byte.
+    if (elementNum & 7) {
+      elementNum += 8 - (elementNum & 7); // Align to 8 byte.
     }
     base_ -= elementNum;
   }

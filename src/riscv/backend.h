@@ -13,6 +13,7 @@ const extern std::map<Instruction::OpID, RiscvInstr::InstrType> toRiscvOp;
 extern int LabelCount;
 extern std::map<BasicBlock *, RiscvBasicBlock *> rbbLabel;
 extern std::map<Function *, RiscvFunction *> functionLabel;
+extern bool isO2;
 
 // 下面的函数仅为一个basic
 // block产生一个标号，指令集为空，需要使用总控程序中具体遍历该bb才会产生内部指令

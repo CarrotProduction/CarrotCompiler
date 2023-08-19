@@ -1,5 +1,7 @@
 #pragma once
 
+extern bool isO2;
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>

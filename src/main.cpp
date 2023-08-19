@@ -18,6 +18,7 @@
 extern unique_ptr<CompUnitAST> root;
 extern int yyparse();
 extern FILE *yyin;
+bool isO2 = true;
 
 int main(int argc, char **argv) {
   // Assert the number of arguments
@@ -31,7 +32,6 @@ int main(int argc, char **argv) {
   std::string output = "-";
 
   int opt;
-  bool isO2 = true;
   while ((opt = getopt(argc, argv, "Sco:O::")) != -1) {
     switch (opt) {
     case 'S':

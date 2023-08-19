@@ -77,7 +77,6 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
                                                  BinaryInst *binaryInstr,
                                                  RiscvBasicBlock *rbb) {
   auto id = toRiscvOp.at(binaryInstr->op_id_);
-  // 立即数处理
 
   // If both operands are imm value, caculate the result directly and save to
   // binaryInstr value.
@@ -114,6 +113,54 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
         new MoveRiscvInst(regAlloca->findReg(binaryInstr, rbb, nullptr, 0, 0),
                           value_result, rbb));
     return nullptr;
+  }
+
+  // Optimize: 常量优化
+  if (isO2 && binaryInstr->operands_[1]->is_constant()) {
+    ConstantInt *con = dynamic_cast<ConstantInt *>(binaryInstr->operands_[1]);
+    if (con != nullptr) {
+      int &val = con->value_;
+      bool flag = false;
+      switch (binaryInstr->op_id_) {
+      case Instruction::OpID::SDiv:
+        if (__builtin_popcount(val) == 1) {
+          flag = true;
+          id = RiscvInstr::SRAI;
+          for (unsigned int test_val = 0;; test_val++)
+            if ((1u << test_val) & val) {
+              val = test_val;
+            }
+        }
+        break;
+      case Instruction::OpID::Mul:
+        if (__builtin_popcount(val) == 1) {
+          flag = true;
+          id = RiscvInstr::SLLI;
+          for (unsigned int test_val = 0;; test_val++)
+            if ((1u << test_val) & val) {
+              val = test_val;
+            }
+        }
+        break;
+      case Instruction::OpID::SRem:
+        if (__builtin_popcount(val) == 1) {
+          flag = true;
+          id = RiscvInstr::ANDI;
+          for (unsigned int test_val = 0;; test_val++)
+            if ((1u << test_val) & val) {
+              val = test_val;
+            }
+        }
+      default:
+        flag = false;
+        break;
+      }
+      if (flag)
+        return new BinaryRiscvInst(
+            id, regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
+            new RiscvConst(con->value_),
+            regAlloca->findReg(binaryInstr, rbb, nullptr, 1, 0), rbb, true);
+    }
   }
   BinaryRiscvInst *instr = new BinaryRiscvInst(
       id, regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
@@ -194,8 +241,8 @@ std::vector<RiscvInstr *> RiscvBuilder::createLoadInstr(RegAlloca *regAlloca,
   assert(loadInstr->operands_[0]->type_->tid_ == Type::TypeID::PointerTyID);
   auto curType = static_cast<PointerType *>(loadInstr->operands_[0]->type_);
   // if (calcTypeSize(curType->contained_) > 4) {
-  //   auto mem = regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr, false);
-  //   if (static_cast<RiscvIntPhiReg *>(mem)->shift_ & 7) {
+  //   auto mem = regAlloca->findMem(loadInstr->operands_[0], rbb, nullptr,
+  //   false); if (static_cast<RiscvIntPhiReg *>(mem)->shift_ & 7) {
   //     std::cerr << "[Error] Alignment error." << std::endl;
   //     std::terminate();
   //   }

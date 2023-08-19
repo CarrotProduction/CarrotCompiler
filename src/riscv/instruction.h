@@ -2,8 +2,8 @@
 #define INSTRUCTIONH
 
 #include "ir.h"
-#include "riscv.h"
 #include "regalloc.h"
+#include "riscv.h"
 
 // 语句块，也使用标号标识
 // 必须挂靠在函数下，否则无法正常生成标号
@@ -92,6 +92,10 @@ public:
     ANDI,
     OR,
     ORI,
+    SRA,
+    SRAI,
+    SLL,
+    SLLI,
     SW,
     LW,
     FSW = 30,
@@ -164,10 +168,14 @@ public:
     setOperand(1, v2);
     setResult(target);
     this->parent_ = bb;
-    // Optimize: 若立即数为0，则改用寄存器zero。
-    if(v2->getType() == v2->IntImm && static_cast<RiscvConst*>(v2)->intval == 0){
-      type_ = ADD;
-      setOperand(1, getRegOperand("zero"));
+
+    if (isO2) {
+      // Optimize: 若立即数为0，则改用寄存器zero。
+      if (v2->getType() == v2->IntImm &&
+          static_cast<RiscvConst *>(v2)->intval == 0) {
+        type_ = ADD;
+        setOperand(1, getRegOperand("zero"));
+      }
     }
   }
   bool word;
@@ -352,7 +360,6 @@ public:
   std::string print() override;
 };
 
-
 // 浮点比较
 // 类型：cmpop val1, val2, true_link, false_link
 // 假定basic block是顺序排布的，那么如果false_link恰好为下一个basic
@@ -362,7 +369,7 @@ public:
   static const std::map<FCmpInst::FCmpOp, std::string> FCmpOpName;
   static const std::map<FCmpInst::FCmpOp, FCmpInst::FCmpOp> FCmpOpEquiv;
   FCmpRiscvInstr(FCmpInst::FCmpOp op, RiscvOperand *v1, RiscvOperand *v2,
-                  RiscvOperand *target, RiscvBasicBlock *bb)
+                 RiscvOperand *target, RiscvBasicBlock *bb)
       : RiscvInstr(FCMP, 2, bb), fcmp_op_(op) {
     setOperand(0, v1);
     setOperand(1, v2);
@@ -414,13 +421,12 @@ public:
  */
 class BranchRiscvInstr : public RiscvInstr {
 public:
-  
   /// @brief 生成分支指令类。
   /// @param rs1 存储布尔值的寄存器
   /// @param trueLink 真值跳转基本块
   /// @param falseLink 假值跳转基本块
   BranchRiscvInstr(RiscvOperand *rs1, RiscvBasicBlock *trueLink,
-                 RiscvBasicBlock *falseLink, RiscvBasicBlock *bb)
+                   RiscvBasicBlock *falseLink, RiscvBasicBlock *bb)
       : RiscvInstr(BGT, 3, bb) {
     setOperand(0, rs1);
     setOperand(1, trueLink);

@@ -22,8 +22,9 @@ std::map<RiscvInstr::InstrType, std::string> instrTy2Riscv = {
     {RiscvInstr::FLW, "FLW"},         {RiscvInstr::SHL, "SLL"},
     {RiscvInstr::ASHR, "SRA"},        {RiscvInstr::SHLI, "SLLI"},
     {RiscvInstr::LSHR, "SRL"},        {RiscvInstr::ASHRI, "SRAI"},
-    {RiscvInstr::LSHRI, "SRLI"},
-};
+    {RiscvInstr::LSHRI, "SRLI"},      {RiscvInstr::SLL, "SLL"},
+    {RiscvInstr::SLLI, "SLLI"},        {RiscvInstr::SRA, "SRA"},
+    {RiscvInstr::SRAI, "SRAI"}};
 // Instruction from opid to string
 const std::map<ICmpInst::ICmpOp, std::string> ICmpRiscvInstr::ICmpOpName = {
     {ICmpInst::ICmpOp::ICMP_EQ, "BEQ"},   {ICmpInst::ICmpOp::ICMP_NE, "BNE"},

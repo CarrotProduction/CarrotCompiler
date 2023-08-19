@@ -118,6 +118,7 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
   // Optimize: 常量优化
   if (isO2 && binaryInstr->operands_[1]->is_constant()) {
     ConstantInt *con = dynamic_cast<ConstantInt *>(binaryInstr->operands_[1]);
+    auto temp_reg = getRegOperand("t2");
     if (con != nullptr) {
       int &val = con->value_;
       bool flag = false;
@@ -151,18 +152,18 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
               regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1);
           regAlloca->setPositionReg(binaryInstr, ope_reg, rbb, nullptr);
 
-          // sraiw t0, rs, 33-digit_val
+          // sraiw temp, rs, 33-digit_val
           if (digit_val > 1)
             rbb->addInstrBack(new BinaryRiscvInst(
                 RiscvInstr::SRAI, ope_reg, new RiscvConst(33 - digit_val),
-                getRegOperand("t0"), rbb, true));
-          // srliw t0, t0(or rs), 32-digit_val
+                temp_reg, rbb, true));
+          // srliw temp, temp(or rs), 32-digit_val
           rbb->addInstrBack(new BinaryRiscvInst(
-              RiscvInstr::SRLI, digit_val > 1 ? getRegOperand("t0") : ope_reg,
-              new RiscvConst(32 - digit_val), getRegOperand("t0"), rbb, true));
-          // addw rs, t0, rs
-          rbb->addInstrBack(new BinaryRiscvInst(
-              RiscvInstr::ADD, ope_reg, getRegOperand("t0"), ope_reg, rbb));
+              RiscvInstr::SRLI, digit_val > 1 ? temp_reg : ope_reg,
+              new RiscvConst(32 - digit_val), temp_reg, rbb, true));
+          // addw rs, temp, rs
+          rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, ope_reg,
+                                                temp_reg, ope_reg, rbb));
           // sraiw rs, rs, digit_val
           rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::SRAI, ope_reg,
                                                 new RiscvConst(digit_val),
@@ -174,8 +175,7 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
         if (val == 1) {
           return new BinaryRiscvInst(
               RiscvInstr::ADD, getRegOperand("zero"), getRegOperand("zero"),
-              regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1),
-              rbb);
+              regAlloca->findReg(binaryInstr, rbb, nullptr, 1), rbb);
         }
         if (__builtin_popcount(val) == 1 && val <= 2048 && val >= 1) {
           flag = true;
@@ -190,22 +190,20 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
               regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1);
           regAlloca->setPositionReg(binaryInstr, ope_reg, rbb, nullptr);
 
-          // srliw t0, rs, 32-digit_val
-          rbb->addInstrBack(new BinaryRiscvInst(
-              RiscvInstr::SRLI, ope_reg, new RiscvConst(32 - digit_val),
-              getRegOperand("t0"), rbb, true));
-          // addw rs, rs, t0
+          // srliw temp, rs, 32-digit_val
+          rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::SRLI, ope_reg,
+                                                new RiscvConst(32 - digit_val),
+                                                temp_reg, rbb, true));
+          // addw rs, rs, temp
           rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, ope_reg,
-                                                getRegOperand("t0"), ope_reg,
-                                                rbb, true));
+                                                temp_reg, ope_reg, rbb, true));
           // andi rs, rs, (1<<digit_val)-1
           rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::ANDI, ope_reg,
                                                 new RiscvConst(val - 1),
                                                 ope_reg, rbb));
-          // subw rs, rs, t0
+          // subw rs, rs, temp
           rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::SUB, ope_reg,
-                                                getRegOperand("t0"), ope_reg,
-                                                rbb, true));
+                                                temp_reg, ope_reg, rbb, true));
           return nullptr;
         }
       default:

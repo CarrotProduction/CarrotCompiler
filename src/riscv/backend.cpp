@@ -190,10 +190,15 @@ BinaryRiscvInst *RiscvBuilder::createBinaryInstr(RegAlloca *regAlloca,
               regAlloca->findReg(binaryInstr->operands_[0], rbb, nullptr, 1);
           regAlloca->setPositionReg(binaryInstr, ope_reg, rbb, nullptr);
 
-          // srliw temp, rs, 32-digit_val
-          rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::SRLI, ope_reg,
-                                                new RiscvConst(32 - digit_val),
-                                                temp_reg, rbb, true));
+          // sraiw temp, rs, 33-digit_val
+          if (digit_val > 1)
+            rbb->addInstrBack(new BinaryRiscvInst(
+                RiscvInstr::SRAI, ope_reg, new RiscvConst(33 - digit_val),
+                temp_reg, rbb, true));
+          // srliw temp, temp(or rs), 32-digit_val
+          rbb->addInstrBack(new BinaryRiscvInst(
+              RiscvInstr::SRLI, digit_val > 1 ? temp_reg : ope_reg,
+              new RiscvConst(32 - digit_val), temp_reg, rbb, true));
           // addw rs, rs, temp
           rbb->addInstrBack(new BinaryRiscvInst(RiscvInstr::ADD, ope_reg,
                                                 temp_reg, ope_reg, rbb, true));

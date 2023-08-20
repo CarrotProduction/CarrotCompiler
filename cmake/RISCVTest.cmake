@@ -79,8 +79,8 @@ execute_process(
 )
 
 # Append EOF LR, if not presented
-if(TEST_OUT_CONTENT)
-  string(LENGTH "${TEST_OUT_CONTENT}" TEST_OUT_LEN)
+string(LENGTH "${TEST_OUT_CONTENT}" TEST_OUT_LEN)
+if(TEST_OUT_LEN GREATER 0)
   math(EXPR TEST_OUT_LAST "${TEST_OUT_LEN} - 1")
   string(SUBSTRING "${TEST_OUT_CONTENT}" ${TEST_OUT_LAST} 1 LAST_CHAR)
 
@@ -88,7 +88,7 @@ if(TEST_OUT_CONTENT)
     # If it's not, append a newline to var
     set(TEST_OUT_CONTENT "${TEST_OUT_CONTENT}\n")
   endif()
-endif(TEST_OUT_CONTENT)
+endif()
 
 set(TEST_OUT_CONTENT "${TEST_OUT_CONTENT}${TEST_RET}\n")
 file(WRITE "${TEST_OUT}" "${TEST_OUT_CONTENT}")

@@ -18,7 +18,7 @@
 extern unique_ptr<CompUnitAST> root;
 extern int yyparse();
 extern FILE *yyin;
-bool isO2 = true;
+bool isO2;
 
 int main(int argc, char **argv) {
   // Assert the number of arguments

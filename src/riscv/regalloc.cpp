@@ -261,7 +261,8 @@ void RegAlloca::setPositionReg(Value *val, RiscvOperand *riscvReg) {
     std::terminate();
   }
 
-  // std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value <"
+  // std::cerr << "[Debug] Map register <" << riscvReg->print() << "> to value
+  // <"
   //           << val->print() << ">\n";
 
   curReg[val] = riscvReg;
@@ -277,7 +278,8 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
 
   value = this->DSU_for_Variable.query(value);
 
-  // std::cerr << "[Debug] [RegAlloca] Writeback register <" << riscvReg->print()
+  // std::cerr << "[Debug] [RegAlloca] Writeback register <" <<
+  // riscvReg->print()
   //           << "> to value <" << value->print() << ">.\n";
 
   // Erase map info
@@ -288,7 +290,8 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   RiscvOperand *mem_addr = findMem(value);
 
   if (mem_addr == nullptr) {
-    // std::cerr << "[Debug] [RegAlloca] Writeback ignore alloca pointer direct "
+    // std::cerr << "[Debug] [RegAlloca] Writeback ignore alloca pointer direct
+    // "
     //              "access and immvalue.\n";
     return nullptr; // Maybe an immediate value or dicrect accessing alloca
   }
@@ -305,7 +308,7 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   return store_instr;
 }
 
-RegAlloca::RegAlloca(Function *_foo):foo(_foo) {
+RegAlloca::RegAlloca(Function *_foo) : foo(_foo) {
   // 初始化寄存器对象池。
   if (regPool.size() == 0) {
     for (int i = 0; i < 32; i++)
@@ -323,12 +326,15 @@ RegAlloca::RegAlloca(Function *_foo):foo(_foo) {
   // 保护 fs0-fs11
   for (int i = 0; i <= 11; i++)
     savedRegister.push_back(getRegOperand("fs" + std::to_string(i)));
-  
+
   // Loop Info Analysis
   loopInfo = new LoopInfo(foo);
 
   //! For debug. Delete after released.
   loopInfo->printAllLoopInfo();
+
+  /// Initiate Registers allocation analysis.
+  regAnalysis = new RegAnalysis(this);
 }
 
 RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,

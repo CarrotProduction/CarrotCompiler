@@ -1,10 +1,14 @@
 #ifndef REGALLOCH
 #define REGALLOCH
 
+
 #include "riscv.h"
 #include "LoopInfo.h"
 #include "regAnalysis.h"
 #include <cassert>
+
+class RegAnalysis;
+class RegAlloca;
 
 template <typename T> class DSU {
 private:
@@ -268,8 +272,12 @@ public:
    */
   std::set<RiscvOperand *> getUsedReg() { return regUsed; }
 
+  // 友元对象
+  friend class RegAnalysis;
+
 private:
   LoopInfo * loopInfo;
+  RegAnalysis * regAnalysis;
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;
   /**

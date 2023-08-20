@@ -2,9 +2,50 @@
 
 LoopInfo::LoopInfo(Function *_foo) : foo(_foo) { loopAnalysis(); }
 
+void LoopInfo::AnalysisOrderDFS(std::vector<BasicBlock *> &ret_order,
+                                BasicBlock *bb) {
+  AODFS_Flag.insert(bb);
+  ret_order.push_back(bb);
+  auto loop = getBBLoop(bb);
+  // If in loop
+  if (loop != nullptr) {
+    for (auto lbb : loop->loop_nodes)
+      if (lbb != bb) {
+        AODFS_Flag.insert(lbb);
+        ret_order.push_back(lbb);
+      }
+    for (auto lbb : loop->loop_nodes)
+      for (auto suc : lbb->succ_bbs_)
+        if (AODFS_Flag.find(suc) == AODFS_Flag.end())
+          AnalysisOrderDFS(ret_order, suc);
+  } else {
+    for (auto suc : bb->succ_bbs_)
+      if (AODFS_Flag.find(suc) == AODFS_Flag.end())
+        AnalysisOrderDFS(ret_order, suc);
+  }
+  return;
+}
+
+std::vector<BasicBlock *> LoopInfo::getAnalysisOrder() {
+  std::vector<BasicBlock *> ret_order;
+  AODFS_Flag.clear();
+  for (auto bb : foo->basic_blocks_)
+    if (bb->pre_bbs_.size() == 0) {
+      AnalysisOrderDFS(ret_order, bb);
+    }
+  assert(ret_order.size() == foo->basic_blocks_.size());
+  return ret_order;
+}
+
+bool LoopInfo::isLoopHeader(BasicBlock *bb) {
+  Loop *loop = getBBLoop(bb);
+  if (loop == nullptr)
+    return false;
+  return bb == loop->getHeader();
+}
+
 bool LoopInfo::searchSCC(std::set<node *> &basicBlock,
                          std::set<std::set<node *> *> &SCCs) {
-
   ind = 0;
   while (!tarjanStack.empty())
     tarjanStack.pop();
@@ -22,7 +63,7 @@ void LoopInfo::loopAnalysis() {
   std::set<node *> nodes;
   std::set<node *> entry;
   std::set<std::set<node *> *> SCCs;
-  std::map<BasicBlock *, node *> nodeMap;
+  std::unordered_map<BasicBlock *, node *> nodeMap;
   for (auto bb : foo->basic_blocks_) {
     auto cur = new node(bb, -1, -1, 0);
     nodeMap[bb] = cur;
@@ -32,7 +73,7 @@ void LoopInfo::loopAnalysis() {
     auto BlockNode = nodeMap[bb];
     for (auto suc : bb->succ_bbs_)
       BlockNode->suc.insert(nodeMap[suc]);
-    for (auto pre : bb->succ_bbs_)
+    for (auto pre : bb->pre_bbs_)
       BlockNode->pre.insert(nodeMap[pre]);
   }
 
@@ -52,7 +93,7 @@ void LoopInfo::loopAnalysis() {
         mapBBtoLoop(curBlock->bb, curLoop);
       }
       curLoop->setHeader(enter->bb);
-      loops.insert(curLoop);
+      loops.push_back(curLoop);
 
       entry.insert(enter);
       nodes.erase(enter);

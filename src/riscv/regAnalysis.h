@@ -3,8 +3,8 @@
 #define REGANALYSISH
 
 #include "regalloc.h"
-#include "riscv.h"
 #include "LoopInfo.h"
+#include "riscv.h"
 
 class RegAnalysis {
 private:
@@ -28,6 +28,9 @@ private:
 
     // Add a range to intervals.
     void addRange(int L, int R);
+
+    // Check if the intervals are valid ones.
+    void checkValid();
   };
 
   // Analysis Data Structure for Basic Block.

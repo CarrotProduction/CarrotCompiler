@@ -67,29 +67,38 @@ void RegAnalysis::LifetimeAnalysis() {
       if (instr->is_phi()) {
         live.erase(instr);
       }
-    
+
     // If bb is loop header then
-    if(regAlloca->loopInfo->isLoopHeader(bb)) {
+    if (regAlloca->loopInfo->isLoopHeader(bb)) {
       int loopEnd = 0;
-      auto loop = regAlloca->loopInfo->getBBLoop(bb);
+      auto *loop = regAlloca->loopInfo->getBBLoop(bb);
       // Get loopEnd
-      for(auto lbb: loop->loop_nodes) {
+      for (auto *lbb : loop->loop_nodes) {
         loopEnd = std::max(loopEnd, ADS_map[lbb].to);
       }
       // Set each operands' interval in live to all loop
-      for(auto opd: live)
+      for (auto *opd : live)
         life_intervals[opd].addRange(bb_ads.from, loopEnd);
     }
   }
+
+  // Interval postcheck.
+  for (auto *bb : bb_order)
+    for (auto *instr : bb->instr_list_) {
+      for (auto *opd : instr->operands_)
+        life_intervals[opd].checkValid();
+      life_intervals[instr].checkValid();
+    }
 }
 
 RegAnalysis::RegAnalysis(RegAlloca *_regAlloca) : regAlloca(_regAlloca) {
-  if(regAlloca->foo->basic_blocks_.size() == 0) return;
+  if (regAlloca->foo->basic_blocks_.size() == 0)
+    return;
   LifetimeAnalysis();
 }
 
 void RegAnalysis::LifeInterval::setFrom(int index) {
-  if(intervals.size() == 0) {
+  if (intervals.size() == 0) {
     intervals.insert({index, index});
   }
   auto inter = *intervals.begin();
@@ -100,4 +109,30 @@ void RegAnalysis::LifeInterval::setFrom(int index) {
 
 void RegAnalysis::LifeInterval::addRange(int L, int R) {
   intervals.insert({L, R});
+}
+
+void RegAnalysis::LifeInterval::checkValid() {
+  std::vector<std::pair<int, int>> _intervals;
+  for (auto inv : intervals)
+    _intervals.push_back(inv);
+  auto sort_function = [](std::pair<int, int> a, std::pair<int, int> b) {
+    return a.first == b.first ? a.second > b.second : a.first < b.first;
+  };
+  std::sort(_intervals.begin(), _intervals.end(), sort_function);
+  for(int i=0, l=_intervals.size(); i+1<l; i++) {
+    // Containing interval
+    if(_intervals[i].second >= _intervals[i+1].second) {
+      _intervals[i+1] = _intervals[i];
+    }
+    // Intersecting interval
+    else if(_intervals[i].second >= _intervals[i+1].first) {
+      _intervals[i+1].first = _intervals[i].first;
+      _intervals[i] = _intervals[i+1];
+    }
+  }
+
+  // Re-insert corrected intervals.
+  intervals.clear();
+  for(auto interval: _intervals)
+    intervals.insert(interval);
 }

@@ -1,4 +1,4 @@
 [submodule "test/compiler2022"]
 	path = test/compiler2022
-	url = https://gitlab.eduxiji.net/nscscc/compiler2022.git
+	url = https://gitlab.eduxiji.net/nscscc/compiler2023.git
 	shallow = true

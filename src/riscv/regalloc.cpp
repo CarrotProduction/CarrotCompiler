@@ -305,7 +305,7 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
   return store_instr;
 }
 
-RegAlloca::RegAlloca() {
+RegAlloca::RegAlloca(Function *_foo):foo(_foo) {
   // 初始化寄存器对象池。
   if (regPool.size() == 0) {
     for (int i = 0; i < 32; i++)
@@ -323,6 +323,12 @@ RegAlloca::RegAlloca() {
   // 保护 fs0-fs11
   for (int i = 0; i <= 11; i++)
     savedRegister.push_back(getRegOperand("fs" + std::to_string(i)));
+  
+  // Loop Info Analysis
+  loopInfo = new LoopInfo(foo);
+
+  //! For debug. Delete after released.
+  loopInfo->printAllLoopInfo();
 }
 
 RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,

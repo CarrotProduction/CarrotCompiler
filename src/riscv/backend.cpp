@@ -67,7 +67,7 @@ RiscvFunction *createRiscvFunction(Function *foo) {
       break;
     }
     RiscvFunction *cur =
-        new RiscvFunction(foo->name_, foo->arguments_.size(), ty);
+        new RiscvFunction(foo->name_, foo->arguments_.size(), ty, foo);
     return functionLabel[foo] = cur;
   }
   return functionLabel[foo];

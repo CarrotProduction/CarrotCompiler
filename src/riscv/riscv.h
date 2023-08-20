@@ -253,7 +253,7 @@ public:
   OpTy resType_;
   std::vector<RiscvOperand *> args;
   RiscvFunction(std::string name, int num_args,
-                OpTy Ty); // 返回值，无返回使用void类型
+                OpTy Ty, ::Function *foo); // 返回值，无返回使用void类型
   void setArgs(int ind, RiscvOperand *op) {
     assert(ind >= 0 && ind < args.size());
     args[ind] = op;

@@ -2,6 +2,8 @@
 #define REGALLOCH
 
 #include "riscv.h"
+#include "LoopInfo.h"
+#include "regAnalysis.h"
 #include <cassert>
 
 template <typename T> class DSU {
@@ -88,6 +90,9 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg);
 // 当存在需要寄存器保护的时候，直接找回原地址去进行
 class RegAlloca {
 public:
+  // 与寄存器分配相关联的函数
+  Function * foo;
+
   DSU<Value *> DSU_for_Variable;
 
   /**
@@ -234,7 +239,7 @@ public:
   /**
    * 初始化寄存器对象池，需要保护的寄存器对象等。
    */
-  RegAlloca();
+  RegAlloca(Function *_foo);
 
   // 指针所指向的内存地址
   std::map<Value *, RiscvOperand *> ptrPos;
@@ -264,6 +269,7 @@ public:
   std::set<RiscvOperand *> getUsedReg() { return regUsed; }
 
 private:
+  LoopInfo * loopInfo;
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;
   /**

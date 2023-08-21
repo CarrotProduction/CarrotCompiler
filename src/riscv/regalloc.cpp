@@ -4,6 +4,7 @@
 #include "riscv.h"
 
 int IntRegID = 32, FloatRegID = 32; // 测试阶段使用
+std::vector<RiscvOperand *> regPool;
 
 Register *NamefindReg(std::string reg) {
   if (reg.size() > 4)

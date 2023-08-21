@@ -294,7 +294,7 @@ private:
 /**
  * 寄存器对象池。
  */
-static std::vector<RiscvOperand *> regPool;
+extern std::vector<RiscvOperand *> regPool;
 
 /**
  * 根据提供的寄存器名，从寄存器池中返回操作数。

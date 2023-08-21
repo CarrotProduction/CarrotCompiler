@@ -1,31 +1,71 @@
 #include "regAnalysis.h"
 #include "LoopInfo.h"
+#include "regalloc.h"
+#include "riscv.h"
 #include <algorithm>
+#include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
+#define INT_MAX (0x7fffffff)
 
 void RegAnalysis::LifetimeAnalysis() {
   // Get Basic Block Order
   bb_order = regAlloca->loopInfo->getAnalysisOrder();
   // Reverse basic block order.
   auto bb_order_rev = bb_order;
+  // Check if value is valid type.
+  auto checkValidType = [](Value *val) {
+    switch (val->type_->tid_) {
+    case Type::VoidTyID:
+    case Type::LabelTyID:
+    case Type::FunctionTyID:
+      return false;
+    case Type::IntegerTyID:
+    case Type::FloatTyID:
+    case Type::ArrayTyID:
+    case Type::PointerTyID:
+      break;
+    }
+    return !val->is_constant();
+  };
   std::reverse(bb_order_rev.begin(), bb_order_rev.end());
 
   //! Debug. Delete after released.
+#ifdef DEBUG
   std::cerr << "Analysis order:" << std::endl;
   for (auto *bb : bb_order)
-    std::cerr << std::hex << bb << ' ';
+    std::cerr << bb->name_ << ' ';
   std::cerr << "\n";
+#endif
 
   // Initialize instruction index and ADS.
   instr_ind = 0;
   for (auto *bb : bb_order) {
     auto &ads = ADS_map[bb];
     ads.from = instr_ind + 1;
-    for (auto *instr : bb->instr_list_)
+#ifdef DEBUG
+    std::cerr << "----" << bb->name_ << "----\n";
+#endif
+    for (auto *instr : bb->instr_list_) {
       instr2ind[instr] = ++instr_ind;
+#ifdef DEBUG
+      std::cerr << std::to_string(instr_ind) << ": \t" << instr->print()
+                << std::endl;
+#endif
+    }
     ads.to = instr_ind;
   }
+
+  // Initialize life_intervals.
+  for (auto *bb : bb_order)
+    for (auto *instr : bb->instr_list_) {
+      for (auto *opd : instr->operands_)
+        if (checkValidType(opd))
+          life_intervals[opd].val = opd;
+      if (checkValidType(instr))
+        life_intervals[instr].val = instr;
+    }
 
   // Start build intervals.
   for (BasicBlock *bb : bb_order_rev) {
@@ -55,11 +95,14 @@ void RegAnalysis::LifetimeAnalysis() {
     // For each instruction of bb in reverse order
     for (auto instr_it = bb->instr_list_.rbegin();
          instr_it != bb->instr_list_.rend(); instr_it++) {
+      int instr_index = instr2ind[*instr_it];
       // For input operand
       for (auto *opd : (*instr_it)->operands_)
-        life_intervals[opd].addRange(bb_ads.from, instr2ind[*instr_it]);
+        if (checkValidType(opd))
+          life_intervals[opd].addRange(bb_ads.from, instr_index);
       // For output operand
-      life_intervals[*instr_it].setFrom(instr2ind[*instr_it]);
+      if (checkValidType(*instr_it))
+        life_intervals[*instr_it].setFrom(instr_index);
     }
 
     // Remove Phi Function's output value from bb's liveIn set.
@@ -86,33 +129,156 @@ void RegAnalysis::LifetimeAnalysis() {
   for (auto *bb : bb_order)
     for (auto *instr : bb->instr_list_) {
       for (auto *opd : instr->operands_)
-        life_intervals[opd].checkValid();
-      life_intervals[instr].checkValid();
+        if (checkValidType(opd))
+          life_intervals[opd].checkValid();
+      if (checkValidType(instr))
+        life_intervals[instr].checkValid();
     }
+
+#ifdef DEBUG
+  std::cerr << "===Lifetime Analysis Result:===\n";
+  std::set<Value *> opds;
+  for (auto *bb : bb_order)
+    for (auto *instr : bb->instr_list_) {
+      for (auto *opd : instr->operands_)
+        if (checkValidType(opd))
+          opds.insert(opd);
+      if (checkValidType(instr))
+        opds.insert(instr);
+    }
+  for (auto *val : opds) {
+    std::cerr << "Value : " << val->print() << std::endl;
+    std::cerr << "\tLife Intervals : \n\t";
+    std::cerr << life_intervals[val].print() << std::endl;
+  }
+#endif
 }
 
 void RegAnalysis::LinearScanRegAlloca() {
-  std::multiset<LifeInterval> unhandled, active, inactive, handled;
+  unhandled.clear();
+  active.clear();
+  inactive.clear();
+  handled.clear();
 
   // Obtain all unhandled intervals.
   for (auto interval : life_intervals)
-    unhandled.emplace(interval);
-  
-  while(!unhandled.empty()) {
+    unhandled.insert(interval.second);
+
+  while (!unhandled.empty()) {
     auto current = *unhandled.begin();
     unhandled.erase(unhandled.begin());
     int position = current.begin();
+
+    std::vector<LifeInterval> to_be_removed;
+    // Check for intervals in active that are handled or inactive
+    for (auto it : active) {
+      if (it.end() < position) {
+        handled.insert(it);
+        to_be_removed.push_back(it);
+      } else if (!it.cover(position)) {
+        inactive.insert(it);
+        to_be_removed.push_back(it);
+      }
+    }
+    for (auto it : to_be_removed)
+      active.erase(it);
+    to_be_removed.clear();
+
+    // Check for intervals in inactive that are handled or active
+    for (auto it : inactive) {
+      if (it.end() < position) {
+        handled.insert(it);
+        to_be_removed.push_back(it);
+      } else if (it.cover(position)) {
+        active.insert(it);
+        to_be_removed.push_back(it);
+      }
+    }
+    for (auto it : to_be_removed)
+      inactive.erase(it);
+    to_be_removed.clear();
+
+    // Find a register for current.
+    bool result = TryAllocateFreeReg(current);
+
+    // If allocation failed
+    if (!result) {
+      result = AllocateBlockedReg(current);
+      // assert(result);
+    }
+
+    if (current.reg != nullptr) {
+      active.insert(current);
+    }
   }
+
+#ifdef DEBUG
+  std::cerr << "====LinearScan Register Allocation Result====\n";
+  std::cerr << "Unhandled Count (Should be zero): "
+            << std::to_string(unhandled.size()) << std::endl;
+  handled.merge(active);
+  handled.merge(inactive);
+  for (auto it : handled) {
+    std::cerr << "Value: " << it.val->print() << std::endl;
+    std::cerr << "\tInterval: " << it.print()
+              << "\n\tRegister: " << it.reg->print()
+              << "\n\tSplitted: " << std::to_string(it.splitted) << std::endl;
+  }
+#endif
 }
 
-void RegAnalysis::TryAllocateFreeReg() {}
+bool RegAnalysis::TryAllocateFreeReg(LifeInterval &current) {
+  auto regAvailable = [=](RiscvOperand *reg) {
+    return regIntAvailable.find(reg) != regIntAvailable.end();
+  };
+  // Init regPool freeUntilNextPos
+  freeUntilPos.clear();
+  for (auto *reg : regPool)
+    if (regAvailable(reg))
+      freeUntilPos[reg] = INT_MAX;
+  for (auto it : active)
+    freeUntilPos[it.reg] = 0;
 
-void RegAnalysis::AllocateBlockedReg() {}
+  if (current.splitted)
+    for (auto it : inactive) {
+      int it_time = it.intersect(current);
+      if (it_time)
+        freeUntilPos[it.reg] = it_time;
+    }
+
+  // Registers to allocate.
+  RiscvOperand *alloc_reg = nullptr;
+  for (auto *reg : regPool)
+    if (regAvailable(reg)) {
+      if (alloc_reg == nullptr || freeUntilPos[reg] > freeUntilPos[alloc_reg])
+        alloc_reg = reg;
+    }
+
+  if (freeUntilPos[alloc_reg] == 0) {
+    // Allocation failed.
+    return false;
+  }
+  if (current.end() < freeUntilPos[alloc_reg]) {
+    current.reg = alloc_reg;
+  } else {
+    current.reg = alloc_reg;
+    LifeInterval new_it = current.splitInterval(freeUntilPos[alloc_reg] - 1);
+    unhandled.insert(new_it);
+  }
+  return true;
+}
+
+bool RegAnalysis::AllocateBlockedReg(LifeInterval &current) { return false; }
 
 RegAnalysis::RegAnalysis(RegAlloca *_regAlloca) : regAlloca(_regAlloca) {
   if (regAlloca->foo->basic_blocks_.size() == 0)
     return;
+  // Initlizize registers available
+  for (int i = 1; i <= 11; i++)
+    regIntAvailable.insert(getRegOperand("s" + std::to_string(i)));
+
   LifetimeAnalysis();
+  LinearScanRegAlloca();
 }
 
 void RegAnalysis::LifeInterval::setFrom(int index) {
@@ -155,16 +321,42 @@ void RegAnalysis::LifeInterval::checkValid() {
     intervals.insert(interval);
 }
 
-void RegAnalysis::LifeInterval::splitInterval(int split_time) {
+RegAnalysis::LifeInterval
+RegAnalysis::LifeInterval::splitInterval(int split_time) {
   Interval *interval_to_split = nullptr;
+  LifeInterval new_it = *this;
   for (auto interval : intervals) {
     if (interval.first <= split_time && split_time <= interval.second) {
       interval_to_split = &interval;
       break;
     }
+    new_it.intervals.erase(interval);
   }
   assert(interval_to_split != nullptr);
   intervals.erase(*interval_to_split);
-  intervals.insert({interval_to_split->first, split_time, false});
-  intervals.insert({split_time + 1, interval_to_split->second, true});
+  intervals.insert({interval_to_split->first, split_time});
+  new_it.intervals.insert({split_time + 1, interval_to_split->second});
+  return new_it;
+}
+
+bool RegAnalysis::LifeInterval::cover(int time) {
+  for (auto it : intervals)
+    if (time >= it.first && time <= it.second)
+      return true;
+  return false;
+}
+
+int RegAnalysis::LifeInterval::intersect(Interval _it) {
+  auto it = intervals.lower_bound(_it);
+  auto _itb = *it;
+  return _it.intersect(_itb);
+}
+
+int RegAnalysis::LifeInterval::intersect(LifeInterval _it) {
+  for (auto it : _it.intervals) {
+    int it_time = intersect(it);
+    if (it_time)
+      return it_time;
+  }
+  return 0;
 }

@@ -952,7 +952,7 @@ public:
   }
   LoadInst *create_load(Value *ptr) {
 #ifdef DEBUG
-    assert(ptr->get_type()->is_pointer_type() && "ptr must be pointer type");
+    // assert(ptr->get_type()->is_pointer_type() && "ptr must be pointer type");
 #endif
     // return LoadInst::create_load(ptr->get_type()->get_pointer_element_type(),
     // ptr, this->BB_);

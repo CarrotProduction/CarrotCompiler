@@ -1,4 +1,7 @@
 #pragma once
+#include <string>
+#include <type_traits>
+#include <unordered_map>
 #ifndef REGANALYSISH
 #define REGANALYSISH
 
@@ -10,11 +13,23 @@ class RegAnalysis {
 public:
   struct Interval {
     int first, second;
-    bool splitted = false;
+
+    // Check if two interval intersected.
+    int intersect(Interval b) {
+      Interval a = *this;
+      if (a.first > b.first)
+        std::swap(a, b);
+      if (a.second >= b.first)
+        return b.first;
+      return 0;
+    }
   };
 
   struct LifeInterval {
     std::set<Interval> intervals;
+    RiscvOperand *reg = nullptr;
+    Value *val = nullptr;
+    bool splitted = false;
 
     // Set the start position of the first range.
     void setFrom(int index);
@@ -26,11 +41,34 @@ public:
     void checkValid();
 
     // Split the interval in split_time to two intervals.
-    void splitInterval(int split_time);
+    LifeInterval splitInterval(int split_time);
 
+    // Return if the interval covers the given time.
+    bool cover(int time);
+
+    // Check if intersect with interval it.
+    int intersect(Interval it);
+    int intersect(LifeInterval it);
+
+    // Get the intervals' begin time
     int begin() {
       assert(intervals.size() > 0);
       return intervals.begin()->first;
+    }
+
+    // Get the intervals' end time
+    int end() {
+      assert(intervals.size() > 0);
+      return intervals.rbegin()->second;
+    }
+
+    // Print debug info.
+    std::string print() {
+      std::string result;
+      for (auto it : intervals)
+        result += "[" + std::to_string(it.first) + "," +
+                  std::to_string(it.second) + "]";
+      return result;
     }
   };
 
@@ -62,8 +100,12 @@ private:
   std::unordered_map<Value *, LifeInterval> life_intervals;
 
   // Parts of LinearScan Algorithm
-  void TryAllocateFreeReg();
-  void AllocateBlockedReg();
+  std::unordered_map<RiscvOperand *, int> freeUntilPos, nextUsePos;
+  std::multiset<LifeInterval> unhandled, active, inactive, handled;
+  std::unordered_set<RiscvOperand *> regIntAvailable;
+  std::unordered_set<RiscvOperand *> regFloatAvailable;
+  bool TryAllocateFreeReg(LifeInterval &);
+  bool AllocateBlockedReg(LifeInterval &);
 
 public:
   /**

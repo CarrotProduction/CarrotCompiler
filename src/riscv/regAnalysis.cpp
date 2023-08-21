@@ -4,6 +4,7 @@
 #include "riscv.h"
 #include <algorithm>
 #include <cstdint>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -98,8 +99,10 @@ void RegAnalysis::LifetimeAnalysis() {
       int instr_index = instr2ind[*instr_it];
       // For input operand
       for (auto *opd : (*instr_it)->operands_)
-        if (checkValidType(opd))
+        if (checkValidType(opd)) {
           life_intervals[opd].addRange(bb_ads.from, instr_index);
+          life_intervals[opd].addUse(instr_index);
+        }
       // For output operand
       if (checkValidType(*instr_it))
         life_intervals[*instr_it].setFrom(instr_index);
@@ -204,7 +207,9 @@ void RegAnalysis::LinearScanRegAlloca() {
     // If allocation failed
     if (!result) {
       result = AllocateBlockedReg(current);
-      // assert(result);
+#ifdef DEBUG
+      assert(result);
+#endif
     }
 
     if (current.reg != nullptr) {
@@ -226,6 +231,18 @@ void RegAnalysis::LinearScanRegAlloca() {
   }
 #endif
 }
+
+int RegAnalysis::getSpillSlot() {
+  if (spillSlots.size() == 0) {
+    spillSlots.push(spillOffset);
+    spillOffset += 8;
+  }
+  int slot = spillSlots.top();
+  spillSlots.pop();
+  return slot;
+}
+
+void RegAnalysis::releaseSpillSlot(int offset) { spillSlots.push(offset); }
 
 bool RegAnalysis::TryAllocateFreeReg(LifeInterval &current) {
   auto regAvailable = [=](RiscvOperand *reg) {
@@ -268,7 +285,78 @@ bool RegAnalysis::TryAllocateFreeReg(LifeInterval &current) {
   return true;
 }
 
-bool RegAnalysis::AllocateBlockedReg(LifeInterval &current) { return false; }
+bool RegAnalysis::AllocateBlockedReg(LifeInterval &current) {
+  auto regAvailable = [=](RiscvOperand *reg) {
+    return regIntAvailable.find(reg) != regIntAvailable.end();
+  };
+  // Init regPool freeUntilNextPos
+  nextUsePos.clear();
+  for (auto *reg : regPool)
+    if (regAvailable(reg))
+      nextUsePos[reg] = INT_MAX;
+
+  for (auto it : active)
+    nextUsePos[it.reg] = it.nextUse(current.begin());
+
+  if (current.splitted)
+    for (auto it : inactive) {
+      int it_time = it.intersect(current);
+      if (it_time)
+        nextUsePos[it.reg] = it.nextUse(current.begin());
+    }
+
+  RiscvOperand *spill_reg = nullptr;
+  for (auto *reg : regPool)
+    if (regAvailable(reg)) {
+      if (spill_reg == nullptr || nextUsePos[reg] > nextUsePos[spill_reg])
+        spill_reg = reg;
+    }
+
+  if (current.firstUse() > nextUsePos[spill_reg]) {
+    // all other intervals are used before current,
+    // so it is best to spill current itself
+    current.spillSlot = getSpillSlot();
+
+    // split current before its first use position that requires a register
+    unhandled.insert(current.splitInterval(current.firstUse() - 1));
+  } else {
+    // spill intervals that currently block reg
+    current.reg = spill_reg;
+    bool found = false;
+    LifeInterval spill_it;
+    for (auto it : active)
+      if (it.reg == spill_reg) {
+        spill_it = it;
+        found = true;
+        break;
+      }
+    if (found) {
+      // split the active interval to release reg.
+      active.erase(spill_it);
+      unhandled.insert(spill_it.splitInterval(current.begin() - 1));
+      active.insert(spill_it);
+    } else {
+      found = false;
+      for (auto it : inactive)
+        if (it.reg == spill_reg) {
+          spill_it = it;
+          found = true;
+          break;
+        }
+#ifdef DEBUG
+      assert(found);
+#endif
+      inactive.erase(spill_it);
+      unhandled.insert(spill_it.splitInterval(
+          spill_it.nextRange(current.begin()).first - 1));
+      inactive.insert(spill_it);
+    }
+  }
+
+  // Below are fixed interval parts.
+  // But not needed for now.
+  return true;
+}
 
 RegAnalysis::RegAnalysis(RegAlloca *_regAlloca) : regAlloca(_regAlloca) {
   if (regAlloca->foo->basic_blocks_.size() == 0)
@@ -288,11 +376,22 @@ void RegAnalysis::LifeInterval::setFrom(int index) {
   auto inter = *intervals.begin();
   intervals.erase(inter);
   inter.first = index;
+  // assert(inter.first <= inter.second);
   intervals.insert(inter);
 }
 
 void RegAnalysis::LifeInterval::addRange(int L, int R) {
+  assert(L<=R);
   intervals.insert({L, R});
+}
+
+RegAnalysis::Interval RegAnalysis::LifeInterval::nextRange(int index) {
+  return *intervals.lower_bound({index, 0});
+}
+
+int RegAnalysis::LifeInterval::nextUse(int index) {
+  auto it = usePoint.lower_bound(index);
+  return *it;
 }
 
 void RegAnalysis::LifeInterval::checkValid() {
@@ -325,17 +424,28 @@ RegAnalysis::LifeInterval
 RegAnalysis::LifeInterval::splitInterval(int split_time) {
   Interval *interval_to_split = nullptr;
   LifeInterval new_it = *this;
+  std::set<Interval> remain_intervals;
   for (auto interval : intervals) {
-    if (interval.first <= split_time && split_time <= interval.second) {
+    if (interval.first <= split_time && split_time < interval.second) {
       interval_to_split = &interval;
       break;
     }
+    if (split_time < interval.first) {
+      // no interval to split
+      break;
+    }
     new_it.intervals.erase(interval);
+    remain_intervals.insert(interval);
   }
-  assert(interval_to_split != nullptr);
-  intervals.erase(*interval_to_split);
-  intervals.insert({interval_to_split->first, split_time});
-  new_it.intervals.insert({split_time + 1, interval_to_split->second});
+
+  if (interval_to_split) {
+    assert(interval_to_split->first <= split_time);
+    assert(split_time+1 <= interval_to_split->second);
+    remain_intervals.insert({interval_to_split->first, split_time});
+    new_it.intervals.insert({split_time + 1, interval_to_split->second});
+  }
+  
+  intervals = remain_intervals;
   return new_it;
 }
 

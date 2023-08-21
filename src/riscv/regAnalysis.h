@@ -27,15 +27,31 @@ public:
 
   struct LifeInterval {
     std::set<Interval> intervals;
+    std::set<int> usePoint;
     RiscvOperand *reg = nullptr;
     Value *val = nullptr;
     bool splitted = false;
+    int spillSlot = -1;
 
     // Set the start position of the first range.
     void setFrom(int index);
 
     // Add a range to intervals.
     void addRange(int L, int R);
+
+    // Found the next range after index point.
+    Interval nextRange(int index);
+
+    // Add a use point.
+    void addUse(int index) { usePoint.insert(index); }
+
+    // Check the next use point from index on.
+    int nextUse(int index);
+
+    // Return the first use point of the interval.
+    int firstUse() {
+      return *usePoint.lower_bound(begin());
+    }
 
     // Check if the intervals are valid ones.
     void checkValid();
@@ -73,6 +89,16 @@ public:
   };
 
 private:
+  // Spill offset in spill memory.
+  int spillOffset = 0;
+  // Available Spill Offsets.
+  std::stack<int> spillSlots;
+
+  // Acquire an available spill slot.
+  int getSpillSlot();
+  // Release a spill slot.
+  void releaseSpillSlot(int offset);
+
   // Related regAlloca.
   RegAlloca *regAlloca;
 
@@ -107,7 +133,6 @@ private:
   bool TryAllocateFreeReg(LifeInterval &);
   bool AllocateBlockedReg(LifeInterval &);
 
-public:
   /**
    * @brief 计算 Function 所关联变量的 Life Interval 。
    */
@@ -118,7 +143,9 @@ public:
    */
   void LinearScanRegAlloca();
 
+public:
   RegAnalysis(RegAlloca *_regAlloca);
+
 };
 
 inline bool operator<(const RegAnalysis::Interval &a,

@@ -91,6 +91,24 @@ void RegAnalysis::LifetimeAnalysis() {
     }
 }
 
+void RegAnalysis::LinearScanRegAlloca() {
+  std::multiset<LifeInterval> unhandled, active, inactive, handled;
+
+  // Obtain all unhandled intervals.
+  for (auto interval : life_intervals)
+    unhandled.emplace(interval);
+  
+  while(!unhandled.empty()) {
+    auto current = *unhandled.begin();
+    unhandled.erase(unhandled.begin());
+    int position = current.begin();
+  }
+}
+
+void RegAnalysis::TryAllocateFreeReg() {}
+
+void RegAnalysis::AllocateBlockedReg() {}
+
 RegAnalysis::RegAnalysis(RegAlloca *_regAlloca) : regAlloca(_regAlloca) {
   if (regAlloca->foo->basic_blocks_.size() == 0)
     return;
@@ -112,27 +130,41 @@ void RegAnalysis::LifeInterval::addRange(int L, int R) {
 }
 
 void RegAnalysis::LifeInterval::checkValid() {
-  std::vector<std::pair<int, int>> _intervals;
+  std::vector<Interval> _intervals;
   for (auto inv : intervals)
     _intervals.push_back(inv);
-  auto sort_function = [](std::pair<int, int> a, std::pair<int, int> b) {
+  auto sort_function = [](Interval a, Interval b) {
     return a.first == b.first ? a.second > b.second : a.first < b.first;
   };
   std::sort(_intervals.begin(), _intervals.end(), sort_function);
-  for(int i=0, l=_intervals.size(); i+1<l; i++) {
+  for (int i = 0, l = _intervals.size(); i + 1 < l; i++) {
     // Containing interval
-    if(_intervals[i].second >= _intervals[i+1].second) {
-      _intervals[i+1] = _intervals[i];
+    if (_intervals[i].second >= _intervals[i + 1].second) {
+      _intervals[i + 1] = _intervals[i];
     }
     // Intersecting interval
-    else if(_intervals[i].second >= _intervals[i+1].first) {
-      _intervals[i+1].first = _intervals[i].first;
-      _intervals[i] = _intervals[i+1];
+    else if (_intervals[i].second >= _intervals[i + 1].first) {
+      _intervals[i + 1].first = _intervals[i].first;
+      _intervals[i] = _intervals[i + 1];
     }
   }
 
   // Re-insert corrected intervals.
   intervals.clear();
-  for(auto interval: _intervals)
+  for (auto interval : _intervals)
     intervals.insert(interval);
+}
+
+void RegAnalysis::LifeInterval::splitInterval(int split_time) {
+  Interval *interval_to_split = nullptr;
+  for (auto interval : intervals) {
+    if (interval.first <= split_time && split_time <= interval.second) {
+      interval_to_split = &interval;
+      break;
+    }
+  }
+  assert(interval_to_split != nullptr);
+  intervals.erase(*interval_to_split);
+  intervals.insert({interval_to_split->first, split_time, false});
+  intervals.insert({split_time + 1, interval_to_split->second, true});
 }

@@ -1,11 +1,10 @@
 #ifndef REGALLOCH
 #define REGALLOCH
 
-
-#include "riscv.h"
 #include "LoopInfo.h"
-#include "regAnalysis.h"
+#include "riscv.h"
 #include <cassert>
+
 
 class RegAnalysis;
 class RegAlloca;
@@ -26,12 +25,11 @@ public:
       // id
       //           << std::endl;
       return father[id] = id;
-    } else {
-      // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Find value "
-      // << id
-      //           << std::endl;
-      return getfather(id);
     }
+    // std::cerr << std::hex << "[Debug] [DSU] [" << this << "] Find value "
+    // << id
+    //           << std::endl;
+    return getfather(id);
   }
 
   /**
@@ -95,7 +93,7 @@ Type *getStoreTypeFromRegType(RiscvOperand *riscvReg);
 class RegAlloca {
 public:
   // 与寄存器分配相关联的函数
-  Function * foo;
+  Function *foo;
 
   DSU<Value *> DSU_for_Variable;
 
@@ -276,8 +274,8 @@ public:
   friend class RegAnalysis;
 
 private:
-  LoopInfo * loopInfo;
-  RegAnalysis * regAnalysis;
+  LoopInfo *loopInfo;
+  RegAnalysis *regAnalysis;
   std::map<Value *, RiscvOperand *> pos, curReg;
   std::map<RiscvOperand *, Value *> regPos;
   /**

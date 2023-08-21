@@ -1,5 +1,6 @@
 #include "regalloc.h"
 #include "instruction.h"
+#include "regAnalysis.h"
 #include "riscv.h"
 
 int IntRegID = 32, FloatRegID = 32; // 测试阶段使用
@@ -29,7 +30,7 @@ Register *NamefindReg(std::string reg) {
 }
 
 RiscvOperand *getRegOperand(std::string reg) {
-  for (auto regope : regPool) {
+  for (auto *regope : regPool) {
     if (regope->print() == reg)
       return regope;
   }
@@ -39,7 +40,7 @@ RiscvOperand *getRegOperand(std::string reg) {
 
 RiscvOperand *getRegOperand(Register::RegType op_ty_, int id) {
   Register *reg = new Register(op_ty_, id);
-  for (auto regope : regPool) {
+  for (auto *regope : regPool) {
     if (regope->print() == reg->print()) {
       delete reg;
       return regope;
@@ -103,9 +104,9 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
   // ! Maybe should consider using writeback() instead.
   // For now, all registers are considered unsafe thus registers should always
   // load from memory before using and save to memory after using.
-  auto mem_addr = findMem(val, bb, instr, 1); // Value's direct memory address
-  auto current_reg = curReg[val];             // Value's current register
-  auto load_type = val->type_;
+  auto *mem_addr = findMem(val, bb, instr, 1); // Value's direct memory address
+  auto *current_reg = curReg[val];             // Value's current register
+  auto *load_type = val->type_;
 
   regFindTimeStamp[current_reg] = safeFindTimeStamp; // Update time stamp
   if (load) {
@@ -115,7 +116,7 @@ RiscvOperand *RegAlloca::findReg(Value *val, RiscvBasicBlock *bb,
           new LoadRiscvInst(load_type, current_reg, mem_addr, bb), instr);
     } else if (val->is_constant()) {
       // If value is a int constant, create a LI instruction.
-      auto cval = dynamic_cast<ConstantInt *>(val);
+      auto *cval = dynamic_cast<ConstantInt *>(val);
       if (cval != nullptr)
         bb->addInstrBefore(new MoveRiscvInst(current_reg, cval->value_, bb),
                            instr);
@@ -188,7 +189,7 @@ RiscvOperand *RegAlloca::findMem(Value *val, RiscvBasicBlock *bb,
     return new RiscvIntPhiReg("t4");
   }
   // Cannot access to alloca's memory directly.
-  else if (direct && isAlloca)
+  if (direct && isAlloca)
     return nullptr;
 
   if (pos.find(val) == pos.end())
@@ -208,12 +209,12 @@ RiscvOperand *RegAlloca::findNonuse(Type *ty, RiscvBasicBlock *bb,
     if (IntRegID > 27)
       IntRegID = 18;
     return getRegOperand(Register::Int, IntRegID);
-  } else {
+  }  
     ++FloatRegID;
     if (FloatRegID > 27)
       FloatRegID = 18;
     return getRegOperand(Register::Float, FloatRegID);
-  }
+ 
 }
 
 void RegAlloca::setPosition(Value *val, RiscvOperand *riscvVal) {
@@ -296,8 +297,8 @@ RiscvInstr *RegAlloca::writeback(RiscvOperand *riscvReg, RiscvBasicBlock *bb,
     return nullptr; // Maybe an immediate value or dicrect accessing alloca
   }
 
-  auto store_type = value->type_;
-  auto store_instr = new StoreRiscvInst(value->type_, riscvReg, mem_addr, bb);
+  auto *store_type = value->type_;
+  auto *store_instr = new StoreRiscvInst(value->type_, riscvReg, mem_addr, bb);
 
   // Write store instruction
   if (instr != nullptr)
@@ -339,7 +340,7 @@ RegAlloca::RegAlloca(Function *_foo) : foo(_foo) {
 
 RiscvInstr *RegAlloca::writeback(Value *val, RiscvBasicBlock *bb,
                                  RiscvInstr *instr) {
-  auto reg = getPositionReg(val);
+  auto *reg = getPositionReg(val);
   return writeback(reg, bb, instr);
 }
 
@@ -371,7 +372,7 @@ void RegAlloca::writeback_all(RiscvBasicBlock *bb, RiscvInstr *instr) {
   std::vector<RiscvOperand *> regs_to_writeback;
   for (auto p : regPos)
     regs_to_writeback.push_back(p.first);
-  for (auto r : regs_to_writeback)
+  for (auto *r : regs_to_writeback)
     writeback(r, bb, instr);
 }
 
